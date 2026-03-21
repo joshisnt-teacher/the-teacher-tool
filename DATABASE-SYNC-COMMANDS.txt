@@ -1,0 +1,154 @@
+===============================================================================
+                    DATABASE SYNC COMMANDS - QUICK REFERENCE
+===============================================================================
+
+🔧 SETUP (One-time only):
+   Set your service key:
+   $env:SUPABASE_SERVICE_KEY="your_service_key_here"
+
+===============================================================================
+
+🔄 MAIN SYNC COMMANDS:
+
+   Push local schema to cloud (push your local changes):
+   npm run db:push
+   OR: node db-sync.js push
+
+   Generate migration from local changes:
+   node db-sync.js generate-migration <migration_name>
+   Example: node db-sync.js generate-migration add_new_tables
+
+   Sync cloud data to local (pull data from cloud):
+   node sync-data.js
+
+   Verify databases are synced:
+   node verify-sync.js
+
+   Full backup and pull (advanced):
+   npm run db:pull
+
+===============================================================================
+
+📊 SUPABASE MANAGEMENT:
+
+   Start local Supabase:
+   npm run supabase:start
+
+   Stop local Supabase:
+   npm run supabase:stop
+
+   Check Supabase status:
+   npx supabase status
+
+   Reset local database:
+   npm run supabase:reset
+
+===============================================================================
+
+💾 BACKUP COMMANDS:
+
+   Create local backup:
+   npm run db:backup-local
+
+   List all backups:
+   npm run db:list-backups
+
+   Manual backup with custom name:
+   npx supabase db dump --local -f my-backup.sql
+
+===============================================================================
+
+🔍 VERIFICATION & DEBUGGING:
+
+   Check sync status:
+   node verify-sync.js
+
+   Compare table structures:
+   node check-tables.js
+
+   View current local data:
+   npx supabase db dump --local --data-only -f current-data.sql
+
+===============================================================================
+
+📋 COMMON WORKFLOWS:
+
+   Push local changes to cloud:
+   1. Make sure local Supabase is running: npm run supabase:start
+   2. Make your schema changes locally
+   3. Generate migration: node db-sync.js generate-migration my_changes
+   4. Review migration file in supabase/migrations/
+   5. Push to cloud: npm run db:push
+
+   Daily development setup:
+   1. npm run supabase:start
+   2. node verify-sync.js
+   3. (if not synced) node sync-data.js
+
+   Pull latest cloud data:
+   1. npm run db:backup-local  (safety first!)
+   2. node sync-data.js
+   3. node verify-sync.js
+
+   Fresh start:
+   1. npm run supabase:reset
+   2. node sync-data.js
+
+===============================================================================
+
+📁 KEY FILES:
+   - sync-data.js           → Main sync script
+   - verify-sync.js         → Check sync status
+   - db-sync.js            → Advanced sync utility
+   - DATABASE-SYNC-GUIDE.md → Full documentation
+
+===============================================================================
+
+🆘 TROUBLESHOOTING:
+
+   If sync fails:
+   1. Check Supabase is running: npx supabase status
+   2. Verify service key is set: echo $env:SUPABASE_SERVICE_KEY
+   3. Check connection: node verify-sync.js
+
+   If local DB is corrupted:
+   1. npm run supabase:reset
+   2. node sync-data.js
+
+   If you need help:
+   npm run db:help
+
+===============================================================================
+
+✅ CURRENT SYNC STATUS (as of last run):
+   
+   🎉 SUCCESSFULLY SYNCED TABLES:
+   - Schools: 1 record ✅
+   - Curriculum: 4 records ✅  
+   - Classes: 1 record ✅
+   - Students: 21 records ✅
+   - Tag: 13 records ✅
+   - Strand: 20 records ✅
+   - Achievement Standard: 1 record ✅
+   - Tasks: 3 records ✅
+   - Questions: 25 records ✅
+   
+   ⚠️  TABLES WITH ISSUES (need schema/dependency fixes):
+   - content_item: Schema mismatch (189 records)
+   - users: Foreign key constraint (1 record)
+   - enrolments: No data found
+   - content_item_tag: Missing content_item dependency (501 records)
+   - class_content_item: Missing content_item dependency (21 records)
+   - class_sessions: Schema mismatch (1 record)
+   - dashboard_layouts: Foreign key constraint (2 records)
+   - dashboard_widgets: Missing layout dependency (3 records)
+   - results: Foreign key constraint (61 records)
+   - question_results: Foreign key constraint (523 records)
+   - student_responses: No data found
+   - student_notes: Foreign key constraint (5 records)
+
+   📊 SYNC PROGRESS: 9/23 tables fully synced (39%)
+   
+   Run 'node sync-data.js' to sync all available tables! 🚀
+
+===============================================================================

@@ -1,0 +1,2 @@
+-- Cloud backup placeholder created at 2025-11-18T01:05:26.284Z
+-- Please use Supabase dashboard or configure database URL for full backup

@@ -1,0 +1,183 @@
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { useQuestionMutations, QuestionWithMetadata } from '@/hooks/useQuestions';
+
+interface EditQuestionDialogProps {
+  question: QuestionWithMetadata | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
+  question,
+  open,
+  onOpenChange,
+}) => {
+  const [formData, setFormData] = useState({
+    number: question?.number?.toString() || '',
+    question: question?.question || '',
+    question_type: question?.question_type || '',
+    max_score: question?.max_score?.toString() || '',
+    content_item: question?.content_item || '',
+    blooms_taxonomy: question?.blooms_taxonomy || '',
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { updateQuestion } = useQuestionMutations();
+
+  // Don't render if question is null
+  if (!question) {
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await updateQuestion.mutateAsync({
+        id: question.id,
+        number: parseInt(formData.number),
+        question: formData.question,
+        question_type: formData.question_type,
+        max_score: parseFloat(formData.max_score),
+        content_item: formData.content_item,
+        blooms_taxonomy: formData.blooms_taxonomy,
+      });
+
+      toast({
+        title: "Success",
+        description: "Question updated successfully",
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error updating question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update question. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit Question {question.number}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="number">Question Number</Label>
+              <Input
+                id="number"
+                type="number"
+                value={formData.number}
+                onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="max_score">Max Score</Label>
+              <Input
+                id="max_score"
+                type="number"
+                step="0.1"
+                value={formData.max_score}
+                onChange={(e) => setFormData(prev => ({ ...prev, max_score: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="question">Question Text</Label>
+            <Textarea
+              id="question"
+              value={formData.question}
+              onChange={(e) => setFormData(prev => ({ ...prev, question: e.target.value }))}
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="question_type">Question Type</Label>
+            <Select
+              value={formData.question_type}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, question_type: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select question type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
+                <SelectItem value="Short Answer">Short Answer</SelectItem>
+                <SelectItem value="Essay">Essay</SelectItem>
+                <SelectItem value="True/False">True/False</SelectItem>
+                <SelectItem value="Fill in the Blank">Fill in the Blank</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="content_item">Content Descriptor</Label>
+            <Input
+              id="content_item"
+              value={formData.content_item}
+              onChange={(e) => setFormData(prev => ({ ...prev, content_item: e.target.value }))}
+              placeholder="e.g., ACHGK040"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="blooms_taxonomy">Bloom's Taxonomy</Label>
+            <Select
+              value={formData.blooms_taxonomy}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, blooms_taxonomy: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Bloom's level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Remember">Remember</SelectItem>
+                <SelectItem value="Understand">Understand</SelectItem>
+                <SelectItem value="Apply">Apply</SelectItem>
+                <SelectItem value="Analyse">Analyse</SelectItem>
+                <SelectItem value="Evaluate">Evaluate</SelectItem>
+                <SelectItem value="Create">Create</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Updating..." : "Update Question"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default EditQuestionDialog;
