@@ -12,22 +12,12 @@ interface CurriculumContentItemsProps {
   variant?: 'default' | 'compact';
 }
 
-// Map curriculum codes to their strands
-const getStrandFromCode = (code: string): string => {
-  if (code.startsWith('ACHHK')) return 'History';
-  if (code.startsWith('ACHGK')) return 'Geography';
-  if (code.startsWith('ACHCK')) return 'Civics & Citizenship';
-  if (code.startsWith('ACHEK')) return 'Economics & Business';
-  if (code.startsWith('WAHASS')) return 'HASS Skills';
-  return 'Other';
-};
-
-// Process curriculum data to group by strands
+// Process curriculum data to group by strands using real strand names from the database
 const processStrandData = (data: any[]) => {
   const strandMap = new Map<string, { values: number[], codes: string[], descriptions: string[] }>();
-  
+
   data.forEach(item => {
-    const strand = getStrandFromCode(item.code);
+    const strand = item.strandName || 'Other';
     if (!strandMap.has(strand)) {
       strandMap.set(strand, { values: [], codes: [], descriptions: [] });
     }

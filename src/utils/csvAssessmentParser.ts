@@ -1,6 +1,7 @@
 import { read, utils } from 'xlsx';
+import Papa from 'papaparse';
 
-export type AssessmentImportFormat = 'standard' | 'kahoot';
+export type AssessmentImportFormat = 'standard' | 'kahoot' | 'single_mark';
 
 export interface ParsedQuestion {
   number: number;
@@ -33,17 +34,15 @@ export interface ParsedAssessmentData {
 const normalizeCsvLine = (line: string) => line.replace(/\r/g, '');
 
 export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => {
-  const lines = csvContent
-    .split('\n')
-    .map(normalizeCsvLine)
-    .filter(line => line.trim().length > 0);
+  const parsed = Papa.parse<string[]>(csvContent, { skipEmptyLines: true });
+  const rows = parsed.data;
 
-  if (lines.length < 8) {
+  if (rows.length < 8) {
     throw new Error('CSV file is missing required rows.');
   }
 
   // Parse header to identify question columns
-  const headers = lines[0].split(',');
+  const headers = rows[0];
   const questionColumns: number[] = [];
 
   headers.forEach((header, index) => {
@@ -57,11 +56,11 @@ export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => 
   }
 
   // Extract metadata rows
-  const questionTexts = lines[1].split(',');
-  const questionTypes = lines[2].split(',');
-  const contentDescriptors = lines[3].split(',');
-  const bloomsTaxonomy = lines[4].split(',');
-  const availableMarks = lines[5].split(',');
+  const questionTexts = rows[1];
+  const questionTypes = rows[2];
+  const contentDescriptors = rows[3];
+  const bloomsTaxonomy = rows[4];
+  const availableMarks = rows[5];
 
   // Build questions array
   const questions = questionColumns.map((colIndex, questionIndex) => ({
@@ -76,8 +75,7 @@ export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => 
   const totalMarks = questions.reduce((sum, q) => sum + q.maxScore, 0);
   const totalColumnIndex = headers.findIndex(header => header.trim().toLowerCase() === 'total');
 
-  const students = lines.slice(7).map(line => {
-    const values = line.split(',');
+  const students = rows.slice(7).map(values => {
     const studentId = values[0]?.trim() || '';
     if (!studentId) {
       return null;
@@ -114,6 +112,51 @@ export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => 
 
 const normalizeString = (value: string | number | undefined | null) =>
   `${value ?? ''}`.trim();
+
+export const parseSingleMarkCSV = (csvContent: string): ParsedAssessmentData => {
+  const parsed = Papa.parse<string[]>(csvContent, { skipEmptyLines: true });
+  const rows = parsed.data;
+
+  if (rows.length < 2) {
+    throw new Error('CSV file is missing required rows.');
+  }
+
+  const headers = rows[0];
+  const scoreIndex = headers.findIndex(h => h.trim().toLowerCase() === 'score');
+  const percentageIndex = headers.findIndex(h => h.trim().toLowerCase() === 'percentage');
+
+  if (scoreIndex === -1 && percentageIndex === -1) {
+    throw new Error('CSV must contain a "Score" or "Percentage" column.');
+  }
+
+  const students = rows.slice(1).map(values => {
+    const studentId = values[0]?.trim() || '';
+    if (!studentId) return null;
+
+    const firstName = values[1]?.trim() || '';
+    const lastName = values[2]?.trim() || '';
+    const score = scoreIndex >= 0 ? parseFloat(values[scoreIndex]) || 0 : 0;
+    const percentage = percentageIndex >= 0 ? parseFloat(values[percentageIndex]) || 0 : 0;
+
+    return {
+      studentId,
+      firstName,
+      lastName,
+      displayName: `${firstName} ${lastName}`.trim() || studentId,
+      scores: [],
+      totalScore: score,
+      totalPercentage: percentage,
+      resolvedStudentId: undefined,
+    } as ParsedStudentResult;
+  }).filter((student): student is ParsedStudentResult => Boolean(student));
+
+  return {
+    sourceFormat: 'single_mark',
+    questions: [],
+    students,
+    totalMarks: 0,
+  };
+};
 
 export const parseKahootSummarySheet = (arrayBuffer: ArrayBuffer): ParsedAssessmentData => {
   const workbook = read(arrayBuffer, { type: 'array' });

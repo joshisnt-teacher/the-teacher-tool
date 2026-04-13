@@ -47,7 +47,7 @@ export const useAssessmentImport = () => {
             task_type: taskType,
             max_score: totalMarks,
             due_date: dueDate,
-            assessment_format: assessmentData.sourceFormat === 'kahoot' ? 'Kahoot' : 'traditional',
+            assessment_format: assessmentData.sourceFormat === 'kahoot' ? 'Kahoot' : assessmentData.sourceFormat === 'single_mark' ? 'single_mark' : 'traditional',
             is_legacy: false,
           })
           .select()
@@ -55,23 +55,27 @@ export const useAssessmentImport = () => {
 
         if (taskError) throw taskError;
 
-        // Step 2: Create questions
-        const questionsToInsert = assessmentData.questions.map(q => ({
-          task_id: task.id,
-          number: q.number,
-          question: q.question,
-          question_type: q.questionType,
-          content_item: q.contentDescriptor,
-          blooms_taxonomy: q.bloomsTaxonomy,
-          max_score: q.maxScore,
-        }));
+        // Step 2: Create questions (skip for single mark imports)
+        let questions: any[] | null = null;
+        if (assessmentData.sourceFormat !== 'single_mark' && assessmentData.questions.length > 0) {
+          const questionsToInsert = assessmentData.questions.map(q => ({
+            task_id: task.id,
+            number: q.number,
+            question: q.question,
+            question_type: q.questionType,
+            content_item: q.contentDescriptor,
+            blooms_taxonomy: q.bloomsTaxonomy,
+            max_score: q.maxScore,
+          }));
 
-        const { data: questions, error: questionsError } = await supabase
-          .from('questions')
-          .insert(questionsToInsert)
-          .select();
+          const { data: insertedQuestions, error: questionsError } = await supabase
+            .from('questions')
+            .insert(questionsToInsert)
+            .select();
 
-        if (questionsError) throw questionsError;
+          if (questionsError) throw questionsError;
+          questions = insertedQuestions;
+        }
 
         // Step 3: Get or create students
         const existingStudents = await supabase
@@ -136,14 +140,14 @@ export const useAssessmentImport = () => {
         });
 
         // Step 4: Create question results
-        const questionResults = [];
-        const taskResults = [];
+        const questionResults: any[] = [];
+        const taskResults: any[] = [];
         const unmatchedNames: string[] = [];
 
         for (const studentData of assessmentData.students) {
           let studentDbId: string | undefined = studentData.resolvedStudentId;
 
-          if (!studentDbId && assessmentData.sourceFormat === 'standard' && studentData.studentId) {
+          if (!studentDbId && (assessmentData.sourceFormat === 'standard' || assessmentData.sourceFormat === 'single_mark') && studentData.studentId) {
             studentDbId = studentIdMap.get(studentData.studentId);
           } else if (assessmentData.sourceFormat === 'kahoot') {
             const candidates = buildNameCandidates(studentData.displayName);
@@ -169,29 +173,43 @@ export const useAssessmentImport = () => {
             continue;
           }
 
-          // Create question results for each question
-          for (let i = 0; i < assessmentData.questions.length; i++) {
-            if (questions && questions[i]) {
-              const rawScore = studentData.scores[i] ?? 0;
-              const maxScore = assessmentData.questions[i].maxScore || 0;
-              const percentScore = maxScore > 0 ? (rawScore / maxScore) * 100 : 0;
+          // Create question results for each question (skip for single mark)
+          if (assessmentData.sourceFormat !== 'single_mark' && questions) {
+            for (let i = 0; i < assessmentData.questions.length; i++) {
+              if (questions[i]) {
+                const rawScore = studentData.scores[i] ?? 0;
+                const maxScore = assessmentData.questions[i].maxScore || 0;
+                const percentScore = maxScore > 0 ? (rawScore / maxScore) * 100 : 0;
 
-              questionResults.push({
-                question_id: questions[i].id,
-                student_id: studentDbId,
-                raw_score: rawScore,
-                percent_score: percentScore,
-              });
+                questionResults.push({
+                  question_id: questions[i].id,
+                  student_id: studentDbId,
+                  raw_score: rawScore,
+                  percent_score: percentScore,
+                });
+              }
             }
           }
 
-          // Create overall task result - calculate percentage properly with rounding
-          const totalPercentage = totalMarks > 0 ? Math.round((studentData.totalScore / totalMarks) * 100) : 0;
+          // Create overall task result
+          let rawScore = studentData.totalScore;
+          let percentScore = studentData.totalPercentage;
+
+          if (assessmentData.sourceFormat === 'single_mark') {
+            if (percentScore === 0 && totalMarks > 0 && rawScore > 0) {
+              percentScore = Math.round((rawScore / totalMarks) * 100);
+            } else if (rawScore === 0 && totalMarks > 0 && percentScore > 0) {
+              rawScore = Math.round((percentScore / 100) * totalMarks);
+            }
+          } else {
+            percentScore = totalMarks > 0 ? Math.round((rawScore / totalMarks) * 100) : 0;
+          }
+
           taskResults.push({
             task_id: task.id,
             student_id: studentDbId,
-            raw_score: studentData.totalScore,
-            percent_score: totalPercentage,
+            raw_score: rawScore,
+            percent_score: percentScore,
           });
         }
 

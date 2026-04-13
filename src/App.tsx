@@ -17,15 +17,14 @@ import CreateClass from "./pages/CreateClass";
 import ClassDashboard from "./pages/ClassDashboard";
 import AssessmentDetail from "./pages/AssessmentDetail";
 import CreateAssessment from "./pages/CreateAssessment";
-import StudentAssessment from "./pages/StudentAssessment";
 import StudentReport from "./pages/StudentReport";
-import Online from "./pages/Online";
 import CurriculumBrowser from "./pages/CurriculumBrowser";
 import Classroom from "./pages/Classroom";
 import SessionDetails from "./pages/SessionDetails";
 import Activities from "./pages/Activities";
-import CreateMultipleChoiceQuiz from "./pages/CreateMultipleChoiceQuiz";
-import CreateSurveyActivity from "./pages/CreateSurveyActivity";
+import CreateExitTicket from "./pages/CreateExitTicket";
+import ClassJoin from "./pages/ClassJoin";
+import TakeExitTicket from "./pages/TakeExitTicket";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 
@@ -33,12 +32,14 @@ const queryClient = new QueryClient();
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const isAuthPage = location.pathname === "/" || location.pathname === "/login";
-  const isSpinnerPage = location.pathname.startsWith("/spinner");
-  const isStudentPage = location.pathname === "/online" || 
-                        location.pathname.startsWith("/student-assessment") ||
-                        location.pathname.startsWith("/student-form") ||
-                        location.pathname.startsWith("/student-quiz");
+  const currentPath = location.pathname;
+  const isAuthPage = currentPath === "/" || currentPath === "/login";
+  const isSpinnerPage = currentPath.startsWith("/spinner");
+  
+  // Public student pages (no sidebar)
+  const isStudentPage = 
+    currentPath.startsWith("/exit-ticket") ||
+    /^\/[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
     return <>{children}</>;
@@ -161,18 +162,10 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/activities/create/multiple-choice-quiz" 
+                path="/activities/create/exit-ticket" 
                 element={
                   <ProtectedRoute>
-                    <CreateMultipleChoiceQuiz />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/activities/create/survey" 
-                element={
-                  <ProtectedRoute>
-                    <CreateSurveyActivity />
+                    <CreateExitTicket />
                   </ProtectedRoute>
                 } 
               />
@@ -196,15 +189,9 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              {/* Public student routes - no auth required */}
-              <Route 
-                path="/online" 
-                element={<Online />}
-              />
-              <Route 
-                path="/student-assessment/:assessmentId" 
-                element={<StudentAssessment />}
-              />
+              {/* Public student routes */}
+              <Route path="/:classCode" element={<ClassJoin />} />
+              <Route path="/exit-ticket/:taskId" element={<TakeExitTicket />} />
               <Route 
                 path="/student/:studentId/class/:classId" 
                 element={

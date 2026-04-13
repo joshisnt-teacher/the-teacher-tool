@@ -68,3 +68,86 @@ All server state goes through TanStack React Query via custom hooks in `src/hook
 ### Database Sync
 
 `db-sync.js` is a Node.js CLI for syncing between local and cloud Supabase. See `DATABASE-SYNC-GUIDE.md` for full workflow. Migrations live in `supabase/migrations/`.
+
+---
+
+## Recent Changes
+
+### Exit Tickets System — Activities Rework (2026-04-14)
+
+**What was built:**
+- **Replaced Activities with Exit Tickets** — the old Activities section (`activities`, `activity_quizzes`, `quiz_questions`, `quiz_answers`, `activity_forms`) was removed and replaced with Exit Tickets built directly on the `tasks` + `questions` tables. This means student submissions are automatically stored as assessment results and appear in dashboards/reports with zero extra work.
+- **Database changes** (migration: `20260414000000_add_exit_ticket_support.sql`):
+  - `class_code` added to `classes` for friendly URLs (`myurl.com/X7K9P2`)
+  - `is_exit_ticket` and `status` (`draft` / `active` / `closed`) added to `tasks`
+  - New `question_options` table for multiple-choice answer storage
+  - `response_data` JSONB added to `question_results` for text-based answers
+  - New RLS policies so anonymous students can view active exit tickets and submit results
+- **Teacher UI**:
+  - `Activities` renamed to `Exit Tickets` in the sidebar and page titles
+  - `src/pages/Activities.tsx` — lists exit tickets with status, question count, and class code URL
+  - `src/pages/CreateExitTicket.tsx` — creation/editing page supporting title, class, tags (Bloom's, content descriptor, key skill, task type), and dynamic questions (multiple choice, short answer, extended answer). Teachers can add/remove options, mark correct answers, and activate/deactivate tickets.
+- **Student UI** (public, no auth):
+  - `src/pages/ClassJoin.tsx` — route `/:classCode`. Students enter a class code, see active exit tickets, and select their name from the class roster.
+  - `src/pages/TakeExitTicket.tsx` — route `/exit-ticket/:taskId?studentId=...`. Renders questions, prevents double submission, auto-grades multiple choice, and stores text answers for manual grading.
+- **Auto-grading**:
+  - Multiple choice: scored automatically (full `max_score` if correct, else `0`)
+  - Short / extended answer: score is `null` until the teacher grades it in Assessment Detail
+  - Inserts go directly into `results` and `question_results`, so all existing analytics work immediately
+- **Cleanup**: deleted `useActivities.ts`, `CreateMultipleChoiceQuiz.tsx`, `CreateSurveyActivity.tsx`, `Online.tsx`, `StudentAssessment.tsx`. Updated `App.tsx` routing and sidebar logic.
+- **Pending**: student authentication (Supabase accounts or PINs) is noted as future work in `ClassJoin.tsx`.
+
+**Key files:**
+- `supabase/migrations/20260414000000_add_exit_ticket_support.sql` — schema changes
+- `src/pages/CreateExitTicket.tsx` — teacher creation/editing UI
+- `src/pages/ClassJoin.tsx` — student class code landing page
+- `src/pages/TakeExitTicket.tsx` — student exit ticket submission UI
+- `src/pages/Activities.tsx` — teacher exit ticket library
+- `src/hooks/useExitTickets.ts`, `useExitTicketsByClass.ts`, `useActiveExitTickets.ts` — data fetching
+- `src/hooks/useQuestionOptions.ts` — fetches MC options
+- `src/hooks/useSubmitExitTicket.ts` — handles result + question_result inserts
+- `src/App.tsx` — updated routes and layout logic
+
+---
+
+### Assessment Import Improvements + Result Editing + Question Editing Fixes (2026-04-13)
+
+**What was built:**
+- **Assessment Import Templates** — Added "Download Template" buttons in `ImportAssessmentDialog` for both Standard and Single Mark formats. Templates are pre-filled with the class roster and blank question columns.
+- **Single Mark Import Format** — New import option that lets teachers create an assessment with just a single overall score/percentage per student (no individual questions required). Supports both CSV upload and manual entry directly in the dialog.
+- **Robust CSV Parsing** — Replaced naive `.split(',')` parsing with `Papa.parse` in `csvAssessmentParser.ts` so commas inside quoted cells (e.g. question text) are handled correctly.
+- **Result Editing on Assessment Detail** — Added an "Edit Results" button on the Results tab. Teachers can edit raw scores / percentages, add missing students from the class, and remove existing results. Auto-calculates percentage from raw score (and vice-versa) based on Total Marks.
+- **Edit Question Dialog Fixes** — Fixed pre-fill so all fields populate when editing. Expanded Select options to include stored database values like `MCQ`, `Remembering`, `Fill in the Blanks`, etc.
+- **Content Descriptor Dropdown** — When a class has linked curriculum descriptors, the Edit Question dialog now shows a dropdown of available descriptors (code + description) instead of a plain text input.
+- **Duplicate Student Fix** — Deduplicated class student lists in `ImportAssessmentDialog` so each student only appears once in the Single Mark manual entry table.
+
+**Key files:**
+- `src/utils/csvAssessmentParser.ts` — added `parseSingleMarkCSV`, switched to Papa Parse for CSV reading
+- `src/components/assessment/ImportAssessmentDialog.tsx` — templates, Single Mark format, manual entry table, deduplication
+- `src/hooks/useAssessmentImport.tsx` — supports `single_mark` source format (skips question creation)
+- `src/pages/AssessmentDetail.tsx` — inline result editing UI with add/remove/update
+- `src/hooks/useResultMutations.tsx` — new hook for creating/updating/deleting task results
+- `src/components/assessment/EditQuestionDialog.tsx` — fixed pre-fill, expanded Select options, added `classId` prop with content descriptor dropdown
+- `src/components/assessment/QuestionsTab.tsx` — passes `classId` to `EditQuestionDialog`
+
+---
+
+## Recent Changes
+
+### Demo Class Toggle + Live Dashboard Metrics (2026-04-13)
+
+**What was built:**
+- `is_demo` boolean column added to the `classes` table (migration: `20260413000000_add_is_demo_to_classes.sql`)
+- Demo toggle added to **Adjust Class Data → Basic Settings** — when enabled, the class is excluded from all dashboard statistics
+- Dashboard **Total Classes** and **Active Students** now exclude demo classes
+- Dashboard **"Average Progress"** card replaced with **"Avg Class Score"** — live mean `percent_score` from the `results` table (shows `—` when no data)
+- Dashboard **"Upcoming Assessments"** card now shows live count from `tasks.due_date >= today` (was hardcoded at 4)
+- Demo classes show a **"Demo" badge** in the Recent Classes list
+
+**Key files:**
+- `supabase/migrations/20260413000000_add_is_demo_to_classes.sql` — adds `is_demo` column
+- `src/hooks/useClasses.tsx` — `Class` interface now includes `is_demo: boolean`; exports `useUpdateClassDemo` mutation
+- `src/hooks/useStudents.tsx` — `useTotalStudentCount` joins classes and filters out demo classes
+- `src/hooks/useDashboardStats.tsx` — new file; exports `useUpcomingAssessmentsCount` and `useAverageClassScore`
+- `src/components/class-dashboard/adjust-class/ClassBasicTab.tsx` — Demo Class toggle UI
+- `src/pages/Dashboard.tsx` — consumes all the above; filters demo classes from stats; adds Demo badge

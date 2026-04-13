@@ -1,9 +1,27 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Calendar, BarChart3, Download, Share } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, Calendar, BarChart3, Download, Share, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +32,8 @@ import { QuestionsTab } from '@/components/assessment/QuestionsTab';
 import { AssessmentInsights } from '@/components/assessment/AssessmentInsights';
 import { QuestionHeatmap } from '@/components/assessment/QuestionHeatmap';
 import { useStudentResponses } from '@/hooks/useStudentResponses';
+import { useStudents } from '@/hooks/useStudents';
+import { useResultMutations } from '@/hooks/useResultMutations';
 
 interface Task {
   id: string;
@@ -105,7 +125,158 @@ const AssessmentDetail = () => {
     assessment?.assessment_format === 'confidence_check' ? assessmentId : undefined
   );
 
-  const isLoading = assessmentLoading || resultsLoading || responsesLoading;
+  const { data: classStudents = [], isLoading: classStudentsLoading } = useStudents(
+    assessment?.class_id
+  );
+
+  const { createResult, updateResult, deleteResult } = useResultMutations();
+
+  const [isEditingResults, setIsEditingResults] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, { raw_score: string; percent_score: string }>>({});
+  const [addedStudentIds, setAddedStudentIds] = useState<string[]>([]);
+  const [deletedStudentIds, setDeletedStudentIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const startEditing = () => {
+    const initial: Record<string, { raw_score: string; percent_score: string }> = {};
+    results.forEach((r) => {
+      initial[r.student_id] = {
+        raw_score: r.raw_score != null ? String(r.raw_score) : '',
+        percent_score: r.percent_score != null ? String(Math.round(r.percent_score)) : '',
+      };
+    });
+    setEditValues(initial);
+    setAddedStudentIds([]);
+    setDeletedStudentIds(new Set());
+    setIsEditingResults(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditingResults(false);
+    setEditValues({});
+    setAddedStudentIds([]);
+    setDeletedStudentIds(new Set());
+  };
+
+  const handleRawScoreChange = (studentId: string, value: string) => {
+    setEditValues((prev) => {
+      const next = { ...prev, [studentId]: { ...prev[studentId], raw_score: value } };
+      const num = parseFloat(value);
+      if (assessment?.max_score && assessment.max_score > 0 && !isNaN(num)) {
+        next[studentId].percent_score = String(Math.round((num / assessment.max_score) * 100));
+      }
+      return next;
+    });
+  };
+
+  const handlePercentChange = (studentId: string, value: string) => {
+    setEditValues((prev) => {
+      const next = { ...prev, [studentId]: { ...prev[studentId], percent_score: value } };
+      const num = parseFloat(value);
+      if (assessment?.max_score && assessment.max_score > 0 && !isNaN(num)) {
+        next[studentId].raw_score = String(Math.round((num / 100) * assessment.max_score));
+      }
+      return next;
+    });
+  };
+
+  const availableStudentsToAdd = useMemo(() => {
+    const existingIds = new Set(results.map((r) => r.student_id));
+    addedStudentIds.forEach((id) => existingIds.add(id));
+    deletedStudentIds.forEach((id) => existingIds.delete(id));
+    return classStudents.filter((s) => !existingIds.has(s.id));
+  }, [classStudents, results, addedStudentIds, deletedStudentIds]);
+
+  const handleAddStudent = (studentId: string) => {
+    if (!studentId) return;
+    setAddedStudentIds((prev) => [...prev, studentId]);
+    setEditValues((prev) => ({
+      ...prev,
+      [studentId]: { raw_score: '', percent_score: '' },
+    }));
+  };
+
+  const handleRemoveRow = (studentId: string) => {
+    if (addedStudentIds.includes(studentId)) {
+      setAddedStudentIds((prev) => prev.filter((id) => id !== studentId));
+      setEditValues((prev) => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    } else {
+      setDeletedStudentIds((prev) => new Set(prev).add(studentId));
+    }
+  };
+
+  const handleRestoreRow = (studentId: string) => {
+    setDeletedStudentIds((prev) => {
+      const next = new Set(prev);
+      next.delete(studentId);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!assessmentId) return;
+    setIsSaving(true);
+
+    try {
+      // Delete removed results
+      for (const studentId of deletedStudentIds) {
+        await deleteResult.mutateAsync({ task_id: assessmentId, student_id: studentId });
+      }
+
+      // Create new results
+      for (const studentId of addedStudentIds) {
+        const vals = editValues[studentId];
+        const raw = vals?.raw_score ? parseFloat(vals.raw_score) : 0;
+        const pct = vals?.percent_score ? parseFloat(vals.percent_score) : 0;
+        await createResult.mutateAsync({
+          task_id: assessmentId,
+          student_id: studentId,
+          raw_score: raw,
+          percent_score: pct,
+          normalised_percent: null,
+          feedback: null,
+        });
+      }
+
+      // Update existing results
+      for (const result of results) {
+        if (deletedStudentIds.has(result.student_id) || addedStudentIds.includes(result.student_id)) continue;
+        const vals = editValues[result.student_id];
+        if (!vals) continue;
+        const raw = vals.raw_score ? parseFloat(vals.raw_score) : 0;
+        const pct = vals.percent_score ? parseFloat(vals.percent_score) : 0;
+        if (raw !== result.raw_score || pct !== Math.round(result.percent_score)) {
+          await updateResult.mutateAsync({
+            task_id: assessmentId,
+            student_id: result.student_id,
+            raw_score: raw,
+            percent_score: pct,
+          });
+        }
+      }
+
+      setIsEditingResults(false);
+      setEditValues({});
+      setAddedStudentIds([]);
+      setDeletedStudentIds(new Set());
+    } catch (err) {
+      console.error('Save error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to save some changes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isLoading = assessmentLoading || resultsLoading || responsesLoading || classStudentsLoading;
   const hasError = resultsError;
 
   if (isLoading) {
@@ -380,8 +551,25 @@ const AssessmentDetail = () => {
           <TabsContent value="results">
             {/* Results Table */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Student {isConfidenceCheck ? 'Responses' : 'Results'}</CardTitle>
+                {!isConfidenceCheck && !isEditingResults && (
+                  <Button variant="outline" size="sm" onClick={startEditing}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Results
+                  </Button>
+                )}
+                {!isConfidenceCheck && isEditingResults && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEditing} disabled={isSaving}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                      {isSaving ? 'Saving…' : 'Save Changes'}
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -395,7 +583,8 @@ const AssessmentDetail = () => {
                           <>
                             <th className="text-left p-3">Raw Score</th>
                             <th className="text-left p-3">Percentage</th>
-                            <th className="text-left p-3">Band</th>
+                            {!isEditingResults && <th className="text-left p-3">Band</th>}
+                            {isEditingResults && <th className="text-right p-3">Actions</th>}
                           </>
                         )}
                       </tr>
@@ -441,7 +630,7 @@ const AssessmentDetail = () => {
                             );
                           })
                         )
-                      ) : (
+                      ) : !isEditingResults ? (
                         results.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="p-6 text-center text-muted-foreground">
@@ -478,12 +667,163 @@ const AssessmentDetail = () => {
                             );
                           })
                         )
+                      ) : (
+                        <>
+                          {/* Editing mode */}
+                          {results
+                            .filter((r) => !deletedStudentIds.has(r.student_id))
+                            .map((result) => (
+                              <tr key={result.student_id} className="border-b hover:bg-muted/50">
+                                <td className="p-3">
+                                  {result.first_name && result.last_name
+                                    ? `${result.first_name} ${result.last_name}`
+                                    : 'Unknown Student'}
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      className="w-24 h-8 text-sm"
+                                      value={editValues[result.student_id]?.raw_score ?? ''}
+                                      onChange={(e) => handleRawScoreChange(result.student_id, e.target.value)}
+                                    />
+                                    <span className="text-sm text-muted-foreground">/ {assessment.max_score || '?'}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    className="w-24 h-8 text-sm"
+                                    value={editValues[result.student_id]?.percent_score ?? ''}
+                                    onChange={(e) => handlePercentChange(result.student_id, e.target.value)}
+                                  />
+                                </td>
+                                <td className="p-3 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive"
+                                    onClick={() => setConfirmDeleteStudentId(result.student_id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+
+                          {/* Added students */}
+                          {addedStudentIds.map((studentId) => {
+                            const student = classStudents.find((s) => s.id === studentId);
+                            if (!student) return null;
+                            return (
+                              <tr key={studentId} className="border-b hover:bg-muted/50 bg-primary/5">
+                                <td className="p-3">
+                                  {`${student.first_name ?? ''} ${student.last_name ?? ''}`.trim() || student.student_id || 'Unnamed student'}
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      className="w-24 h-8 text-sm"
+                                      value={editValues[studentId]?.raw_score ?? ''}
+                                      onChange={(e) => handleRawScoreChange(studentId, e.target.value)}
+                                    />
+                                    <span className="text-sm text-muted-foreground">/ {assessment.max_score || '?'}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    className="w-24 h-8 text-sm"
+                                    value={editValues[studentId]?.percent_score ?? ''}
+                                    onChange={(e) => handlePercentChange(studentId, e.target.value)}
+                                  />
+                                </td>
+                                <td className="p-3 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive"
+                                    onClick={() => handleRemoveRow(studentId)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {results.filter((r) => !deletedStudentIds.has(r.student_id)).length === 0 && addedStudentIds.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                                No results yet. Add a student below.
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {isEditingResults && (
+                  <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="w-full sm:w-72">
+                      <Select onValueChange={handleAddStudent}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Add a student…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableStudentsToAdd.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              All students already have results
+                            </SelectItem>
+                          ) : (
+                            availableStudentsToAdd.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {`${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.student_id || 'Unnamed student'}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={!!confirmDeleteStudentId} onOpenChange={() => setConfirmDeleteStudentId(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Result</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to remove this student's result? This will be deleted when you save changes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setConfirmDeleteStudentId(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (confirmDeleteStudentId) {
+                        handleRemoveRow(confirmDeleteStudentId);
+                      }
+                      setConfirmDeleteStudentId(null);
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           <TabsContent value="heatmap">

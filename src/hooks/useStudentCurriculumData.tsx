@@ -6,6 +6,7 @@ export interface CurriculumContentItemAchievement {
   description: string;
   value: number;
   count: number;
+  strandName?: string;
 }
 
 export interface GeneralCapabilityAchievement {
@@ -62,11 +63,26 @@ export const useStudentCurriculumContentItems = (studentId?: string, classId?: s
         }
       });
 
+      const codes = Array.from(contentItemData.keys());
+
+      // Look up strand names from the content_item table using real DB data
+      const { data: contentItemRows } = await supabase
+        .from('content_item')
+        .select('code, strand:strand_id(name)')
+        .in('code', codes);
+
+      const codeToStrand = new Map<string, string>();
+      contentItemRows?.forEach((row: any) => {
+        const strandName = Array.isArray(row.strand) ? row.strand[0]?.name : row.strand?.name;
+        if (strandName) codeToStrand.set(row.code, strandName);
+      });
+
       return Array.from(contentItemData.entries()).map(([code, data]) => ({
         code,
         description: data.description,
         value: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length),
         count: data.count,
+        strandName: codeToStrand.get(code),
       }));
     },
     enabled: !!studentId && !!classId,

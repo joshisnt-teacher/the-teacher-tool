@@ -159,6 +159,7 @@ export const QuestionsTab = ({ taskId, classId }: QuestionsTabProps) => {
         question={editingQuestion}
         open={!!editingQuestion}
         onOpenChange={(open) => !open && setEditingQuestion(null)}
+        classId={classId}
       />
 
       <AlertDialog open={!!deletingQuestion} onOpenChange={(open) => !open && setDeletingQuestion(null)}>

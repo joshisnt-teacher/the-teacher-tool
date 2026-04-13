@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Activity, AlertCircle } from "lucide-react";
-import { useActivitiesByClass } from "@/hooks/useActivities";
+import { Copy, Check, Ticket, AlertCircle } from "lucide-react";
+import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -12,57 +12,17 @@ interface ClassroomActivitiesProps {
 }
 
 export function ClassroomActivities({ classId }: ClassroomActivitiesProps) {
-  const { data: activities = [], isLoading } = useActivitiesByClass(classId);
+  const { data: exitTickets = [], isLoading } = useExitTicketsByClass(classId);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  const handleCopyJoinCode = async (joinCode: string) => {
-    try {
-      await navigator.clipboard.writeText(joinCode);
-      setCopiedCode(joinCode);
-      toast({
-        title: "Join Code Copied",
-        description: `Join code "${joinCode}" has been copied to clipboard.`,
-      });
-      // Reset copied state after 2 seconds
-      setTimeout(() => setCopiedCode(null), 2000);
-    } catch (error) {
-      toast({
-        title: "Failed to Copy",
-        description: "Failed to copy join code. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const formatTypeLabel = (type: string) => {
-    switch (type) {
-      case 'QUIZ':
-        return 'Quiz';
-      case 'POLL':
-        return 'Poll';
-      case 'FLASHCARDS':
-        return 'Flashcards';
-      case 'EXIT_TICKET':
-        return 'Exit Ticket';
-      case 'BUZZER':
-        return 'Buzzer';
-      case 'FORM':
-        return 'Form';
-      default:
-        return 'Activity';
-    }
-  };
-
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'published':
+      case 'active':
         return 'default' as const;
-      case 'archived':
+      case 'closed':
         return 'secondary' as const;
-      case 'draft':
-        return 'outline' as const;
       default:
         return 'outline' as const;
     }
@@ -73,10 +33,10 @@ export function ClassroomActivities({ classId }: ClassroomActivitiesProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5" />
-            Activities
+            <Ticket className="w-5 h-5" />
+            Exit Tickets
           </CardTitle>
-          <CardDescription>Loading activities...</CardDescription>
+          <CardDescription>Loading exit tickets...</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -88,13 +48,13 @@ export function ClassroomActivities({ classId }: ClassroomActivitiesProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Activities
+              <Ticket className="w-5 h-5" />
+              Exit Tickets
             </CardTitle>
             <CardDescription>
-              {activities.length > 0 
-                ? `${activities.length} ${activities.length === 1 ? 'activity' : 'activities'} linked to this class`
-                : 'No activities linked to this class'
+              {exitTickets.length > 0 
+                ? `${exitTickets.length} exit ticket${exitTickets.length === 1 ? '' : 's'} for this class`
+                : 'No exit tickets for this class yet'
               }
             </CardDescription>
           </div>
@@ -103,69 +63,41 @@ export function ClassroomActivities({ classId }: ClassroomActivitiesProps) {
             size="sm"
             onClick={() => navigate('/activities')}
           >
-            Activities
+            Exit Tickets
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {activities.length === 0 ? (
+        {exitTickets.length === 0 ? (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-600 mb-2">
-              Can't see your activity? Make sure you have linked it to this class in the activities page.
+              No exit tickets linked to this class yet.
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity) => (
+            {exitTickets.map((ticket) => (
               <div
-                key={activity.id}
+                key={ticket.id}
                 className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">{activity.title}</h3>
-                      <Badge variant={getStatusVariant(activity.status)}>
-                        {activity.status}
+                      <h3 className="font-semibold text-lg">{ticket.name}</h3>
+                      <Badge variant={getStatusVariant(ticket.status)}>
+                        {ticket.status}
                       </Badge>
                       <Badge variant="outline">
-                        {formatTypeLabel(activity.type)}
+                        {ticket.question_count} question{ticket.question_count === 1 ? '' : 's'}
                       </Badge>
                     </div>
-                    {activity.description && (
-                      <p className="text-sm text-gray-600 mb-2">{activity.description}</p>
+                    {ticket.description && (
+                      <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
                     )}
                   </div>
                 </div>
-                
-                {activity.join_code && (
-                  <div className="flex items-center gap-2 mt-3">
-                    <div className="flex-1 flex items-center gap-2 p-2 bg-gray-100 rounded border">
-                      <span className="text-sm font-mono font-semibold">
-                        Join Code: {activity.join_code}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopyJoinCode(activity.join_code!)}
-                      className="flex-shrink-0"
-                    >
-                      {copiedCode === activity.join_code ? (
-                        <>
-                          <Check className="w-4 h-4 mr-2" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -174,4 +106,3 @@ export function ClassroomActivities({ classId }: ClassroomActivitiesProps) {
     </Card>
   );
 }
-

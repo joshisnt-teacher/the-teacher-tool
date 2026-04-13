@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,30 +7,47 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useQuestionMutations, QuestionWithMetadata } from '@/hooks/useQuestions';
+import { useClassContentItems } from '@/hooks/useClassContentItems';
 
 interface EditQuestionDialogProps {
   question: QuestionWithMetadata | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  classId?: string;
 }
 
 const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
   question,
   open,
   onOpenChange,
+  classId,
 }) => {
   const [formData, setFormData] = useState({
-    number: question?.number?.toString() || '',
-    question: question?.question || '',
-    question_type: question?.question_type || '',
-    max_score: question?.max_score?.toString() || '',
-    content_item: question?.content_item || '',
-    blooms_taxonomy: question?.blooms_taxonomy || '',
+    number: '',
+    question: '',
+    question_type: '',
+    max_score: '',
+    content_item: '',
+    blooms_taxonomy: '',
   });
+
+  useEffect(() => {
+    if (question) {
+      setFormData({
+        number: question.number?.toString() || '',
+        question: question.question || '',
+        question_type: question.question_type || '',
+        max_score: question.max_score?.toString() || '',
+        content_item: question.content_item || '',
+        blooms_taxonomy: question.blooms_taxonomy || '',
+      });
+    }
+  }, [question]);
 
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { updateQuestion } = useQuestionMutations();
+  const { data: classContentItems = [] } = useClassContentItems(classId);
 
   // Don't render if question is null
   if (!question) {
@@ -122,23 +139,48 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
                 <SelectValue placeholder="Select question type" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="MCQ">MCQ</SelectItem>
                 <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
                 <SelectItem value="Short Answer">Short Answer</SelectItem>
                 <SelectItem value="Essay">Essay</SelectItem>
                 <SelectItem value="True/False">True/False</SelectItem>
                 <SelectItem value="Fill in the Blank">Fill in the Blank</SelectItem>
+                <SelectItem value="Fill in the Blanks">Fill in the Blanks</SelectItem>
+                <SelectItem value="Calculation">Calculation</SelectItem>
+                <SelectItem value="Extended Response">Extended Response</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <Label htmlFor="content_item">Content Descriptor</Label>
-            <Input
-              id="content_item"
-              value={formData.content_item}
-              onChange={(e) => setFormData(prev => ({ ...prev, content_item: e.target.value }))}
-              placeholder="e.g., ACHGK040"
-            />
+            {classContentItems.length > 0 ? (
+              <Select
+                value={formData.content_item}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, content_item: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a content descriptor" />
+                </SelectTrigger>
+                <SelectContent className="max-w-md">
+                  {classContentItems.map((item) => (
+                    <SelectItem key={item.content_item.id} value={item.content_item.code}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{item.content_item.display_code || item.content_item.code}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-2">{item.content_item.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="content_item"
+                value={formData.content_item}
+                onChange={(e) => setFormData(prev => ({ ...prev, content_item: e.target.value }))}
+                placeholder="e.g., ACHGK040"
+              />
+            )}
           </div>
 
           <div>
@@ -151,12 +193,17 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
                 <SelectValue placeholder="Select Bloom's level" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="Remembering">Remembering</SelectItem>
                 <SelectItem value="Remember">Remember</SelectItem>
                 <SelectItem value="Understand">Understand</SelectItem>
                 <SelectItem value="Apply">Apply</SelectItem>
                 <SelectItem value="Analyse">Analyse</SelectItem>
+                <SelectItem value="Analyze">Analyze</SelectItem>
                 <SelectItem value="Evaluate">Evaluate</SelectItem>
                 <SelectItem value="Create">Create</SelectItem>
+                <SelectItem value="Applying">Applying</SelectItem>
+                <SelectItem value="Understanding">Understanding</SelectItem>
+                <SelectItem value="Analysing">Analysing</SelectItem>
               </SelectContent>
             </Select>
           </div>
