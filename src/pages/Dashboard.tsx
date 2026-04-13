@@ -6,6 +6,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuth } from '@/hooks/useAuth';
 import { useClasses } from '@/hooks/useClasses';
 import { useStudentCounts, useTotalStudentCount } from '@/hooks/useStudents';
+import { useUpcomingAssessmentsCount, useAverageClassScore } from '@/hooks/useDashboardStats';
 import { BookOpen, Users, TrendingUp, Calendar, Settings, LogOut, Plus, Edit, FileText, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -16,7 +17,11 @@ const Dashboard = () => {
   const { data: classes = [], isLoading: isLoadingClasses } = useClasses();
   const { data: studentCounts = {}, isLoading: isLoadingStudentCounts } = useStudentCounts();
   const { data: totalStudentCount = 0, isLoading: isLoadingTotalCount } = useTotalStudentCount();
+  const { data: upcomingCount = 0 } = useUpcomingAssessmentsCount();
+  const { data: avgScore } = useAverageClassScore();
   const navigate = useNavigate();
+
+  const nonDemoClasses = classes.filter(c => !c.is_demo);
 
   if (isLoading) {
     return (
@@ -86,7 +91,7 @@ const Dashboard = () => {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{classes.length}</div>
+              <div className="text-2xl font-bold">{nonDemoClasses.length}</div>
               <p className="text-xs text-muted-foreground">
                 {isLoadingClasses ? 'Loading...' : 'Active classes'}
               </p>
@@ -108,12 +113,16 @@ const Dashboard = () => {
 
           <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
+              <CardTitle className="text-sm font-medium">Avg Class Score</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">73%</div>
-              <p className="text-xs text-muted-foreground">+5% from last week</p>
+              <div className="text-2xl font-bold">
+                {avgScore !== null && avgScore !== undefined ? `${avgScore}%` : '—'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {avgScore !== null && avgScore !== undefined ? 'Mean across all results' : 'No results yet'}
+              </p>
             </CardContent>
           </Card>
 
@@ -123,8 +132,8 @@ const Dashboard = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">4</div>
-              <p className="text-xs text-muted-foreground">This week</p>
+              <div className="text-2xl font-bold">{upcomingCount}</div>
+              <p className="text-xs text-muted-foreground">Due from today</p>
             </CardContent>
           </Card>
         </div>
@@ -160,7 +169,14 @@ const Dashboard = () => {
                   return (
                     <div key={classItem.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
                       <div>
-                        <p className="font-medium">{classItem.class_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{classItem.class_name}</p>
+                          {classItem.is_demo && (
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                              Demo
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {classItem.subject} • {classItem.year_level} • {classItem.term}
                         </p>
