@@ -15,6 +15,7 @@ export interface Class {
   teacher_id: string;
   school_id: string;
   curriculum_id?: string;
+  is_demo: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -96,6 +97,41 @@ export const useCreateClass = () => {
         title: "Error creating class",
         description: "Please check your information and try again.",
         variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useUpdateClassDemo = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ classId, is_demo }: { classId: string; is_demo: boolean }) => {
+      const { error } = await supabase
+        .from('classes')
+        .update({ is_demo })
+        .eq('id', classId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { is_demo }) => {
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['total-student-count'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-assessments-count'] });
+      queryClient.invalidateQueries({ queryKey: ['average-class-score'] });
+      toast({
+        title: is_demo ? 'Demo mode enabled' : 'Demo mode disabled',
+        description: is_demo
+          ? 'This class will be excluded from dashboard statistics.'
+          : 'This class will now appear in dashboard statistics.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update demo setting.',
+        variant: 'destructive',
       });
     },
   });
