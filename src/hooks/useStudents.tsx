@@ -59,12 +59,14 @@ export const useTotalStudentCount = () => {
   return useQuery({
     queryKey: ['total-student-count'],
     queryFn: async () => {
-      const { count, error } = await supabase
+      // Join to classes so we can exclude demo classes
+      const { data, error } = await supabase
         .from('students')
-        .select('*', { count: 'exact', head: true });
-      
+        .select('id, classes!inner(is_demo)')
+        .eq('classes.is_demo', false);
+
       if (error) throw error;
-      return count || 0;
+      return data?.length ?? 0;
     },
     enabled: true,
   });
