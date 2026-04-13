@@ -18,7 +18,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { Class } from '@/hooks/useClasses';
+import { Class, useUpdateClassDemo } from '@/hooks/useClasses';
+import { Switch } from '@/components/ui/switch';
 
 interface ClassBasicTabProps {
   classData: Class;
@@ -36,6 +37,7 @@ export const ClassBasicTab: React.FC<ClassBasicTabProps> = ({ classData, onClose
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isDeletingClass, setIsDeletingClass] = useState(false);
+  const updateDemoMutation = useUpdateClassDemo();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -128,6 +130,23 @@ export const ClassBasicTab: React.FC<ClassBasicTabProps> = ({ classData, onClose
               placeholder="e.g., Term 1"
             />
           </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="is_demo" className="text-base">Demo Class</Label>
+            <p className="text-sm text-muted-foreground">
+              Demo classes are excluded from dashboard statistics (student count, scores, upcoming assessments).
+            </p>
+          </div>
+          <Switch
+            id="is_demo"
+            checked={classData.is_demo}
+            onCheckedChange={(checked) =>
+              updateDemoMutation.mutate({ classId: classData.id, is_demo: checked })
+            }
+            disabled={updateDemoMutation.isPending}
+          />
         </div>
 
         <div className="flex justify-between">
