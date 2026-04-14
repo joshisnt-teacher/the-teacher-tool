@@ -21,7 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, BarChart3, Download, Share, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Calendar, BarChart3, Download, Share, Pencil, Plus, Trash2, X, Bot, RefreshCw } from 'lucide-react';
+import { useAIMarkResponses } from '@/hooks/useAIMarking';
+import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,9 +33,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QuestionsTab } from '@/components/assessment/QuestionsTab';
 import { AssessmentInsights } from '@/components/assessment/AssessmentInsights';
 import { QuestionHeatmap } from '@/components/assessment/QuestionHeatmap';
+import { useQuestionOptionsForTask } from '@/hooks/useQuestionOptions';
 import { useStudentResponses } from '@/hooks/useStudentResponses';
 import { useStudents } from '@/hooks/useStudents';
 import { useResultMutations } from '@/hooks/useResultMutations';
+import { useQuestionResultMutations } from '@/hooks/useQuestionResults';
 
 interface Task {
   id: string;
@@ -44,6 +48,7 @@ interface Task {
   max_score: number;
   class_id: string;
   assessment_format: string;
+  is_exit_ticket: boolean | null;
 }
 
 interface StudentResult {
@@ -130,6 +135,55 @@ const AssessmentDetail = () => {
   );
 
   const { createResult, updateResult, deleteResult } = useResultMutations();
+  const { updateQuestionResult } = useQuestionResultMutations();
+  const aiMarkMutation = useAIMarkResponses();
+  const { data: keyStatus } = useOpenAIKeyStatus();
+
+  // Exit-ticket per-question data
+  const { data: questions = [] } = useQuery({
+    queryKey: ['assessment-questions', assessmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('id, number, question, question_type, max_score, marking_criteria')
+        .eq('task_id', assessmentId)
+        .order('number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!assessmentId && !!assessment?.is_exit_ticket,
+  });
+
+  const { data: optionsMap = {} } = useQuestionOptionsForTask(assessmentId);
+
+  const { data: questionResults = [], refetch: refetchQuestionResults } = useQuery({
+    queryKey: ['assessment-question-results', assessmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('question_results')
+        .select(`
+          id,
+          question_id,
+          student_id,
+          raw_score,
+          percent_score,
+          response_data,
+          ai_feedback,
+          students!inner (
+            first_name,
+            last_name
+          )
+        `)
+        .in('question_id', questions.map((q: any) => q.id));
+      if (error) throw error;
+      return (data || []).map((r: any) => ({
+        ...r,
+        first_name: r.students?.first_name || 'Unknown',
+        last_name: r.students?.last_name || 'Student',
+      }));
+    },
+    enabled: !!assessmentId && !!assessment?.is_exit_ticket && questions.length > 0,
+  });
 
   const [isEditingResults, setIsEditingResults] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, { raw_score: string; percent_score: string }>>({});
@@ -401,6 +455,94 @@ const AssessmentDetail = () => {
 
   const medianScore = getMedianScore();
 
+  // Exit ticket responses editing state
+  const [editingResponses, setEditingResponses] = useState(false);
+  const [responseEditValues, setResponseEditValues] = useState<Record<string, string>>({});
+  const [isSavingResponses, setIsSavingResponses] = useState(false);
+
+  const startEditingResponses = () => {
+    const initial: Record<string, string> = {};
+    questionResults.forEach((qr: any) => {
+      initial[qr.id] = qr.raw_score != null ? String(qr.raw_score) : '';
+    });
+    setResponseEditValues(initial);
+    setEditingResponses(true);
+  };
+
+  const cancelEditingResponses = () => {
+    setEditingResponses(false);
+    setResponseEditValues({});
+  };
+
+  const handleResponseScoreChange = (questionResultId: string, value: string) => {
+    setResponseEditValues((prev) => ({ ...prev, [questionResultId]: value }));
+  };
+
+  const saveResponses = async () => {
+    if (!assessmentId || !assessment) return;
+    setIsSavingResponses(true);
+    try {
+      const changed = questionResults.filter((qr: any) => {
+        const val = responseEditValues[qr.id];
+        return val !== undefined && val !== String(qr.raw_score ?? '');
+      }) as any[];
+
+      for (const qr of changed) {
+        const val = responseEditValues[qr.id];
+        const raw = val === '' ? null : parseFloat(val);
+        const q = questions.find((q: any) => q.id === qr.question_id);
+        const max = q?.max_score || 0;
+        const pct = raw !== null && max > 0 ? Number(((raw / max) * 100).toFixed(2)) : null;
+
+        await updateQuestionResult.mutateAsync({
+          id: qr.id,
+          raw_score: raw,
+          percent_score: pct,
+        });
+      }
+
+      // Recalculate student totals for affected students
+      const affectedStudentIds = [...new Set(changed.map((qr) => qr.student_id))];
+      for (const studentId of affectedStudentIds) {
+        const studentQrs = questionResults.filter((qr: any) => qr.student_id === studentId);
+        const newTotal = studentQrs.reduce((sum: number, qr: any) => {
+          const changedQr = changed.find((c) => c.id === qr.id);
+          const score = changedQr
+            ? (responseEditValues[qr.id] === '' ? 0 : parseFloat(responseEditValues[qr.id] || '0'))
+            : (qr.raw_score || 0);
+          return sum + score;
+        }, 0);
+        const maxScore = assessment.max_score || 0;
+        const newPct = maxScore > 0 ? Number(((newTotal / maxScore) * 100).toFixed(2)) : null;
+
+        await updateResult.mutateAsync({
+          task_id: assessmentId,
+          student_id: studentId,
+          raw_score: newTotal,
+          percent_score: newPct,
+          normalised_percent: newPct,
+        });
+      }
+
+      await refetchQuestionResults();
+      setEditingResponses(false);
+      setResponseEditValues({});
+      toast({ title: 'Saved', description: 'Response marks updated.' });
+    } catch (err) {
+      console.error('Save responses error:', err);
+      toast({ title: 'Error', description: 'Failed to save response marks.', variant: 'destructive' });
+    } finally {
+      setIsSavingResponses(false);
+    }
+  };
+
+  const getOptionText = (questionId: string, optionId: string) => {
+    // question_results don't store options; we need to fetch them if we want to display option text.
+    // For now, we display the option_id or fetch options via a separate query if needed.
+    // Since we already have questions loaded but not options, let's do a lightweight lookup.
+    return optionId;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10">
       {/* Header */}
@@ -543,6 +685,7 @@ const AssessmentDetail = () => {
         <Tabs defaultValue="results" className="space-y-6">
           <TabsList>
             <TabsTrigger value="results">Results</TabsTrigger>
+            {assessment.is_exit_ticket && <TabsTrigger value="responses">Responses</TabsTrigger>}
             <TabsTrigger value="heatmap">Question Heatmap</TabsTrigger>
             <TabsTrigger value="questions">Questions</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
@@ -825,6 +968,151 @@ const AssessmentDetail = () => {
               </AlertDialogContent>
             </AlertDialog>
           </TabsContent>
+
+          {assessment.is_exit_ticket && (
+            <TabsContent value="responses">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Student Responses</CardTitle>
+                  {!editingResponses ? (
+                    <div className="flex items-center gap-2">
+                      {keyStatus?.hasKey && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const textQRIds = (questionResults as any[])
+                              .filter((qr) => {
+                                const q = questions.find((q: any) => q.id === qr.question_id);
+                                return q && q.question_type !== 'multiple_choice';
+                              })
+                              .map((qr: any) => qr.id);
+                            if (textQRIds.length > 0) {
+                              aiMarkMutation.mutate({ questionResultIds: textQRIds, taskId: assessmentId! });
+                            }
+                          }}
+                          disabled={aiMarkMutation.isPending}
+                        >
+                          {aiMarkMutation.isPending ? (
+                            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Marking…</>
+                          ) : (
+                            <><Bot className="w-4 h-4 mr-2" />AI Mark All</>
+                          )}
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={startEditingResponses}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit Marks
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={cancelEditingResponses} disabled={isSavingResponses}>
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={saveResponses} disabled={isSavingResponses}>
+                        {isSavingResponses ? 'Saving…' : 'Save Changes'}
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {questionResults.length === 0 || questions.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No responses yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3 min-w-[160px]">Student</th>
+                            {questions.map((q: any) => (
+                              <th key={q.id} className="text-left p-3 min-w-[200px]">
+                                Q{q.number}
+                                <span className="block text-xs text-muted-foreground font-normal">
+                                  ({q.max_score} pts)
+                                </span>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.map((result) => {
+                            const studentQrs = questionResults.filter((qr: any) => qr.student_id === result.student_id);
+                            return (
+                              <tr key={result.student_id} className="border-b hover:bg-muted/50">
+                                <td className="p-3 align-top">
+                                  {result.first_name} {result.last_name}
+                                </td>
+                                {questions.map((q: any) => {
+                                  const qr = studentQrs.find((r: any) => r.question_id === q.id);
+                                  const isMC = q.question_type === 'multiple_choice';
+                                  const responseData = qr?.response_data as any;
+                                  let answerDisplay = '-';
+                                  if (isMC && responseData?.selected_option_id) {
+                                    const opt = optionsMap[q.id]?.find((o) => o.id === responseData.selected_option_id);
+                                    answerDisplay = opt ? opt.option_text : 'Selected option';
+                                  } else if (responseData?.text) {
+                                    answerDisplay = responseData.text;
+                                  }
+
+                                  return (
+                                    <td key={q.id} className="p-3 align-top">
+                                      <div className="space-y-1">
+                                        <div className="text-muted-foreground whitespace-pre-wrap max-w-xs">
+                                          {answerDisplay}
+                                        </div>
+                                        {(qr as any)?.ai_feedback && !isMC && (
+                                          <p className="text-xs text-muted-foreground italic">
+                                            AI: {(qr as any).ai_feedback}
+                                          </p>
+                                        )}
+                                        {!editingResponses ? (
+                                          <div className="flex items-center gap-1">
+                                            <Badge variant="secondary" className="text-xs">
+                                              {qr?.raw_score != null ? `${qr.raw_score}/${q.max_score}` : '-'}
+                                            </Badge>
+                                            {keyStatus?.hasKey && !isMC && qr && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5"
+                                                title="Re-mark with AI"
+                                                onClick={() => aiMarkMutation.mutate({ questionResultIds: [(qr as any).id], taskId: assessmentId! })}
+                                                disabled={aiMarkMutation.isPending}
+                                              >
+                                                <Bot className="w-3 h-3" />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2">
+                                            <Input
+                                              type="number"
+                                              min={0}
+                                              className="w-20 h-7 text-xs"
+                                              value={responseEditValues[(qr as any)?.id] ?? (qr?.raw_score != null ? String(qr.raw_score) : '')}
+                                              onChange={(e) => qr && handleResponseScoreChange((qr as any).id, e.target.value)}
+                                              disabled={!qr}
+                                            />
+                                            <span className="text-xs text-muted-foreground">/ {q.max_score}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="heatmap">
             <QuestionHeatmap taskId={assessmentId!} />
