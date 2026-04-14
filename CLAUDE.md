@@ -73,6 +73,46 @@ All server state goes through TanStack React Query via custom hooks in `src/hook
 
 ## Recent Changes
 
+### AI Marking Fixes + Improved Prompt (2026-04-14)
+
+**What was fixed:**
+
+- **AI marking returned "marked 0 responses"** — Root cause: `question_results` has two FK constraints to `questions` (`fk_question_results_question` and `question_results_question_id_fkey`), causing PostgREST to treat the embedded join as ambiguous and return `null`. The edge function skipped every result because `q = null`. Fixed by replacing the embedded join with a separate `questions` query.
+- **Results tab showed 0/8 despite correct per-question scores** — Same FK ambiguity broke the recalculation query (`questions!inner(task_id)` returned empty). The edge function wrote `raw_score = 0` back to the `results` table after every AI marking run. Fixed by using a two-step query: fetch question IDs for the task first, then filter `question_results` by those IDs with `.in()`.
+- **Existing zeroed results repaired** — A direct SQL UPDATE recalculated `raw_score` / `percent_score` for all exit ticket results from the actual `question_results` data.
+- **Improved AI marking prompt** — The edge function now fetches `marking_criteria` and `blooms_taxonomy` in addition to `model_answer`. The prompt now includes: Bloom's level for calibration, model answer as primary reference, keywords with match rule (any/all), explicit partial-mark guidance per concept, and structured 2-3 sentence feedback (what was right, what was missing, one improvement tip). MCQ questions (`question_type = 'mcq'`) are now also excluded from AI marking (previously only `'multiple_choice'` was excluded).
+
+**Key files:**
+- `supabase/functions/ai-mark-response/index.ts` — all fixes above (deployed as v3)
+
+---
+
+### Exit Tickets — Classroom Integration + Student UX (2026-04-14)
+
+**What was built:**
+
+- **Classroom Activities panel** (`src/components/classroom/ClassroomActivities.tsx`) — completely rewritten to integrate exit tickets into the live lesson view:
+  - Class code bar with copy-link button and "Display" popup (opens a full-screen window showing the class code and join URL, matching the timer/name-picker popup pattern)
+  - Per-ticket Activate/Deactivate toggle with loading state
+  - Edit button navigating to `/activities/create/exit-ticket?taskId=...`
+- **Student landing page** (`src/pages/StudentLanding.tsx`) — new public page at `/join`. Large monospace class code input, auto-uppercases, navigates to `/:classCode` on submit.
+- **TakeExitTicket question rendering** (`src/pages/TakeExitTicket.tsx`) — fixed question type normalisation. Now handles legacy `"MCQ"` (uppercase) alongside `"multiple_choice"`. Multiple choice only renders radio buttons when options exist; falls back to text input otherwise.
+- **App routing** (`src/App.tsx`) — added `/join` route and `isStudentPage` check so StudentLanding renders without the sidebar.
+- **Permission fixes** (applied via SQL/MCP):
+  - `GRANT SELECT, INSERT, UPDATE, DELETE ON question_options TO authenticated`
+  - `GRANT SELECT ON question_options TO anon`
+  - `GRANT SELECT ON questions TO anon` + RLS policy for active exit tickets
+  - `GRANT INSERT ON results TO anon`
+  - `GRANT INSERT ON question_results TO anon`
+
+**Key files:**
+- `src/components/classroom/ClassroomActivities.tsx` — classroom exit ticket panel
+- `src/pages/StudentLanding.tsx` — new `/join` landing page
+- `src/pages/TakeExitTicket.tsx` — question type normalisation fix
+- `src/App.tsx` — routing updates
+
+---
+
 ### Exit Tickets System — Activities Rework (2026-04-14)
 
 **What was built:**

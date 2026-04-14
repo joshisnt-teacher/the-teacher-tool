@@ -150,6 +150,16 @@ function ClassroomContent() {
         },
       });
       
+      // Mark any active exit tickets linked to this session as completed
+      const { error: closeTasksError } = await supabase
+        .from("tasks")
+        .update({ status: "closed", is_completed: true })
+        .eq("class_session_id", currentSession.id)
+        .eq("status", "active");
+      if (closeTasksError) {
+        console.error("Error closing exit tickets:", closeTasksError);
+      }
+      
       // Manually refetch the current session to ensure UI updates
       await refetchCurrentSession();
       
@@ -332,7 +342,7 @@ function ClassroomContent() {
           </Card>
 
           {/* Activities Section */}
-          <ClassroomActivities classId={classId} />
+          <ClassroomActivities classId={classId} classCode={currentClass.class_code} currentSession={currentSession || null} />
         </div>
 
         {/* Modules Section */}

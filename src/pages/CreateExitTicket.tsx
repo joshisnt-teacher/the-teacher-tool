@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,7 +89,6 @@ const CreateExitTicket = () => {
 
   const [isLoading, setIsLoading] = useState(!!editTaskId);
   const [isSaving, setIsSaving] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -236,7 +236,7 @@ const CreateExitTicket = () => {
   };
 
   const handleSave = async () => {
-    if (isSaving || isPublishing) return;
+    if (isSaving) return;
     const error = validate();
     if (error) {
       toast({ title: 'Validation Error', description: error, variant: 'destructive' });
@@ -323,25 +323,6 @@ const CreateExitTicket = () => {
     }
   };
 
-  const handleToggleStatus = async () => {
-    if (!editTaskId || isPublishing) return;
-    setIsPublishing(true);
-    try {
-      const next = status === 'active' ? 'draft' : 'active';
-      const { error } = await supabase.from('tasks').update({ status: next }).eq('id', editTaskId);
-      if (error) throw error;
-      setStatus(next);
-      toast({
-        title: next === 'active' ? 'Exit ticket activated' : 'Exit ticket deactivated',
-        description: next === 'active' ? 'Students can now access it.' : 'Students can no longer access it.',
-      });
-    } catch (e: unknown) {
-      toast({ title: 'Error', description: e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error', variant: 'destructive' });
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!editTaskId) {
       navigate('/activities');
@@ -361,7 +342,7 @@ const CreateExitTicket = () => {
     }
   };
 
-  const isBusy = isSaving || isPublishing || isDeleting || isLoading || isLoadingUser || isLoadingClasses;
+  const isBusy = isSaving || isDeleting || isLoading || isLoadingUser || isLoadingClasses;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10">
@@ -383,19 +364,9 @@ const CreateExitTicket = () => {
           </div>
           <div className="flex items-center gap-2">
             {editTaskId && (
-              <Button
-                variant={status === 'active' ? 'secondary' : 'default'}
-                onClick={handleToggleStatus}
-                disabled={isBusy}
-              >
-                {isPublishing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : status === 'active' ? (
-                  'Deactivate'
-                ) : (
-                  'Activate'
-                )}
-              </Button>
+              <Badge variant={status === 'active' ? 'default' : status === 'closed' ? 'secondary' : 'outline'} className="capitalize mr-2">
+                {status}
+              </Badge>
             )}
             <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} disabled={isBusy}>
               <Trash2 className="w-4 h-4 mr-2" />

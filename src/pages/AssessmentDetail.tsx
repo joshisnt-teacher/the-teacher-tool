@@ -25,7 +25,7 @@ import { ArrowLeft, Calendar, BarChart3, Download, Share, Pencil, Plus, Trash2, 
 import { useAIMarkResponses } from '@/hooks/useAIMarking';
 import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,10 +53,10 @@ interface Task {
 
 interface StudentResult {
   student_id: string;
-  raw_score: number;
-  percent_score: number;
-  normalised_percent: number;
-  feedback: string;
+  raw_score: number | null;
+  percent_score: number | null;
+  normalised_percent: number | null;
+  feedback: string | null;
   first_name: string;
   last_name: string;
 }
@@ -80,7 +80,9 @@ const AssessmentDetail = () => {
     enabled: !!assessmentId,
   });
 
-  const { data: results = [], isLoading: resultsLoading, error: resultsError } = useQuery({
+  const queryClient = useQueryClient();
+
+  const { data: rawResults = [], isLoading: resultsLoading, error: resultsError } = useQuery({
     queryKey: ['assessment-results', assessmentId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -105,26 +107,34 @@ const AssessmentDetail = () => {
       
       if (!data) return [];
       
-      return data.map((result: any) => {
-        // Calculate correct percentage from raw score and max score
-        // Ensure assessment is loaded and has valid max_score
-        const calculatedPercent = assessment && assessment.max_score && assessment.max_score > 0 
-          ? (result.raw_score / assessment.max_score) * 100 
-          : 0;
-        
-        return {
-          student_id: result.student_id,
-          raw_score: result.raw_score,
-          percent_score: calculatedPercent, // Use calculated percentage instead of stored
-          normalised_percent: result.normalised_percent,
-          feedback: result.feedback,
-          first_name: result.students?.first_name || 'Unknown',
-          last_name: result.students?.last_name || 'Student',
-        };
-      }) as StudentResult[];
+      return data.map((result: any) => ({
+        student_id: result.student_id,
+        raw_score: result.raw_score ?? null,
+        percent_score: result.percent_score ?? null,
+        normalised_percent: result.normalised_percent ?? null,
+        feedback: result.feedback ?? null,
+        first_name: result.students?.first_name || 'Unknown',
+        last_name: result.students?.last_name || 'Student',
+      })) as StudentResult[];
     },
     enabled: !!assessmentId && !!assessment && assessment.assessment_format !== 'confidence_check',
   });
+
+  // Recalculate percentages on every render so they stay in sync with assessment.max_score
+  const results = useMemo<StudentResult[]>(() => {
+    if (!assessment) return rawResults;
+    const maxScore = assessment.max_score;
+    return rawResults.map((result) => {
+      const calculatedPercent = maxScore && maxScore > 0 && result.raw_score != null
+        ? Number(((result.raw_score / maxScore) * 100).toFixed(2))
+        : null;
+      return {
+        ...result,
+        percent_score: calculatedPercent,
+        normalised_percent: calculatedPercent,
+      };
+    });
+  }, [rawResults, assessment]);
 
   const { data: studentResponses = [], isLoading: responsesLoading } = useStudentResponses(
     assessment?.assessment_format === 'confidence_check' ? assessmentId : undefined
@@ -191,6 +201,11 @@ const AssessmentDetail = () => {
   const [deletedStudentIds, setDeletedStudentIds] = useState<Set<string>>(new Set());
   const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Exit ticket responses editing state — must be declared here (before any early returns)
+  const [editingResponses, setEditingResponses] = useState(false);
+  const [responseEditValues, setResponseEditValues] = useState<Record<string, string>>({});
+  const [isSavingResponses, setIsSavingResponses] = useState(false);
 
   const startEditing = () => {
     const initial: Record<string, { raw_score: string; percent_score: string }> = {};
@@ -314,6 +329,7 @@ const AssessmentDetail = () => {
         }
       }
 
+      await queryClient.refetchQueries({ queryKey: ['assessment-results', assessmentId] });
       setIsEditingResults(false);
       setEditValues({});
       setAddedStudentIds([]);
@@ -455,11 +471,6 @@ const AssessmentDetail = () => {
 
   const medianScore = getMedianScore();
 
-  // Exit ticket responses editing state
-  const [editingResponses, setEditingResponses] = useState(false);
-  const [responseEditValues, setResponseEditValues] = useState<Record<string, string>>({});
-  const [isSavingResponses, setIsSavingResponses] = useState(false);
-
   const startEditingResponses = () => {
     const initial: Record<string, string> = {};
     questionResults.forEach((qr: any) => {
@@ -525,6 +536,7 @@ const AssessmentDetail = () => {
       }
 
       await refetchQuestionResults();
+      await queryClient.refetchQueries({ queryKey: ['assessment-results', assessmentId] });
       setEditingResponses(false);
       setResponseEditValues({});
       toast({ title: 'Saved', description: 'Response marks updated.' });

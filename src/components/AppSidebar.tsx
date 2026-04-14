@@ -133,28 +133,30 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                   
                   {/* List of Classes */}
-                  {classes?.map((classItem) => (
-                    <SidebarMenuItem key={classItem.id}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className={getNavClassName(`/class/${classItem.id}`)}
-                      >
-                        <NavLink to={`/class/${classItem.id}`}>
-                          <User className="h-4 w-4" />
-                          {!collapsed && (
-                            <div className="flex flex-col items-start">
-                              <span className="text-sm font-medium truncate max-w-[160px]">
-                                {classItem.class_name}
-                              </span>
-                              <span className="text-xs text-sidebar-foreground/60">
-                                {classItem.subject} • {classItem.year_level}
-                              </span>
-                            </div>
-                          )}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {classes
+                    ?.filter((classItem) => !classItem.is_demo)
+                    .map((classItem) => (
+                      <SidebarMenuItem key={classItem.id}>
+                        <SidebarMenuButton
+                          asChild
+                          className={getNavClassName(`/class/${classItem.id}`)}
+                        >
+                          <NavLink to={`/class/${classItem.id}`}>
+                            <User className="h-4 w-4" />
+                            {!collapsed && (
+                              <div className="flex flex-col items-start">
+                                <span className="text-sm font-medium truncate max-w-[160px]">
+                                  {classItem.class_name}
+                                </span>
+                                <span className="text-xs text-sidebar-foreground/60">
+                                  {classItem.subject} • {classItem.year_level}
+                                </span>
+                              </div>
+                            )}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>

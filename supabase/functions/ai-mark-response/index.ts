@@ -81,39 +81,84 @@ Deno.serve(async (req) => {
   const markedResults: { id: string; score: number; feedback: string }[] = []
 
   for (const qrId of question_result_ids) {
-    // Fetch question result + joined question details
+    // Fetch question result (avoid embedded join — duplicate FKs cause PostgREST ambiguity)
     const { data: qr } = await supabaseAdmin
       .from('question_results')
-      .select('id, student_id, response_data, questions(question, model_answer, max_score, question_type)')
+      .select('id, student_id, question_id, response_data')
       .eq('id', qrId)
       .single()
 
     if (!qr) continue
 
-    const q = qr.questions as {
-      question: string | null
-      model_answer: string | null
-      max_score: number | null
-      question_type: string | null
-    } | null
+    // Fetch question details separately
+    const { data: q } = await supabaseAdmin
+      .from('questions')
+      .select('question, model_answer, max_score, question_type, marking_criteria, blooms_taxonomy')
+      .eq('id', qr.question_id)
+      .single()
 
     // Only mark text-based questions
-    if (!q || !q.question_type || q.question_type === 'multiple_choice') continue
+    const qtype = q?.question_type?.toLowerCase()
+    if (!q || !qtype || qtype === 'multiple_choice' || qtype === 'mcq') continue
 
     const studentAnswer = (qr.response_data as { text?: string } | null)?.text || ''
     const maxScore = q.max_score ?? 1
+    const criteria = q.marking_criteria as {
+      expected_keywords?: string[]
+      match_type?: 'all' | 'any'
+      case_sensitive?: boolean
+    } | null
 
     const promptLines = [
-      "You are a teacher's assistant marking a student's answer.",
-      `Question: ${q.question}`,
-    ]
-    if (q.model_answer) promptLines.push(`Model Answer: ${q.model_answer}`)
-    promptLines.push(
-      `Max Score: ${maxScore}`,
-      `Student Answer: ${studentAnswer || '(no answer provided)'}`,
+      "You are an experienced teacher marking a student's written answer. Your job is to award a fair score and give brief, constructive feedback.",
       '',
-      'Return JSON only, exactly this shape:',
-      `{ "score": <integer 0 to ${maxScore}>, "feedback": "<1-2 sentences explaining the score>" }`
+      `QUESTION: ${q.question}`,
+    ]
+
+    if (q.blooms_taxonomy) {
+      promptLines.push(`COGNITIVE LEVEL: ${q.blooms_taxonomy} (Bloom's Taxonomy) — calibrate your expectations to this level.`)
+    }
+
+    if (q.model_answer) {
+      promptLines.push(`MODEL ANSWER: ${q.model_answer}`)
+      promptLines.push('Use this as your primary reference for what a full-marks answer looks like.')
+    } else {
+      promptLines.push('MODEL ANSWER: Not provided — use your subject knowledge to judge the quality of the response.')
+    }
+
+    if (criteria?.expected_keywords?.length) {
+      const keywords = criteria.expected_keywords.filter(Boolean)
+      if (keywords.length > 0) {
+        const matchRule = criteria.match_type === 'all'
+          ? 'ALL of the following key concepts must be present for full marks'
+          : 'Award marks based on how many of the following key concepts are addressed'
+        promptLines.push(`KEY CONCEPTS (${matchRule}): ${keywords.join(', ')}`)
+      }
+    }
+
+    promptLines.push(
+      `MAX SCORE: ${maxScore}`,
+      '',
+      'MARKING GUIDANCE:',
+      `- Award between 0 and ${maxScore} (whole numbers only).`,
+      maxScore === 1
+        ? '- This is a 1-mark question: award 1 if the core idea is correct, 0 if not.'
+        : `- Divide marks proportionally: award marks for each correct idea, fact, or key concept identified. A partial answer should earn partial marks.`,
+      '- Do not penalise for spelling or grammar unless it makes the answer unclear.',
+      '- An empty or irrelevant answer scores 0.',
+      '',
+      `STUDENT ANSWER: ${studentAnswer || '(no answer provided)'}`,
+      '',
+      'Return JSON only — no other text — in exactly this shape:',
+      `{ "score": <integer 0 to ${maxScore}>, "feedback": "<feedback string>" }`,
+      '',
+      'FEEDBACK STYLE RULES:',
+      '- Write directly to the student in second person ("you", "your").',
+      '- If the answer has something correct or worthwhile, lead with that: "In this answer you correctly identify..." or "You have shown a good understanding of..."',
+      '- Follow with what was missing or needs improvement: "To improve your response, remember to..." or "Your answer would be stronger if you also..."',
+      '- If the answer is largely incorrect, off-topic, or empty — do not force a positive spin. Be honest but not harsh: "This answer does not address the question. Focus on..."',
+      '- Keep it to 1-2 sentences. No filler phrases like "Great job!" or "Well done for trying!"',
+      '- Match the tone of a teacher giving a quick verbal comment, not a written report.'
     )
 
     let score = 0
@@ -160,12 +205,20 @@ Deno.serve(async (req) => {
 
   const taskMaxScore = taskData?.max_score ?? 0
 
+  // Get all question IDs for this task (used for per-student recalculation)
+  const { data: taskQuestions } = await supabaseAdmin
+    .from('questions')
+    .select('id')
+    .eq('task_id', task_id)
+  const taskQuestionIds = (taskQuestions ?? []).map((q) => q.id)
+
   for (const studentId of studentIds) {
+    // Fetch all question results for this student on this task (no embedded join)
     const { data: allQRs } = await supabaseAdmin
       .from('question_results')
-      .select('raw_score, questions!inner(task_id)')
+      .select('raw_score')
       .eq('student_id', studentId)
-      .eq('questions.task_id', task_id)
+      .in('question_id', taskQuestionIds)
 
     const totalRaw = (allQRs ?? []).reduce((sum, r) => sum + (r.raw_score ?? 0), 0)
     const totalPercent = taskMaxScore > 0

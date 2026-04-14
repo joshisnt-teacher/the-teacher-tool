@@ -7,6 +7,8 @@ export interface ExitTicketByClass {
   description: string | null;
   task_type: string | null;
   status: string;
+  is_completed: boolean;
+  class_session_id: string | null;
   created_at: string;
   updated_at: string;
   class_id: string;
@@ -27,6 +29,8 @@ export const useExitTicketsByClass = (classId?: string) => {
           description,
           task_type,
           status,
+          is_completed,
+          class_session_id,
           created_at,
           updated_at,
           class_id,
@@ -49,6 +53,8 @@ export const useExitTicketsByClass = (classId?: string) => {
         description: task.description,
         task_type: task.task_type,
         status: task.status || 'draft',
+        is_completed: task.is_completed || false,
+        class_session_id: task.class_session_id || null,
         created_at: task.created_at,
         updated_at: task.updated_at,
         class_id: task.class_id,

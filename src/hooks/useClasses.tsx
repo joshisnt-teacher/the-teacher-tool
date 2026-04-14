@@ -16,6 +16,7 @@ export interface Class {
   school_id: string;
   curriculum_id?: string;
   is_demo: boolean;
+  class_code: string | null;
   created_at: string;
   updated_at: string;
 }

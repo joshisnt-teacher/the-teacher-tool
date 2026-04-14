@@ -13,6 +13,7 @@ import { useQuestions } from '@/hooks/useQuestions';
 import { useQuestionOptionsForTask } from '@/hooks/useQuestionOptions';
 import { useSubmitExitTicket } from '@/hooks/useSubmitExitTicket';
 import { toast } from '@/hooks/use-toast';
+import type { MarkingCriteria } from '@/lib/autoMarkTextAnswer';
 
 const TakeExitTicket = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -27,7 +28,7 @@ const TakeExitTicket = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, name, description, class_id')
+        .select('id, name, description, class_id, max_score')
         .eq('id', taskId)
         .eq('is_exit_ticket', true)
         .eq('status', 'active')
@@ -40,6 +41,18 @@ const TakeExitTicket = () => {
 
   const { data: questions = [], isLoading: isLoadingQuestions } = useQuestions(taskId);
   const { data: optionsMap = {}, isLoading: isLoadingOptions } = useQuestionOptionsForTask(taskId);
+
+  const markingCriteriaMap = useMemo(() => {
+    const map: Record<string, MarkingCriteria | null> = {};
+    for (const q of questions) {
+      map[q.id] = (q.marking_criteria as MarkingCriteria) || null;
+    }
+    return map;
+  }, [questions]);
+
+  const totalMaxScore = useMemo(() => {
+    return questions.reduce((sum, q) => sum + (q.max_score || 0), 0);
+  }, [questions]);
 
   const { data: existingResult, isLoading: isLoadingResult } = useQuery({
     queryKey: ['exit-ticket-result', taskId, studentId],
@@ -75,23 +88,31 @@ const TakeExitTicket = () => {
     // Validate all questions answered
     for (const q of questions) {
       const ans = answers[q.id];
-      if (q.question_type === 'multiple_choice' && !ans?.selectedOptionId) {
+      const options = optionsMap[q.id] || [];
+      const qtype = q.question_type?.toLowerCase();
+      const isMC = (qtype === 'multiple_choice' || qtype === 'mcq') && options.length > 0;
+      if (isMC && !ans?.selectedOptionId) {
         toast({ title: 'Please answer all questions', variant: 'destructive' });
         return;
       }
-      if ((q.question_type === 'short_answer' || q.question_type === 'extended_answer') && !ans?.text?.trim()) {
+      if (!isMC && !ans?.text?.trim()) {
         toast({ title: 'Please answer all questions', variant: 'destructive' });
         return;
       }
     }
 
-    const payloadAnswers = questions.map((q) => ({
-      questionId: q.id,
-      maxScore: q.max_score,
-      questionType: q.question_type || 'short_answer',
-      selectedOptionId: answers[q.id]?.selectedOptionId || null,
-      textAnswer: answers[q.id]?.text || null,
-    }));
+    const payloadAnswers = questions.map((q) => {
+      const opts = optionsMap[q.id] || [];
+      const qtype = q.question_type?.toLowerCase();
+      const isMC = (qtype === 'multiple_choice' || qtype === 'mcq') && opts.length > 0;
+      return {
+        questionId: q.id,
+        maxScore: q.max_score,
+        questionType: isMC ? 'multiple_choice' : 'short_answer',
+        selectedOptionId: answers[q.id]?.selectedOptionId || null,
+        textAnswer: answers[q.id]?.text || null,
+      };
+    });
 
     submitMutation.mutate(
       {
@@ -104,6 +125,8 @@ const TakeExitTicket = () => {
             opts.map((o) => ({ id: o.id, is_correct: o.is_correct })),
           ])
         ),
+        markingCriteriaMap,
+        totalMaxScore,
       },
       {
         onSuccess: () => {
@@ -188,6 +211,12 @@ const TakeExitTicket = () => {
           <>
             {questions.map((q, idx) => {
               const options = optionsMap[q.id] || [];
+              // Normalise stored type values to the three render modes
+              const qtype = q.question_type?.toLowerCase();
+              const isMC = (qtype === 'multiple_choice' || qtype === 'mcq') && options.length > 0;
+              const isExtended = qtype === 'extended_answer';
+              // Everything else (short_answer, fill in the blanks, null, unknown) → text input
+
               return (
                 <Card key={q.id}>
                   <CardHeader>
@@ -203,7 +232,7 @@ const TakeExitTicket = () => {
                   <CardContent className="space-y-4">
                     <p className="text-base">{q.question}</p>
 
-                    {q.question_type === 'multiple_choice' && (
+                    {isMC && (
                       <div className="space-y-2">
                         {options.map((opt) => (
                           <label
@@ -227,18 +256,18 @@ const TakeExitTicket = () => {
                       </div>
                     )}
 
-                    {q.question_type === 'short_answer' && (
-                      <Input
+                    {isExtended && (
+                      <Textarea
                         placeholder="Type your answer..."
+                        rows={5}
                         value={answers[q.id]?.text || ''}
                         onChange={(e) => handleTextChange(q.id, e.target.value)}
                       />
                     )}
 
-                    {q.question_type === 'extended_answer' && (
-                      <Textarea
+                    {!isMC && !isExtended && (
+                      <Input
                         placeholder="Type your answer..."
-                        rows={5}
                         value={answers[q.id]?.text || ''}
                         onChange={(e) => handleTextChange(q.id, e.target.value)}
                       />

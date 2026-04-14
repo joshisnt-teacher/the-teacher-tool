@@ -25,6 +25,7 @@ import Activities from "./pages/Activities";
 import CreateExitTicket from "./pages/CreateExitTicket";
 import ClassJoin from "./pages/ClassJoin";
 import TakeExitTicket from "./pages/TakeExitTicket";
+import StudentLanding from "./pages/StudentLanding";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 
@@ -37,9 +38,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   const isSpinnerPage = currentPath.startsWith("/spinner");
   
   // Public student pages (no sidebar)
-  const isStudentPage = 
+  const isStudentPage =
+    currentPath === "/join" ||
     currentPath.startsWith("/exit-ticket") ||
-    /^\/[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2
+    /^\/(?=.*\d)[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2 (must contain a digit)
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
     return <>{children}</>;
@@ -190,6 +192,7 @@ const App = () => (
                 } 
               />
               {/* Public student routes */}
+              <Route path="/join" element={<StudentLanding />} />
               <Route path="/:classCode" element={<ClassJoin />} />
               <Route path="/exit-ticket/:taskId" element={<TakeExitTicket />} />
               <Route 

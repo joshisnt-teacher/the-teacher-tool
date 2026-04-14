@@ -951,11 +951,13 @@ export type Database = {
           assessment_format: string | null
           blooms_taxonomy: string | null
           class_id: string
+          class_session_id: string | null
           content_item_id: string | null
           created_at: string
           description: string | null
           due_date: string | null
           id: string
+          is_completed: boolean | null
           is_exit_ticket: boolean | null
           is_legacy: boolean | null
           key_skill: string | null
@@ -970,11 +972,13 @@ export type Database = {
           assessment_format?: string | null
           blooms_taxonomy?: string | null
           class_id: string
+          class_session_id?: string | null
           content_item_id?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
+          is_completed?: boolean | null
           is_exit_ticket?: boolean | null
           is_legacy?: boolean | null
           key_skill?: string | null
@@ -989,11 +993,13 @@ export type Database = {
           assessment_format?: string | null
           blooms_taxonomy?: string | null
           class_id?: string
+          class_session_id?: string | null
           content_item_id?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
+          is_completed?: boolean | null
           is_exit_ticket?: boolean | null
           is_legacy?: boolean | null
           key_skill?: string | null
