@@ -8,7 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSchools, useCreateSchool, useUpdateUserSchool } from '@/hooks/useSchools';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, User, School, Plus } from 'lucide-react';
+import { ArrowLeft, Upload, User, School, Plus, Bot, Eye, EyeOff } from 'lucide-react';
+import { useOpenAIKeyStatus, useSaveOpenAIKey, useRemoveOpenAIKey } from '@/hooks/useAISettings';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -26,6 +27,18 @@ const Settings = () => {
   const [schoolName, setSchoolName] = useState('');
   const [schoolDomain, setSchoolDomain] = useState('');
   const queryClient = useQueryClient();
+  const { data: keyStatus } = useOpenAIKeyStatus();
+  const saveKeyMutation = useSaveOpenAIKey();
+  const removeKeyMutation = useRemoveOpenAIKey();
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showKey, setShowKey] = useState(false);
+
+  const handleSaveKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKeyInput.trim()) return;
+    await saveKeyMutation.mutateAsync(apiKeyInput.trim());
+    setApiKeyInput('');
+  };
 
   React.useEffect(() => {
     if (currentUser?.name) {
@@ -391,6 +404,74 @@ const Settings = () => {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* AI Settings */}
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="w-5 h-5" />
+                AI Marking
+              </CardTitle>
+              <CardDescription>
+                Add your OpenAI API key to enable AI-powered marking of student text responses.
+                Your key is encrypted and never stored in plain text.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Status:</span>
+                {keyStatus?.hasKey ? (
+                  <span className="text-sm text-green-600 font-medium">Key saved</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No key set</span>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveKey} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="openai-key">OpenAI API Key</Label>
+                  <div className="relative">
+                    <Input
+                      id="openai-key"
+                      type={showKey ? 'text' : 'password'}
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      placeholder="sk-..."
+                      className="h-11 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(!showKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Uses <strong>gpt-4o-mini</strong> — fractions of a cent per response.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    disabled={saveKeyMutation.isPending || !apiKeyInput.trim()}
+                  >
+                    {saveKeyMutation.isPending ? 'Saving...' : keyStatus?.hasKey ? 'Update Key' : 'Save Key'}
+                  </Button>
+                  {keyStatus?.hasKey && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => removeKeyMutation.mutate()}
+                      disabled={removeKeyMutation.isPending}
+                    >
+                      {removeKeyMutation.isPending ? 'Removing...' : 'Remove Key'}
+                    </Button>
+                  )}
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>
