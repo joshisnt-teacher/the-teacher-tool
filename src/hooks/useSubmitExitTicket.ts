@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { autoMarkTextAnswer, type MarkingCriteria } from '@/lib/autoMarkTextAnswer';
 
 export interface ExitTicketAnswer {
   questionId: string;
@@ -20,14 +21,17 @@ export const useSubmitExitTicket = () => {
       studentId,
       answers,
       optionsMap,
+      markingCriteriaMap,
+      totalMaxScore,
     }: {
       taskId: string;
       studentId: string;
       answers: ExitTicketAnswer[];
       optionsMap: Record<string, { id: string; is_correct: boolean }[]>;
+      markingCriteriaMap: Record<string, MarkingCriteria | null>;
+      totalMaxScore: number;
     }) => {
       let rawScore = 0;
-      let gradableMaxScore = 0;
       const questionResultInserts: {
         question_id: string;
         student_id: string;
@@ -45,17 +49,19 @@ export const useSubmitExitTicket = () => {
           const selected = options.find((o) => o.id === answer.selectedOptionId);
           const isCorrect = selected?.is_correct ?? false;
           score = isCorrect ? (answer.maxScore || 0) : 0;
-          gradableMaxScore += answer.maxScore || 0;
           rawScore += score;
           responseData = { selected_option_id: answer.selectedOptionId };
         } else {
-          // short_answer / extended_answer - pending manual grading
-          score = null;
-          responseData = { text: answer.textAnswer || '' };
+          // short_answer / extended_answer - auto-mark using keywords
+          const criteria = markingCriteriaMap[answer.questionId];
+          const text = answer.textAnswer || '';
+          score = autoMarkTextAnswer(text, criteria, answer.maxScore || 0);
+          rawScore += score;
+          responseData = { text };
         }
 
         const percentScore =
-          score !== null && (answer.maxScore || 0) > 0
+          (answer.maxScore || 0) > 0
             ? Number(((score / (answer.maxScore || 1)) * 100).toFixed(2))
             : null;
 
@@ -69,15 +75,15 @@ export const useSubmitExitTicket = () => {
       }
 
       const totalPercentScore =
-        gradableMaxScore > 0
-          ? Number(((rawScore / gradableMaxScore) * 100).toFixed(2))
+        totalMaxScore > 0
+          ? Number(((rawScore / totalMaxScore) * 100).toFixed(2))
           : null;
 
       // Insert result
       const { error: resultError } = await supabase.from('results').insert({
         task_id: taskId,
         student_id: studentId,
-        raw_score: gradableMaxScore > 0 ? rawScore : null,
+        raw_score: totalMaxScore > 0 ? rawScore : null,
         percent_score: totalPercentScore,
         normalised_percent: totalPercentScore,
         feedback: null,
@@ -85,16 +91,25 @@ export const useSubmitExitTicket = () => {
 
       if (resultError) throw resultError;
 
-      // Insert question results
+      // Insert question results and capture IDs for AI marking
+      let textAnswerQRIds: string[] = [];
       if (questionResultInserts.length > 0) {
-        const { error: qrError } = await supabase
+        const { data: insertedQRs, error: qrError } = await supabase
           .from('question_results')
-          .insert(questionResultInserts);
+          .insert(questionResultInserts)
+          .select('id, question_id');
 
         if (qrError) throw qrError;
+
+        textAnswerQRIds = (insertedQRs ?? [])
+          .filter((qr) => {
+            const answer = answers.find((a) => a.questionId === qr.question_id);
+            return answer && answer.questionType !== 'multiple_choice';
+          })
+          .map((qr) => qr.id);
       }
 
-      return { taskId, studentId };
+      return { taskId, studentId, textAnswerQRIds };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['assessment-results', data.taskId] });
@@ -104,6 +119,14 @@ export const useSubmitExitTicket = () => {
         title: 'Submitted',
         description: 'Your exit ticket has been submitted successfully.',
       });
+      // Trigger AI marking for text answers (fire-and-forget — failure is non-blocking)
+      if (data.textAnswerQRIds.length > 0) {
+        supabase.functions.invoke('ai-mark-response', {
+          body: { question_result_ids: data.textAnswerQRIds, task_id: data.taskId },
+        }).then(({ error }) => {
+          if (error) console.error('AI marking failed silently:', error);
+        });
+      }
     },
     onError: (error: unknown) => {
       console.error('Submit exit ticket error:', error);
