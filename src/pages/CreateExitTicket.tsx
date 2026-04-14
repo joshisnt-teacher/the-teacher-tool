@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -28,6 +27,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useClasses } from '@/hooks/useClasses';
 import { useContentItems } from '@/hooks/useContentItems';
 import { useBloomsTaxonomy } from '@/hooks/useCreateAssessment';
+import type { MarkingCriteria } from '@/lib/autoMarkTextAnswer';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -50,6 +50,8 @@ interface QuestionDraft {
   type: QuestionType;
   maxScore: number;
   options: QuestionOptionDraft[];
+  markingCriteria?: MarkingCriteria;
+  modelAnswer?: string;
 }
 
 const defaultQuestion = (): QuestionDraft => ({
@@ -122,7 +124,7 @@ const CreateExitTicket = () => {
 
         const { data: qs, error: qError } = await supabase
           .from('questions')
-          .select('id, question, question_type, max_score, number')
+          .select('id, question, question_type, max_score, number, marking_criteria, model_answer')
           .eq('task_id', editTaskId)
           .order('number', { ascending: true });
 
@@ -136,6 +138,8 @@ const CreateExitTicket = () => {
             type: (q.question_type as QuestionType) || 'multiple_choice',
             maxScore: Number(q.max_score || 0),
             options: [],
+            markingCriteria: (q.marking_criteria as MarkingCriteria) || undefined,
+            modelAnswer: q.model_answer ?? undefined,
           };
 
           if (draft.type === 'multiple_choice') {
@@ -159,7 +163,7 @@ const CreateExitTicket = () => {
         setQuestions(loadedQuestions.length > 0 ? loadedQuestions : [defaultQuestion()]);
       } catch (e: unknown) {
         console.error(e);
-        toast({ title: 'Failed to load exit ticket', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+        toast({ title: 'Failed to load exit ticket', description: e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error', variant: 'destructive' });
       } finally {
         setIsLoading(false);
       }
@@ -238,13 +242,10 @@ const CreateExitTicket = () => {
       toast({ title: 'Validation Error', description: error, variant: 'destructive' });
       return;
     }
-    if (!currentUser?.school_id) {
-      toast({ title: 'Missing school', description: 'You must belong to a school.', variant: 'destructive' });
-      return;
-    }
-
     setIsSaving(true);
     try {
+      const totalMaxScore = questions.reduce((sum, q) => sum + (q.maxScore || 0), 0);
+
       const taskPayload = {
         name: title.trim(),
         description: description.trim() || null,
@@ -256,8 +257,7 @@ const CreateExitTicket = () => {
         content_item_id: contentItemId || null,
         is_exit_ticket: true,
         status,
-        school_id: currentUser.school_id,
-        teacher_id: currentUser.id,
+        max_score: totalMaxScore,
       };
 
       let taskId = editTaskId;
@@ -292,6 +292,8 @@ const CreateExitTicket = () => {
             blooms_taxonomy: bloomsTaxonomy || null,
             content_item: contentItemId || null,
             general_capabilities: null,
+            marking_criteria: q.type !== 'multiple_choice' ? (q.markingCriteria || null) : null,
+            model_answer: q.type !== 'multiple_choice' ? (q.modelAnswer || null) : null,
           })
           .select('id')
           .single();
@@ -314,7 +316,8 @@ const CreateExitTicket = () => {
       navigate('/activities');
     } catch (e: unknown) {
       console.error(e);
-      toast({ title: 'Failed to save', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error';
+      toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -333,7 +336,7 @@ const CreateExitTicket = () => {
         description: next === 'active' ? 'Students can now access it.' : 'Students can no longer access it.',
       });
     } catch (e: unknown) {
-      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Error', description: e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsPublishing(false);
     }
@@ -351,7 +354,7 @@ const CreateExitTicket = () => {
       toast({ title: 'Exit ticket deleted' });
       navigate('/activities');
     } catch (e: unknown) {
-      toast({ title: 'Failed to delete', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Failed to delete', description: e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -522,125 +525,264 @@ const CreateExitTicket = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Questions ({questions.length})</h2>
+              <div className="text-sm text-muted-foreground">
+                Total marks: {questions.reduce((sum, q) => sum + (q.maxScore || 0), 0)}
+              </div>
+            </div>
+            <div className="flex justify-end">
               <Button onClick={addQuestion} disabled={isBusy}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Question
               </Button>
             </div>
 
-            {questions.map((q, qIndex) => (
-              <Card key={q.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">Question {qIndex + 1}</span>
-                      </div>
-                      <Textarea
-                        value={q.text}
-                        onChange={(e) =>
-                          updateQuestion(qIndex, (prev) => ({ ...prev, text: e.target.value }))
-                        }
-                        placeholder="Enter question text"
-                        rows={2}
-                        disabled={isBusy}
-                      />
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <Select
-                          value={q.type}
-                          onValueChange={(v: QuestionType) =>
-                            updateQuestion(qIndex, (prev) => ({
-                              ...prev,
-                              type: v,
-                              options:
-                                v === 'multiple_choice'
-                                  ? [
-                                      { id: generateId(), text: '', isCorrect: false },
-                                      { id: generateId(), text: '', isCorrect: false },
-                                    ]
-                                  : [],
-                            }))
-                          }
-                          disabled={isBusy}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                            <SelectItem value="short_answer">Short Answer</SelectItem>
-                            <SelectItem value="extended_answer">Extended Answer</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={q.maxScore}
+            {questions.map((q, qIndex) => {
+              const isText = q.type !== 'multiple_choice';
+              const criteria = q.markingCriteria || {
+                expected_keywords: [''],
+                match_type: 'any',
+                case_sensitive: false,
+              };
+
+              return (
+                <Card key={q.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium">Question {qIndex + 1}</span>
+                        </div>
+                        <Textarea
+                          value={q.text}
                           onChange={(e) =>
+                            updateQuestion(qIndex, (prev) => ({ ...prev, text: e.target.value }))
+                          }
+                          placeholder="Enter question text"
+                          rows={2}
+                          disabled={isBusy}
+                        />
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <Select
+                            value={q.type}
+                            onValueChange={(v: QuestionType) =>
+                              updateQuestion(qIndex, (prev) => ({
+                                ...prev,
+                                type: v,
+                                options:
+                                  v === 'multiple_choice'
+                                    ? [
+                                        { id: generateId(), text: '', isCorrect: false },
+                                        { id: generateId(), text: '', isCorrect: false },
+                                      ]
+                                    : [],
+                                markingCriteria:
+                                  v !== 'multiple_choice'
+                                    ? { expected_keywords: [''], match_type: 'any', case_sensitive: false }
+                                    : undefined,
+                              }))
+                            }
+                            disabled={isBusy}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                              <SelectItem value="short_answer">Short Answer</SelectItem>
+                              <SelectItem value="extended_answer">Extended Answer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={q.maxScore}
+                            onChange={(e) =>
+                              updateQuestion(qIndex, (prev) => ({
+                                ...prev,
+                                maxScore: Number(e.target.value) || 0,
+                              }))
+                            }
+                            placeholder="Max score"
+                            disabled={isBusy}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeQuestion(qIndex)}
+                        disabled={isBusy || questions.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {q.type === 'multiple_choice' && (
+                    <CardContent className="space-y-3">
+                      <Label>Options</Label>
+                      {q.options.map((opt, oIndex) => (
+                        <div key={opt.id} className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name={`correct-${q.id}`}
+                            checked={opt.isCorrect}
+                            onChange={() => setCorrectOption(qIndex, opt.id)}
+                            className="w-4 h-4"
+                            disabled={isBusy}
+                          />
+                          <Input
+                            value={opt.text}
+                            onChange={(e) => updateOptionText(qIndex, oIndex, e.target.value)}
+                            placeholder={`Option ${oIndex + 1}`}
+                            disabled={isBusy}
+                            className={opt.isCorrect ? 'border-green-500' : ''}
+                          />
+                          {opt.isCorrect && (
+                            <span className="text-xs text-green-600 font-medium whitespace-nowrap">
+                              Correct
+                            </span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeOption(qIndex, oIndex)}
+                            disabled={isBusy || q.options.length <= 2}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => addOption(qIndex)} disabled={isBusy}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Option
+                      </Button>
+                    </CardContent>
+                  )}
+                  {isText && (
+                    <CardContent className="space-y-4 border-t bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <Label>Marking Criteria</Label>
+                        <span className="text-xs text-muted-foreground">(optional — auto-marks text answers)</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm text-muted-foreground">Expected keywords / phrases</Label>
+                        {(criteria.expected_keywords || ['']).map((keyword, kIndex) => (
+                          <div key={kIndex} className="flex items-center gap-2">
+                            <Input
+                              value={keyword}
+                              onChange={(e) => {
+                                const next = [...(criteria.expected_keywords || [''])];
+                                next[kIndex] = e.target.value;
+                                updateQuestion(qIndex, (prev) => ({
+                                  ...prev,
+                                  markingCriteria: { ...criteria, expected_keywords: next },
+                                }));
+                              }}
+                              placeholder="e.g. photosynthesis"
+                              disabled={isBusy}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => {
+                                const next = [...(criteria.expected_keywords || [''])];
+                                next.splice(kIndex, 1);
+                                updateQuestion(qIndex, (prev) => ({
+                                  ...prev,
+                                  markingCriteria: { ...criteria, expected_keywords: next.length ? next : [''] },
+                                }));
+                              }}
+                              disabled={isBusy}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
                             updateQuestion(qIndex, (prev) => ({
                               ...prev,
-                              maxScore: Number(e.target.value) || 0,
-                            }))
-                          }
-                          placeholder="Max score"
+                              markingCriteria: {
+                                ...criteria,
+                                expected_keywords: [...(criteria.expected_keywords || []), ''],
+                              },
+                            }));
+                          }}
                           disabled={isBusy}
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeQuestion(qIndex)}
-                      disabled={isBusy || questions.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                {q.type === 'multiple_choice' && (
-                  <CardContent className="space-y-3">
-                    <Label>Options</Label>
-                    {q.options.map((opt, oIndex) => (
-                      <div key={opt.id} className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name={`correct-${q.id}`}
-                          checked={opt.isCorrect}
-                          onChange={() => setCorrectOption(qIndex, opt.id)}
-                          className="w-4 h-4"
-                          disabled={isBusy}
-                        />
-                        <Input
-                          value={opt.text}
-                          onChange={(e) => updateOptionText(qIndex, oIndex, e.target.value)}
-                          placeholder={`Option ${oIndex + 1}`}
-                          disabled={isBusy}
-                          className={opt.isCorrect ? 'border-green-500' : ''}
-                        />
-                        {opt.isCorrect && (
-                          <span className="text-xs text-green-600 font-medium whitespace-nowrap">
-                            Correct
-                          </span>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeOption(qIndex, oIndex)}
-                          disabled={isBusy || q.options.length <= 2}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Keyword
                         </Button>
                       </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => addOption(qIndex)} disabled={isBusy}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Option
-                    </Button>
-                  </CardContent>
-                )}
-              </Card>
-            ))}
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-sm">Match type</Label>
+                          <Select
+                            value={criteria.match_type || 'any'}
+                            onValueChange={(v: 'all' | 'any') =>
+                              updateQuestion(qIndex, (prev) => ({
+                                ...prev,
+                                markingCriteria: { ...criteria, match_type: v },
+                              }))
+                            }
+                            disabled={isBusy}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Match any keyword (partial marks)</SelectItem>
+                              <SelectItem value="all">Match all keywords (full marks only)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center gap-3 pt-6">
+                          <input
+                            type="checkbox"
+                            id={`case-${q.id}`}
+                            checked={criteria.case_sensitive || false}
+                            onChange={(e) =>
+                              updateQuestion(qIndex, (prev) => ({
+                                ...prev,
+                                markingCriteria: { ...criteria, case_sensitive: e.target.checked },
+                              }))
+                            }
+                            disabled={isBusy}
+                            className="w-4 h-4"
+                          />
+                          <Label htmlFor={`case-${q.id}`} className="text-sm cursor-pointer">
+                            Case sensitive matching
+                          </Label>
+                        </div>
+
+                        <div className="space-y-2 mt-3">
+                          <Label className="text-sm font-medium">Model Answer (for AI marking)</Label>
+                          <Textarea
+                            value={q.modelAnswer || ''}
+                            onChange={(e) =>
+                              updateQuestion(qIndex, (prev) => ({ ...prev, modelAnswer: e.target.value }))
+                            }
+                            placeholder="Write what a full-marks answer looks like. The AI uses this as its marking guide."
+                            rows={3}
+                            className="text-sm resize-none"
+                            disabled={isBusy}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Optional — AI will still mark without it, just less accurately.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </div>
       </main>
