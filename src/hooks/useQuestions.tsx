@@ -12,6 +12,8 @@ export interface Question {
   content_item: string | null;
   general_capabilities: string[] | null;
   blooms_taxonomy: string | null;
+  marking_criteria: Record<string, unknown> | null;
+  model_answer: string | null;
   created_at: string;
   updated_at: string;
 }
