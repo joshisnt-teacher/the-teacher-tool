@@ -36,12 +36,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const generalCapabilities = question.general_capabilities;
   const bloomsTaxonomy = question.blooms_taxonomy;
 
+  const formatQuestionType = (type: string | null) => {
+    const map: Record<string, string> = {
+      multiple_choice: 'Multiple Choice',
+      short_answer: 'Short Answer',
+      extended_answer: 'Extended Answer',
+    };
+    return type ? (map[type] ?? type) : null;
+  };
+
   const getBloomsColor = (level: string) => {
     const colors = {
       'Remember': 'bg-blue-50 text-blue-700 border-blue-200',
       'Understand': 'bg-green-50 text-green-700 border-green-200',
       'Apply': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      'Analyze': 'bg-orange-50 text-orange-700 border-orange-200',
+      'Analyse': 'bg-orange-50 text-orange-700 border-orange-200',
       'Evaluate': 'bg-red-50 text-red-700 border-red-200',
       'Create': 'bg-purple-50 text-purple-700 border-purple-200',
     };
@@ -63,7 +72,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <div className="flex flex-wrap gap-2 mt-2">
                 {question.question_type && (
                   <Badge variant="secondary" className="text-xs">
-                    {question.question_type}
+                    {formatQuestionType(question.question_type)}
                   </Badge>
                 )}
                 {question.max_score && (

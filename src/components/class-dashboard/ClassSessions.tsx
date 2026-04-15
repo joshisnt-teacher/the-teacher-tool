@@ -125,7 +125,7 @@ export const ClassSessions: React.FC<ClassSessionsProps> = ({ classId }) => {
                           </div>
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            {session.student_notes.length} notes
+                            {(session.student_notes ?? []).length} notes
                           </div>
                           <div className="text-xs">
                             {format(new Date(session.started_at), 'MMM d, yyyy')}

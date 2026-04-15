@@ -98,7 +98,7 @@ export const useQuestionHeatmapData = (taskId?: string) => {
         }
       });
 
-      // Calculate student totals and sort by performance
+      // Calculate student totals and sort by last name
       const students = Array.from(studentMap.values())
         .map(student => ({
           id: student.id,
@@ -106,7 +106,11 @@ export const useQuestionHeatmapData = (taskId?: string) => {
           totalScore: student.totalScore,
           totalPercent: student.totalMaxScore > 0 ? Math.round((student.totalScore / student.totalMaxScore) * 100) : 0,
         }))
-        .sort((a, b) => b.totalPercent - a.totalPercent);
+        .sort((a, b) => {
+          const aLast = a.name.split(' ').pop() || a.name;
+          const bLast = b.name.split(' ').pop() || b.name;
+          return aLast.localeCompare(bLast);
+        });
 
       // Process questions and calculate difficulty
       const questionStats = questions.map((question: any) => {

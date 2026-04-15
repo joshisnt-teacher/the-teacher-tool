@@ -60,10 +60,16 @@ export const QuestionsTab = ({ taskId, classId }: QuestionsTabProps) => {
   const getQuestionTypeColor = (type: string | null) => {
     switch (type?.toLowerCase()) {
       case 'multiple choice':
+      case 'multiple_choice':
+      case 'mcq':
         return 'bg-blue-100 text-blue-800';
       case 'short answer':
+      case 'short_answer':
         return 'bg-green-100 text-green-800';
       case 'essay':
+      case 'extended answer':
+      case 'extended_answer':
+      case 'extended response':
         return 'bg-purple-100 text-purple-800';
       case 'calculation':
         return 'bg-orange-100 text-orange-800';

@@ -12,13 +12,13 @@ export function useClassSessionsList(classId: string) {
         .from("class_sessions")
         .select(`
           *,
-          student_notes!inner(
+          student_notes(
             id,
             note,
             rating,
             category,
             created_at,
-            students!inner(
+            students(
               id,
               first_name,
               last_name,
@@ -44,7 +44,7 @@ export function useClassSessionsList(classId: string) {
             last_name: string;
             student_id: string;
           };
-        }>;
+        }> | null;
       })[];
     },
     enabled: !!classId,

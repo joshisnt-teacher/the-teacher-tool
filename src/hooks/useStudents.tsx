@@ -23,7 +23,7 @@ export const useStudents = (classId?: string) => {
         query = query.eq('class_id', classId);
       }
       
-      const { data, error } = await query.order('first_name');
+      const { data, error } = await query.order('last_name');
       
       if (error) throw error;
       return data as Student[];

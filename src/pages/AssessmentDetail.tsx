@@ -107,7 +107,7 @@ const AssessmentDetail = () => {
       
       if (!data) return [];
       
-      return data.map((result: any) => ({
+      return (data.map((result: any) => ({
         student_id: result.student_id,
         raw_score: result.raw_score ?? null,
         percent_score: result.percent_score ?? null,
@@ -115,7 +115,8 @@ const AssessmentDetail = () => {
         feedback: result.feedback ?? null,
         first_name: result.students?.first_name || 'Unknown',
         last_name: result.students?.last_name || 'Student',
-      })) as StudentResult[];
+      })) as StudentResult[])
+        .sort((a, b) => a.last_name.localeCompare(b.last_name));
     },
     enabled: !!assessmentId && !!assessment && assessment.assessment_format !== 'confidence_check',
   });
@@ -254,7 +255,9 @@ const AssessmentDetail = () => {
     const existingIds = new Set(results.map((r) => r.student_id));
     addedStudentIds.forEach((id) => existingIds.add(id));
     deletedStudentIds.forEach((id) => existingIds.delete(id));
-    return classStudents.filter((s) => !existingIds.has(s.id));
+    return classStudents
+      .filter((s) => !existingIds.has(s.id))
+      .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
   }, [classStudents, results, addedStudentIds, deletedStudentIds]);
 
   const handleAddStudent = (studentId: string) => {
@@ -607,9 +610,10 @@ const AssessmentDetail = () => {
                 variant="outline"
                 onClick={() => {
                 // Create CSV content
+                const sortedResults = [...results].sort((a, b) => a.last_name.localeCompare(b.last_name));
                 const csvContent = [
                   ['Student', 'Raw Score', 'Percentage', 'Band'].join(','),
-                  ...results.map(result => {
+                  ...sortedResults.map(result => {
                     const hasValidScore = result.percent_score !== null && result.percent_score !== undefined && !isNaN(result.percent_score);
                     const gradeBand = hasValidScore ? getGradeBand(result.percent_score) : { band: '-', color: 'bg-gray-100 text-gray-600' };
                     return [
@@ -870,7 +874,13 @@ const AssessmentDetail = () => {
                             ))}
 
                           {/* Added students */}
-                          {addedStudentIds.map((studentId) => {
+                          {[...addedStudentIds]
+                            .sort((aId, bId) => {
+                              const a = classStudents.find((s) => s.id === aId);
+                              const b = classStudents.find((s) => s.id === bId);
+                              return (a?.last_name || '').localeCompare(b?.last_name || '');
+                            })
+                            .map((studentId) => {
                             const student = classStudents.find((s) => s.id === studentId);
                             if (!student) return null;
                             return (

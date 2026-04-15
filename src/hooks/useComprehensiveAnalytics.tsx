@@ -44,7 +44,8 @@ export const useClassKPIs = (classId: string, assessmentRange?: { start: string;
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, first_name, last_name')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('last_name');
 
       if (studentsError) throw studentsError;
 
@@ -239,7 +240,8 @@ export const useInterventionFlags = (classId: string, threshold: number = 20) =>
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, first_name, last_name')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('last_name');
 
       if (studentsError) throw studentsError;
 
@@ -343,7 +345,8 @@ export const useStudentGrowthAnalytics = (classId: string) => {
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, first_name, last_name')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('last_name');
 
       if (studentsError) throw studentsError;
 

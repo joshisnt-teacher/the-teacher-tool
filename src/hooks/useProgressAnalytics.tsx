@@ -30,7 +30,8 @@ export const useStudentProgressAnalytics = (classId: string) => {
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, first_name, last_name')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('last_name');
 
       if (studentsError) throw studentsError;
 
@@ -158,7 +159,8 @@ export const useContentItemPerformance = (classId: string) => {
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, first_name, last_name')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('last_name');
 
       if (studentsError) throw studentsError;
 

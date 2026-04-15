@@ -125,7 +125,11 @@ export const EnhancedTimelineSection: React.FC<EnhancedTimelineSectionProps> = (
       });
     });
     
-    return Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(studentMap.values()).sort((a, b) => {
+      const aLast = a.name.split(' ').pop() || a.name;
+      const bLast = b.name.split(' ').pop() || b.name;
+      return aLast.localeCompare(bLast);
+    });
   }, [timelineData]);
 
   // Prepare combined chart data with student lines

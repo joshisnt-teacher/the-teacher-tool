@@ -63,8 +63,27 @@ export function AppSidebar() {
       : "hover:bg-sidebar-accent/50";
   };
 
-  const isClassRoute = currentPath.startsWith('/class/') || currentPath.startsWith('/create-class');
+  const isClassRoute = currentPath.startsWith('/class/') || currentPath.startsWith('/create-class') || currentPath.startsWith('/classroom/') || currentPath.startsWith('/create-assessment/') || (currentPath.startsWith('/student/') && currentPath.includes('/class/'));
   const shouldExpandClasses = classesOpen || isClassRoute;
+
+  const getRelatedClassId = () => {
+    if (currentPath.startsWith('/classroom/')) {
+      return currentPath.split('/')[2];
+    }
+    if (currentPath.startsWith('/create-assessment/')) {
+      return currentPath.split('/')[2];
+    }
+    if (currentPath.startsWith('/student/') && currentPath.includes('/class/')) {
+      const parts = currentPath.split('/');
+      const classIndex = parts.indexOf('class');
+      if (classIndex !== -1 && parts[classIndex + 1]) {
+        return parts[classIndex + 1];
+      }
+    }
+    return null;
+  };
+
+  const relatedClassId = getRelatedClassId();
 
   return (
     <Sidebar className="border-sidebar-border">
@@ -135,28 +154,38 @@ export function AppSidebar() {
                   {/* List of Classes */}
                   {classes
                     ?.filter((classItem) => !classItem.is_demo)
-                    .map((classItem) => (
-                      <SidebarMenuItem key={classItem.id}>
-                        <SidebarMenuButton
-                          asChild
-                          className={getNavClassName(`/class/${classItem.id}`)}
-                        >
-                          <NavLink to={`/class/${classItem.id}`}>
-                            <User className="h-4 w-4" />
-                            {!collapsed && (
-                              <div className="flex flex-col items-start">
-                                <span className="text-sm font-medium truncate max-w-[160px]">
-                                  {classItem.class_name}
-                                </span>
-                                <span className="text-xs text-sidebar-foreground/60">
-                                  {classItem.subject} • {classItem.year_level}
-                                </span>
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    .map((classItem) => {
+                      const active = isActive(`/class/${classItem.id}`);
+                      const related = relatedClassId === classItem.id;
+                      const className = active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:bg-primary before:rounded-r-md"
+                        : related
+                          ? "hover:bg-sidebar-accent/50 text-sidebar-foreground relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-3 before:w-[3px] before:bg-primary/60 before:rounded-r-md"
+                          : "hover:bg-sidebar-accent/50";
+
+                      return (
+                        <SidebarMenuItem key={classItem.id}>
+                          <SidebarMenuButton
+                            asChild
+                            className={className}
+                          >
+                            <NavLink to={`/class/${classItem.id}`}>
+                              <User className="h-4 w-4" />
+                              {!collapsed && (
+                                <div className="flex flex-col items-start">
+                                  <span className="text-sm font-medium truncate max-w-[160px]">
+                                    {classItem.class_name}
+                                  </span>
+                                  <span className={`text-xs ${active || related ? 'text-sidebar-accent-foreground/70' : 'text-sidebar-foreground/60'}`}>
+                                    {classItem.subject} • {classItem.year_level}
+                                  </span>
+                                </div>
+                              )}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>

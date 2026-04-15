@@ -104,7 +104,11 @@ export const useStudentGrowthAnalytics = (classId: string, threshold: number = 1
         });
       });
 
-      return growthData.sort((a, b) => Math.abs(b.improvementPercent) - Math.abs(a.improvementPercent));
+      return growthData.sort((a, b) => {
+        const aLast = a.studentName.split(' ').pop() || a.studentName;
+        const bLast = b.studentName.split(' ').pop() || b.studentName;
+        return aLast.localeCompare(bLast);
+      });
     },
     enabled: !!classId,
   });

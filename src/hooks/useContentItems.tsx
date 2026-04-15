@@ -200,6 +200,8 @@ export const useContentItemByCode = (contentItemCode?: string) => {
         .single();
 
       if (error) {
+        // PGRST116 = no rows found — not a real error, just return null
+        if (error.code === 'PGRST116') return null;
         console.error('Error fetching content item by code:', error);
         throw error;
       }

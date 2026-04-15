@@ -9,6 +9,39 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuestionMutations, QuestionWithMetadata } from '@/hooks/useQuestions';
 import { useClassContentItems } from '@/hooks/useClassContentItems';
 
+// Maps any stored question_type variant to the canonical display value
+const normaliseQuestionType = (raw: string): string => {
+  switch (raw.toLowerCase().replace(/[\s_-]/g, '')) {
+    case 'multiplechoice':
+    case 'mcq':
+      return 'Multiple Choice';
+    case 'shortanswer':
+      return 'Short Answer';
+    case 'extendedanswer':
+    case 'extendedresponse':
+      return 'Extended Response';
+    case 'fillintheblank':
+    case 'fillintheblanks':
+      return 'Fill in the Blank';
+    default:
+      // Return capitalised as-is for known values (Essay, True/False, Calculation)
+      return raw;
+  }
+};
+
+// Maps any stored blooms_taxonomy variant to the canonical verb form (Australian English)
+const BLOOMS_MAP: Record<string, string> = {
+  remember: 'Remember', remembering: 'Remember',
+  understand: 'Understand', understanding: 'Understand',
+  apply: 'Apply', applying: 'Apply',
+  analyse: 'Analyse', analyze: 'Analyse', analysing: 'Analyse', analyzing: 'Analyse',
+  evaluate: 'Evaluate', evaluating: 'Evaluate',
+  create: 'Create', creating: 'Create',
+};
+
+const normaliseBloomsTaxonomy = (raw: string): string =>
+  BLOOMS_MAP[raw.toLowerCase()] ?? raw;
+
 interface EditQuestionDialogProps {
   question: QuestionWithMetadata | null;
   open: boolean;
@@ -36,10 +69,10 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
       setFormData({
         number: question.number?.toString() || '',
         question: question.question || '',
-        question_type: question.question_type || '',
+        question_type: question.question_type ? normaliseQuestionType(question.question_type) : '',
         max_score: question.max_score?.toString() || '',
         content_item: question.content_item || '',
-        blooms_taxonomy: question.blooms_taxonomy || '',
+        blooms_taxonomy: question.blooms_taxonomy ? normaliseBloomsTaxonomy(question.blooms_taxonomy) : '',
       });
     }
   }, [question]);
@@ -139,15 +172,13 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
                 <SelectValue placeholder="Select question type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="MCQ">MCQ</SelectItem>
                 <SelectItem value="Multiple Choice">Multiple Choice</SelectItem>
                 <SelectItem value="Short Answer">Short Answer</SelectItem>
+                <SelectItem value="Extended Response">Extended Response</SelectItem>
                 <SelectItem value="Essay">Essay</SelectItem>
                 <SelectItem value="True/False">True/False</SelectItem>
                 <SelectItem value="Fill in the Blank">Fill in the Blank</SelectItem>
-                <SelectItem value="Fill in the Blanks">Fill in the Blanks</SelectItem>
                 <SelectItem value="Calculation">Calculation</SelectItem>
-                <SelectItem value="Extended Response">Extended Response</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -193,17 +224,12 @@ const EditQuestionDialog: React.FC<EditQuestionDialogProps> = ({
                 <SelectValue placeholder="Select Bloom's level" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Remembering">Remembering</SelectItem>
                 <SelectItem value="Remember">Remember</SelectItem>
                 <SelectItem value="Understand">Understand</SelectItem>
                 <SelectItem value="Apply">Apply</SelectItem>
                 <SelectItem value="Analyse">Analyse</SelectItem>
-                <SelectItem value="Analyze">Analyze</SelectItem>
                 <SelectItem value="Evaluate">Evaluate</SelectItem>
                 <SelectItem value="Create">Create</SelectItem>
-                <SelectItem value="Applying">Applying</SelectItem>
-                <SelectItem value="Understanding">Understanding</SelectItem>
-                <SelectItem value="Analysing">Analysing</SelectItem>
               </SelectContent>
             </Select>
           </div>

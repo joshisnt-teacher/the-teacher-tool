@@ -55,7 +55,9 @@ export const useQuestionResults = (questionId?: string) => {
         .eq('question_id', questionId);
 
       if (error) throw error;
-      return data as QuestionResultWithDetails[];
+      return (data as QuestionResultWithDetails[]).sort((a, b) =>
+        (a.student?.last_name || '').localeCompare(b.student?.last_name || '')
+      );
     },
     enabled: !!questionId,
   });

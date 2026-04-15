@@ -81,7 +81,8 @@ export const useAssessmentImport = () => {
         const existingStudents = await supabase
           .from('students')
           .select('*')
-          .eq('class_id', classId);
+          .eq('class_id', classId)
+          .order('last_name');
 
         const existingStudentIds = new Set<string>();
         existingStudents.data?.forEach(student => {
@@ -115,7 +116,8 @@ export const useAssessmentImport = () => {
         const { data: allStudents, error: studentsError } = await supabase
           .from('students')
           .select('*')
-          .eq('class_id', classId);
+          .eq('class_id', classId)
+          .order('last_name');
 
         if (studentsError) throw studentsError;
 

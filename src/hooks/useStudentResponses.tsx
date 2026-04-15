@@ -26,12 +26,13 @@ export const useStudentResponses = (taskId?: string) => {
       
       if (error) throw error;
       
-      return data.map((response: any) => ({
+      return (data.map((response: any) => ({
         student_id: response.student_id,
         confidence_rating: response.confidence_rating,
         first_name: response.students?.first_name,
         last_name: response.students?.last_name,
-      })) as StudentResponse[];
+      })) as StudentResponse[])
+        .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
     },
     enabled: !!taskId,
   });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClassroomTheme } from "@/contexts/ClassroomThemeContext";
+import { useCreateClassSession } from "@/hooks/useClassSessions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +24,11 @@ import {
 interface ClassroomActivitiesProps {
   classId: string;
   classCode?: string | null;
-  currentSession?: { id: string; ended_at: string | null } | null;
+  currentSession?: { id: string; ended_at: string | null; started_at?: string | null } | null;
 }
 
 export function ClassroomActivities({ classId, classCode, currentSession }: ClassroomActivitiesProps) {
-  const { data: allExitTickets = [], isLoading } = useExitTicketsByClass(classId);
+  const { data: allExitTickets = [], isLoading: ticketsLoading } = useExitTicketsByClass(classId);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -39,6 +40,10 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
   const [codeWindow, setCodeWindow] = useState<Window | null>(null);
   const [rerunDialogOpen, setRerunDialogOpen] = useState(false);
   const [rerunTicketId, setRerunTicketId] = useState<string | null>(null);
+  const [startLessonDialogOpen, setStartLessonDialogOpen] = useState(false);
+  const [startLessonTicketId, setStartLessonTicketId] = useState<string | null>(null);
+  const createSessionMutation = useCreateClassSession();
+  const hasPromptedRef = useRef(false);
 
   const isLessonActive = !!currentSession && !currentSession.ended_at;
 
@@ -58,9 +63,29 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
   // Handle URL param activation from Activities page
   useEffect(() => {
     const activateTicketId = searchParams.get("activateTicket");
-    if (!activateTicketId) return;
+    if (!activateTicketId) {
+      hasPromptedRef.current = false;
+      return;
+    }
 
-    // Clear the param immediately so it doesn't re-trigger
+    // Wait until tickets have finished loading before searching — prevents
+    // "not found" false positive when the list is still empty on first render.
+    if (ticketsLoading) return;
+
+    // If no lesson is active, prompt the user to start one instead of showing
+    // an error toast.
+    if (!isLessonActive) {
+      if (createSessionMutation.isPending) return;
+      if (hasPromptedRef.current) return;
+
+      hasPromptedRef.current = true;
+      setStartLessonTicketId(activateTicketId);
+      setStartLessonDialogOpen(true);
+      return;
+    }
+
+    // Lesson is active — safe to clear params and proceed
+    hasPromptedRef.current = false;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("activateTicket");
     setSearchParams(nextParams, { replace: true });
@@ -75,23 +100,15 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
       return;
     }
 
-    if (!isLessonActive) {
-      toast({
-        title: "Class not running",
-        description: "A class needs to be running in order to activate an exit ticket. Start a lesson first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // If already linked to current session and active, nothing to do
     if (ticket.class_session_id === currentSession?.id && ticket.status === "active") {
       toast({ title: "Already active", description: "This exit ticket is already active for this lesson." });
       return;
     }
 
-    // If completed or linked to a different session, ask to delete previous submissions
-    if (ticket.is_completed || (ticket.class_session_id && ticket.class_session_id !== currentSession?.id)) {
+    const needsRerun = ticket.is_completed || (ticket.class_session_id && ticket.class_session_id !== currentSession?.id);
+
+    if (needsRerun) {
       setRerunTicketId(ticket.id);
       setRerunDialogOpen(true);
       return;
@@ -100,7 +117,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     // Otherwise, activate directly
     activateTicket(ticket.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, allExitTickets, classId, currentSession, isLessonActive]);
+  }, [searchParams, allExitTickets, ticketsLoading, classId, currentSession, isLessonActive]);
 
   const handleCopyCode = () => {
     if (!studentUrl) return;
@@ -239,17 +256,16 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     }
   };
 
-  const handleRerunConfirm = async () => {
-    if (!rerunTicketId || !currentSession) return;
-    setRerunDialogOpen(false);
-    setTogglingId(rerunTicketId);
+  const doRerunTicket = async (ticketId: string) => {
+    if (!currentSession) return;
+    setTogglingId(ticketId);
 
     try {
       // Delete all question_results for all questions in this task
       const { data: questions } = await supabase
         .from("questions")
         .select("id")
-        .eq("task_id", rerunTicketId);
+        .eq("task_id", ticketId);
 
       if (questions && questions.length > 0) {
         const questionIds = questions.map((q) => q.id);
@@ -263,7 +279,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
       const { error: delResultError } = await supabase
         .from("results")
         .delete()
-        .eq("task_id", rerunTicketId);
+        .eq("task_id", ticketId);
       if (delResultError) throw delResultError;
 
       // Activate
@@ -274,7 +290,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
           class_session_id: currentSession.id,
           is_completed: false,
         })
-        .eq("id", rerunTicketId);
+        .eq("id", ticketId);
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
@@ -290,8 +306,46 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setTogglingId(null);
-      setRerunTicketId(null);
     }
+  };
+
+  const handleRerunConfirm = async () => {
+    if (!rerunTicketId) return;
+    setRerunDialogOpen(false);
+    await doRerunTicket(rerunTicketId);
+    setRerunTicketId(null);
+  };
+
+  const handleConfirmStartLesson = async () => {
+    if (!startLessonTicketId) return;
+    setStartLessonDialogOpen(false);
+    try {
+      await createSessionMutation.mutateAsync({
+        class_id: classId,
+        started_at: new Date().toISOString(),
+      });
+      // useEffect will re-run once currentSession updates and continue the flow
+    } catch {
+      hasPromptedRef.current = false;
+      setStartLessonTicketId(null);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("activateTicket");
+      setSearchParams(nextParams, { replace: true });
+      toast({
+        title: "Error",
+        description: "Failed to start lesson. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelStartLesson = () => {
+    setStartLessonDialogOpen(false);
+    setStartLessonTicketId(null);
+    hasPromptedRef.current = false;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("activateTicket");
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleToggleStatus = async (ticketId: string, currentStatus: string, isCompleted: boolean, ticketSessionId: string | null) => {
@@ -321,9 +375,13 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     // Deactivating an active ticket
     setTogglingId(ticketId);
     try {
+      // Set due_date to the lesson date (session start) so the assessment is dated correctly
+      const sessionDate = currentSession?.started_at
+        ? new Date(currentSession.started_at).toISOString().split('T')[0]
+        : null;
       const { error } = await supabase
         .from("tasks")
-        .update({ status: "closed", is_completed: true })
+        .update({ status: "closed", is_completed: true, ...(sessionDate ? { due_date: sessionDate } : {}) })
         .eq("id", ticketId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
@@ -348,7 +406,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     }
   };
 
-  if (isLoading) {
+  if (ticketsLoading) {
     return (
       <Card className="mt-6">
         <CardHeader>
@@ -513,6 +571,33 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={startLessonDialogOpen} onOpenChange={setStartLessonDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Lesson?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A lesson needs to be running in order to activate this exit ticket. Do you want to start a lesson now?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelStartLesson}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmStartLesson}
+              disabled={createSessionMutation.isPending}
+            >
+              {createSessionMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                "Start Lesson"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={rerunDialogOpen} onOpenChange={setRerunDialogOpen}>
         <AlertDialogContent>

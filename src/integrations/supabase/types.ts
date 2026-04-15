@@ -131,6 +131,7 @@ export type Database = {
           ended_at: string | null
           id: string
           started_at: string | null
+          teacher_notes: string | null
           title: string | null
           updated_at: string | null
         }
@@ -141,6 +142,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           started_at?: string | null
+          teacher_notes?: string | null
           title?: string | null
           updated_at?: string | null
         }
@@ -151,6 +153,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           started_at?: string | null
+          teacher_notes?: string | null
           title?: string | null
           updated_at?: string | null
         }

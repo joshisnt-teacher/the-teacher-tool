@@ -20,7 +20,7 @@ export const StudentGrowthChart: React.FC<StudentGrowthChartProps> = ({ classId 
   const [threshold, setThreshold] = useState(10);
   const [viewMode, setViewMode] = useState<ViewMode>('bar');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [sortMode, setSortMode] = useState<SortMode>('improvement');
+  const [sortMode, setSortMode] = useState<SortMode>('alphabetical');
 
   const { data: growthData = [], isLoading } = useStudentGrowthAnalytics(classId, threshold);
 

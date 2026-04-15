@@ -60,7 +60,7 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
   );
 
   // Bloom's taxonomy analysis
-  const bloomsLevels = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
+  const bloomsLevels = ['Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create'];
   const bloomsData = bloomsLevels.map(level => {
     const questionsWithLevel = questionResults.filter(q => q.blooms_taxonomy === level);
     const count = questionsWithLevel.length;
@@ -194,7 +194,7 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
                   item.level === 'Remember' ? 'bg-blue-500' :
                   item.level === 'Understand' ? 'bg-green-500' :
                   item.level === 'Apply' ? 'bg-yellow-500' :
-                  item.level === 'Analyze' ? 'bg-orange-500' :
+                  item.level === 'Analyse' ? 'bg-orange-500' :
                   item.level === 'Evaluate' ? 'bg-red-500' :
                   'bg-purple-500'
                 }`} />

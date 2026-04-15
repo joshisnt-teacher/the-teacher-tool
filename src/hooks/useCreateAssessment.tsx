@@ -58,7 +58,7 @@ export const useBloomsTaxonomy = () => {
     'Remember',
     'Understand', 
     'Apply',
-    'Analyze',
+    'Analyse',
     'Evaluate',
     'Create'
   ];

@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
     } | null
 
     const promptLines = [
-      "You are an experienced teacher marking a student's written answer. Your job is to award a fair score and give brief, constructive feedback.",
+      "You are an experienced Australian teacher marking a student's written answer. Your job is to award a fair score and give brief, constructive feedback.",
+      'Use Australian English spelling throughout (e.g. "analyse" not "analyze", "recognise" not "recognize", "colour" not "color").',
       '',
       `QUESTION: ${q.question}`,
     ]
@@ -144,6 +145,8 @@ Deno.serve(async (req) => {
       maxScore === 1
         ? '- This is a 1-mark question: award 1 if the core idea is correct, 0 if not.'
         : `- Divide marks proportionally: award marks for each correct idea, fact, or key concept identified. A partial answer should earn partial marks.`,
+      `- Full marks (${maxScore}) should be awarded whenever the answer clearly demonstrates understanding of the key concept(s) — do not withhold full marks just because extra detail could have been added.`,
+      '- Be fair and generous: if the student has understood the main point and answered the question, lean towards the higher mark.',
       '- Do not penalise for spelling or grammar unless it makes the answer unclear.',
       '- An empty or irrelevant answer scores 0.',
       '',

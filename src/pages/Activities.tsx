@@ -20,17 +20,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, Ticket, Trash2, Loader2, Play, RotateCcw, CheckCircle2 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ArrowLeft, Plus, Ticket, Trash2, Loader2, Play, RotateCcw, CheckCircle2, X, Filter } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useClasses } from '@/hooks/useClasses';
 import { useExitTickets } from '@/hooks/useExitTickets';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import CreateExitTicket from './CreateExitTicket';
 
 const Activities = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: currentUser } = useCurrentUser();
+  const { data: classes = [] } = useClasses();
   const {
     data: exitTickets,
     isLoading,
@@ -42,6 +58,14 @@ const Activities = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [selectedClassId, setSelectedClassId] = useState<string>('all');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetTaskId, setSheetTaskId] = useState<string | null>(null);
+
+  const filteredTickets = selectedClassId !== 'all'
+    ? exitTickets?.filter((t) => t.class_id === selectedClassId)
+    : exitTickets;
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -77,9 +101,25 @@ const Activities = () => {
     }
   };
 
-  const handleActivate = (e: React.MouseEvent, ticket: any) => {
+  const handleActivate = (e: React.MouseEvent, ticket: { class_id: string; id: string }) => {
     e.stopPropagation();
     navigate(`/classroom/${ticket.class_id}?activateTicket=${ticket.id}`);
+  };
+
+  const openCreateSheet = () => {
+    setSheetTaskId(null);
+    setSheetOpen(true);
+  };
+
+  const openEditSheet = (taskId: string) => {
+    setSheetTaskId(taskId);
+    setSheetOpen(true);
+  };
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setSheetTaskId(null);
+    refetch();
   };
 
   return (
@@ -98,7 +138,7 @@ const Activities = () => {
               <p className="text-sm text-muted-foreground">Create and manage exit tickets for your classes</p>
             </div>
           </div>
-          <Button onClick={() => navigate('/activities/create/exit-ticket')}>
+          <Button onClick={openCreateSheet}>
             <Plus className="w-4 h-4 mr-2" />
             Create Exit Ticket
           </Button>
@@ -107,7 +147,7 @@ const Activities = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Ticket className="w-5 h-5" />
@@ -115,9 +155,27 @@ const Activities = () => {
               </CardTitle>
               <CardDescription>View and manage exit tickets created for your school</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filter by class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All classes</SelectItem>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.class_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isError && (
@@ -137,9 +195,9 @@ const Activities = () => {
                       <div key={i} className="animate-pulse rounded-lg border p-4 bg-muted/50 h-24" />
                     ))}
                   </div>
-                ) : exitTickets && exitTickets.length > 0 ? (
+                ) : filteredTickets && filteredTickets.length > 0 ? (
                   <div className="space-y-3">
-                    {exitTickets.map((ticket) => {
+                    {filteredTickets.map((ticket) => {
                       const isCompleted = ticket.is_completed;
                       return (
                         <Card
@@ -147,7 +205,7 @@ const Activities = () => {
                           className={`border-border/80 cursor-pointer hover:border-primary hover:shadow-md transition-all ${
                             isCompleted ? 'bg-muted/40 border-muted' : ''
                           }`}
-                          onClick={() => navigate(`/activities/create/exit-ticket?taskId=${ticket.id}`)}
+                          onClick={() => openEditSheet(ticket.id)}
                         >
                           <CardContent className="py-4">
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -214,7 +272,7 @@ const Activities = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => navigate(`/activities/create/exit-ticket?taskId=${ticket.id}`)}
+                                  onClick={() => openEditSheet(ticket.id)}
                                 >
                                   Edit
                                 </Button>
@@ -235,11 +293,13 @@ const Activities = () => {
                 ) : (
                   <div className="text-center py-12">
                     <Ticket className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">No exit tickets yet</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      {selectedClassId !== 'all' ? 'No exit tickets for this class' : 'No exit tickets yet'}
+                    </h3>
                     <p className="text-muted-foreground mb-6">
-                      Create your first exit ticket to get started.
+                      {selectedClassId !== 'all' ? 'Try clearing the filter or create a new exit ticket.' : 'Create your first exit ticket to get started.'}
                     </p>
-                    <Button onClick={() => navigate('/activities/create/exit-ticket')}>
+                    <Button onClick={openCreateSheet}>
                       <Plus className="w-4 h-4 mr-2" />
                       Create Exit Ticket
                     </Button>
@@ -250,6 +310,19 @@ const Activities = () => {
           </CardContent>
         </Card>
       </main>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl p-0 overflow-y-auto">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{sheetTaskId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</SheetTitle>
+          </SheetHeader>
+          <CreateExitTicket
+            embedded
+            taskId={sheetTaskId}
+            onClose={closeSheet}
+          />
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
