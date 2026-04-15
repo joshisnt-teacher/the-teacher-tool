@@ -1,3 +1,35 @@
+# Settings Page Redesign Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Redesign `src/pages/Settings.tsx` into a polished single-column scrollable page with a sticky anchor nav and five sections: Profile, Security, School, AI Settings, and Appearance.
+
+**Architecture:** All changes are confined to `src/pages/Settings.tsx` — a full rewrite of the single file. New state variables handle theme, password reset, and active anchor section. An `IntersectionObserver` drives the active nav pill. Theme is client-side only (localStorage + `document.documentElement` class).
+
+**Tech Stack:** React 18, TypeScript, Tailwind CSS, shadcn/ui, Supabase Auth, TanStack React Query, lucide-react
+
+---
+
+## File Map
+
+| File | Change |
+|------|--------|
+| `src/pages/Settings.tsx` | Full rewrite — new layout, anchor nav, 5 sections |
+
+No new files. No migrations. No new hooks.
+
+---
+
+### Task 1: Page skeleton — imports, state, handlers, sticky anchor nav
+
+**Files:**
+- Modify: `src/pages/Settings.tsx` (replace entire file)
+
+- [ ] **Step 1: Replace the entire file with the new skeleton**
+
+This establishes all imports, state, handlers, the page header, the sticky anchor nav, and five empty section slots. Section card content is filled in Tasks 2–6.
+
+```tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -242,6 +274,73 @@ const Settings = () => {
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
+        {/* PROFILE — filled in Task 2 */}
+        <div id="profile" ref={profileRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+
+        {/* SECURITY — filled in Task 3 */}
+        <div id="security" ref={securityRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+
+        {/* SCHOOL — filled in Task 4 */}
+        <div id="school" ref={schoolRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+
+        {/* AI SETTINGS — filled in Task 5 */}
+        <div id="ai" ref={aiRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+
+        {/* APPEARANCE — filled in Task 6 */}
+        <div id="appearance" ref={appearanceRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+
+      </main>
+    </div>
+  );
+};
+
+export default Settings;
+```
+
+- [ ] **Step 2: Run dev server and verify the page loads**
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:8080` → navigate to Settings. Expected: page renders with header, sticky nav pills visible, no errors in console. All nav pills are present but sections are empty.
+
+- [ ] **Step 3: Commit skeleton**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "refactor: settings page skeleton — sticky nav, new state, handlers"
+```
+
+---
+
+### Task 2: Profile section card
+
+**Files:**
+- Modify: `src/pages/Settings.tsx`
+
+- [ ] **Step 1: Replace the Profile placeholder div content**
+
+Find this block in `Settings.tsx`:
+```tsx
+        {/* PROFILE — filled in Task 2 */}
+        <div id="profile" ref={profileRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+```
+
+Replace with:
+```tsx
         {/* PROFILE */}
         <div id="profile" ref={profileRef} className="scroll-mt-16">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -300,7 +399,38 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
+```
 
+- [ ] **Step 2: Verify in browser**
+
+Navigate to Settings. Expected: Profile card visible with avatar circle (initials), name/email summary row, editable name field, disabled email/role fields, Save Changes button (disabled until name is changed).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "feat: settings profile section with avatar initials"
+```
+
+---
+
+### Task 3: Security section card
+
+**Files:**
+- Modify: `src/pages/Settings.tsx`
+
+- [ ] **Step 1: Replace the Security placeholder div content**
+
+Find:
+```tsx
+        {/* SECURITY — filled in Task 3 */}
+        <div id="security" ref={securityRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+```
+
+Replace with:
+```tsx
         {/* SECURITY */}
         <div id="security" ref={securityRef} className="scroll-mt-16">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -331,7 +461,38 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
+```
 
+- [ ] **Step 2: Verify in browser**
+
+Navigate to Settings → scroll to or click Security pill. Expected: card visible, email shown in helper text, button present. Click button — expected: button changes to "Sending..." then success message appears. Check email for reset link.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "feat: settings security section with password reset email"
+```
+
+---
+
+### Task 4: School section card
+
+**Files:**
+- Modify: `src/pages/Settings.tsx`
+
+- [ ] **Step 1: Replace the School placeholder div content**
+
+Find:
+```tsx
+        {/* SCHOOL — filled in Task 4 */}
+        <div id="school" ref={schoolRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+```
+
+Replace with:
+```tsx
         {/* SCHOOL */}
         <div id="school" ref={schoolRef} className="scroll-mt-16">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -478,7 +639,38 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
+```
 
+- [ ] **Step 2: Verify in browser**
+
+Navigate to Settings → scroll to School. Expected: if user has a school, shows school name + logo placeholder + upload button (admin only). Logic is identical to the previous implementation — just restyled.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "feat: settings school section restyled to match new layout"
+```
+
+---
+
+### Task 5: AI Settings section card
+
+**Files:**
+- Modify: `src/pages/Settings.tsx`
+
+- [ ] **Step 1: Replace the AI Settings placeholder div content**
+
+Find:
+```tsx
+        {/* AI SETTINGS — filled in Task 5 */}
+        <div id="ai" ref={aiRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+```
+
+Replace with:
+```tsx
         {/* AI SETTINGS */}
         <div id="ai" ref={aiRef} className="scroll-mt-16">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -545,7 +737,38 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
+```
 
+- [ ] **Step 2: Verify in browser**
+
+Navigate to Settings → scroll to AI Settings. Expected: key status shown, input field with show/hide toggle, save/remove buttons functional. Behaviour identical to previous implementation.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "feat: settings AI section restyled to match new layout"
+```
+
+---
+
+### Task 6: Appearance section card
+
+**Files:**
+- Modify: `src/pages/Settings.tsx`
+
+- [ ] **Step 1: Replace the Appearance placeholder div content**
+
+Find:
+```tsx
+        {/* APPEARANCE — filled in Task 6 */}
+        <div id="appearance" ref={appearanceRef} className="scroll-mt-16">
+          {/* placeholder */}
+        </div>
+```
+
+Replace with:
+```tsx
         {/* APPEARANCE */}
         <div id="appearance" ref={appearanceRef} className="scroll-mt-16">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -586,10 +809,26 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
+```
 
-      </main>
-    </div>
-  );
-};
+- [ ] **Step 2: Verify theme switching in browser**
 
-export default Settings;
+Navigate to Settings → scroll to Appearance. Expected:
+- Three buttons: Light, Dark, System. Active button is highlighted with primary colour.
+- Clicking Light: page switches to light mode immediately.
+- Clicking Dark: page switches to dark mode immediately.
+- Clicking System: follows OS preference.
+- Refresh the page — the selected theme should persist (loaded from `localStorage`).
+
+- [ ] **Step 3: Final commit**
+
+```bash
+git add src/pages/Settings.tsx
+git commit -m "feat: settings appearance section with light/dark/system theme toggle"
+```
+
+---
+
+## Done
+
+All five sections are now implemented. The Settings page is a polished single-column scrollable page with a sticky anchor nav, avatar initials, email-based password reset, restyled school and AI sections, and a persistent theme toggle.
