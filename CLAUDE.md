@@ -94,7 +94,7 @@ All server state goes through TanStack React Query via custom hooks in `src/hook
 - **Classroom Activities panel** (`src/components/classroom/ClassroomActivities.tsx`) — completely rewritten to integrate exit tickets into the live lesson view:
   - Class code bar with copy-link button and "Display" popup (opens a full-screen window showing the class code and join URL, matching the timer/name-picker popup pattern)
   - Per-ticket Activate/Deactivate toggle with loading state
-  - Edit button navigating to `/activities/create/exit-ticket?taskId=...`
+  - Edit button navigating to `/exit-tickets/create?taskId=...`
 - **Student landing page** (`src/pages/StudentLanding.tsx`) — new public page at `/join`. Large monospace class code input, auto-uppercases, navigates to `/:classCode` on submit.
 - **TakeExitTicket question rendering** (`src/pages/TakeExitTicket.tsx`) — fixed question type normalisation. Now handles legacy `"MCQ"` (uppercase) alongside `"multiple_choice"`. Multiple choice only renders radio buttons when options exist; falls back to text input otherwise.
 - **App routing** (`src/App.tsx`) — added `/join` route and `isStudentPage` check so StudentLanding renders without the sidebar.

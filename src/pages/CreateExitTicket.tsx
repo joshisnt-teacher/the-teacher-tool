@@ -333,7 +333,7 @@ const CreateExitTicket = ({ embedded, onClose, taskId: taskIdProp }: CreateExitT
       if (onClose) {
         onClose();
       } else {
-        navigate('/activities');
+        navigate('/exit-tickets');
       }
     } catch (e: unknown) {
       console.error(e);
@@ -349,7 +349,7 @@ const CreateExitTicket = ({ embedded, onClose, taskId: taskIdProp }: CreateExitT
       if (onClose) {
         onClose();
       } else {
-        navigate('/activities');
+        navigate('/exit-tickets');
       }
       return;
     }
@@ -361,7 +361,7 @@ const CreateExitTicket = ({ embedded, onClose, taskId: taskIdProp }: CreateExitT
       if (onClose) {
         onClose();
       } else {
-        navigate('/activities');
+        navigate('/exit-tickets');
       }
     } catch (e: unknown) {
       toast({ title: 'Failed to delete', description: e instanceof Error ? e.message : (e as { message?: string })?.message || 'Unknown error', variant: 'destructive' });
@@ -979,7 +979,7 @@ const CreateExitTicket = ({ embedded, onClose, taskId: taskIdProp }: CreateExitT
       <header className="bg-card border-b border-border/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/activities')} disabled={isBusy}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/exit-tickets')} disabled={isBusy}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Exit Tickets
             </Button>

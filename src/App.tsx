@@ -21,8 +21,9 @@ import StudentReport from "./pages/StudentReport";
 import CurriculumBrowser from "./pages/CurriculumBrowser";
 import Classroom from "./pages/Classroom";
 import SessionDetails from "./pages/SessionDetails";
-import Activities from "./pages/Activities";
+import ExitTickets from "./pages/ExitTickets";
 import CreateExitTicket from "./pages/CreateExitTicket";
+import Resources from "./pages/Resources";
 import ClassJoin from "./pages/ClassJoin";
 import TakeExitTicket from "./pages/TakeExitTicket";
 import StudentLanding from "./pages/StudentLanding";
@@ -156,18 +157,26 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/activities" 
+                path="/exit-tickets" 
                 element={
                   <ProtectedRoute>
-                    <Activities />
+                    <ExitTickets />
                   </ProtectedRoute>
                 } 
               />
               <Route 
-                path="/activities/create/exit-ticket" 
+                path="/exit-tickets/create" 
                 element={
                   <ProtectedRoute>
                     <CreateExitTicket />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/resources" 
+                element={
+                  <ProtectedRoute>
+                    <Resources />
                   </ProtectedRoute>
                 } 
               />

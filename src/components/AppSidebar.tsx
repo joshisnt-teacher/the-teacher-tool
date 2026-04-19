@@ -10,7 +10,8 @@ import {
   ChevronRight,
   User,
   Monitor,
-  Ticket
+  Ticket,
+  Library
 } from "lucide-react";
 
 import {
@@ -36,7 +37,8 @@ const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Curriculum", url: "/curriculum-browser", icon: BookOpen },
   { title: "Classroom", url: "/classroom", icon: Monitor },
-  { title: "Exit Tickets", url: "/activities", icon: Ticket },
+  { title: "Exit Tickets", url: "/exit-tickets", icon: Ticket },
+  { title: "Resources", url: "/resources", icon: Library },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

@@ -295,7 +295,7 @@ const Dashboard = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Link to="/activities/create/exit-ticket">
+                <Link to="/exit-tickets/create">
                   <Button className="w-full justify-start h-11" variant="outline">
                     <Ticket className="w-4 h-4 mr-3" />
                     Create Exit Ticket

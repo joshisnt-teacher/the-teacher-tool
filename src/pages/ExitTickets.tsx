@@ -42,7 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import CreateExitTicket from './CreateExitTicket';
 
-const Activities = () => {
+const ExitTickets = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: currentUser } = useCurrentUser();
@@ -353,4 +353,4 @@ const Activities = () => {
   );
 };
 
-export default Activities;
+export default ExitTickets;
