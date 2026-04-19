@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw } from "lucide-react";
+import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library } from "lucide-react";
+import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -29,6 +30,7 @@ interface ClassroomActivitiesProps {
 
 export function ClassroomActivities({ classId, classCode, currentSession }: ClassroomActivitiesProps) {
   const { data: allExitTickets = [], isLoading: ticketsLoading } = useExitTicketsByClass(classId);
+  const { data: classResources = [] } = useClassResources(classId);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -439,7 +441,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/activities")}
+              onClick={() => navigate("/exit-tickets")}
             >
               Manage All
             </Button>
@@ -488,7 +490,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
               </p>
               <Button
                 size="sm"
-                onClick={() => navigate("/activities/create/exit-ticket")}
+                onClick={() => navigate("/exit-tickets/create")}
               >
                 Create Exit Ticket
               </Button>
@@ -534,7 +536,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                         size="sm"
                         className="h-8 px-3 text-xs gap-1"
                         onClick={() =>
-                          navigate(`/activities/create/exit-ticket?taskId=${ticket.id}`)
+                          navigate(`/exit-tickets/create?taskId=${ticket.id}`)
                         }
                       >
                         <Pencil className="w-3 h-3" />
@@ -626,6 +628,55 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assigned Resources */}
+      {classResources.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Library className="w-5 h-5" />
+                  Resources
+                </CardTitle>
+                <CardDescription>
+                  {classResources.length} resource{classResources.length === 1 ? "" : "s"} assigned to this class
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate("/resources")}>
+                Manage All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {classResources.map((cr) => (
+                <div key={cr.id} className="p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-semibold truncate">{cr.resource.title}</h3>
+                        <Badge variant="secondary" className="text-xs">{cr.resource.category}</Badge>
+                      </div>
+                      {cr.resource.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-1">{cr.resource.description}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => window.open(cr.resource.url, "_blank", "noopener,noreferrer")}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                      Launch
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }
