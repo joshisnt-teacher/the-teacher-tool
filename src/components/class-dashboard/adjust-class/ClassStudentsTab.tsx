@@ -26,7 +26,7 @@ interface ClassStudentsTabProps {
   classData: Class;
 }
 
-const parseStudentsCSV = (csvText: string, classId: string) => {
+const parseStudentsCSV = (csvText: string) => {
   const lines = csvText.trim().split('\n');
   const students = [];
 
@@ -50,7 +50,6 @@ const parseStudentsCSV = (csvText: string, classId: string) => {
       student_id: student_id.trim(),
       first_name: first_name.trim(),
       last_name: last_name.trim(),
-      class_id: classId,
     });
   }
 
@@ -99,14 +98,38 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
 
     setIsAddingStudent(true);
     try {
-      const { error } = await supabase.from('students').insert([{
-        first_name: newStudent.first_name,
-        last_name: newStudent.last_name,
-        student_id: newStudent.student_id,
-        class_id: classData.id,
-      }]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const { data: existing } = await supabase
+        .from('students')
+        .select('id')
+        .eq('teacher_id', user.id)
+        .eq('student_id', newStudent.student_id)
+        .maybeSingle();
+
+      let studentUuid: string;
+      if (existing) {
+        studentUuid = existing.id;
+      } else {
+        const { data: created, error: createError } = await supabase
+          .from('students')
+          .insert({
+            first_name: newStudent.first_name,
+            last_name: newStudent.last_name,
+            student_id: newStudent.student_id,
+            teacher_id: user.id,
+          })
+          .select('id')
+          .single();
+        if (createError) throw createError;
+        studentUuid = created.id;
+      }
+
+      const { error: enrolError } = await supabase
+        .from('enrolments')
+        .upsert({ class_id: classData.id, student_id: studentUuid }, { ignoreDuplicates: true });
+      if (enrolError) throw enrolError;
 
       await queryClient.invalidateQueries({ queryKey: ['students', classData.id] });
       setNewStudent({ first_name: '', last_name: '', student_id: '' });
@@ -118,14 +141,27 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
     }
   };
 
-  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+  const handleRemoveFromClass = async (studentId: string, studentName: string) => {
     setDeletingStudentId(studentId);
     try {
-      const { error } = await supabase.from('students').delete().eq('id', studentId);
-      if (error) throw error;
+      const { error: enrolError } = await supabase
+        .from('enrolments')
+        .delete()
+        .eq('class_id', classData.id)
+        .eq('student_id', studentId);
+      if (enrolError) throw enrolError;
+
+      const { data: remainingEnrolments } = await supabase
+        .from('enrolments')
+        .select('class_id')
+        .eq('student_id', studentId);
+
+      if (!remainingEnrolments || remainingEnrolments.length === 0) {
+        await supabase.from('students').delete().eq('id', studentId);
+      }
 
       await queryClient.invalidateQueries({ queryKey: ['students', classData.id] });
-      toast({ title: 'Student Removed', description: `${studentName} has been removed from the class.` });
+      toast({ title: 'Student Removed', description: `${studentName} has been removed from this class.` });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to remove student.', variant: 'destructive' });
     } finally {
@@ -152,20 +188,52 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
 
     setIsUploadingCSV(true);
     try {
-      const csvText = await csvFile.text();
-      const students = parseStudentsCSV(csvText, classData.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      if (students.length === 0) {
+      const csvText = await csvFile.text();
+      const parsedStudents = parseStudentsCSV(csvText);
+
+      if (parsedStudents.length === 0) {
         toast({ title: 'No Students Found', description: 'The CSV file appears to be empty or contains no valid student data.', variant: 'destructive' });
         return;
       }
 
-      const { error } = await supabase.from('students').insert(students);
-      if (error) throw error;
+      const incomingIds = parsedStudents.map(s => s.student_id);
+
+      const { data: existing, error: fetchError } = await supabase
+        .from('students')
+        .select('id, student_id')
+        .eq('teacher_id', user.id)
+        .in('student_id', incomingIds);
+      if (fetchError) throw fetchError;
+
+      const existingMap = new Map<string, string>(existing?.map(s => [s.student_id, s.id]) ?? []);
+
+      const toCreate = parsedStudents.filter(s => !existingMap.has(s.student_id));
+      if (toCreate.length > 0) {
+        const { data: created, error: createError } = await supabase
+          .from('students')
+          .insert(toCreate.map(s => ({ ...s, teacher_id: user.id })))
+          .select('id, student_id');
+        if (createError) throw createError;
+        created?.forEach(s => existingMap.set(s.student_id, s.id));
+      }
+
+      const { error: enrolError } = await supabase
+        .from('enrolments')
+        .upsert(
+          [...existingMap.values()].map(id => ({ class_id: classData.id, student_id: id })),
+          { ignoreDuplicates: true }
+        );
+      if (enrolError) throw enrolError;
 
       await queryClient.invalidateQueries({ queryKey: ['students', classData.id] });
       setCsvFile(null);
-      toast({ title: 'Students Added Successfully', description: `${students.length} student${students.length !== 1 ? 's' : ''} have been added to the class.` });
+      toast({
+        title: 'Students Processed',
+        description: `${parsedStudents.length} student${parsedStudents.length !== 1 ? 's' : ''} added or confirmed in this class.`,
+      });
     } catch (error: any) {
       toast({ title: 'CSV Upload Error', description: error.message || 'Failed to process CSV file.', variant: 'destructive' });
     } finally {
@@ -321,13 +389,13 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                           <AlertDialogTitle>Remove Student</AlertDialogTitle>
                           <AlertDialogDescription>
                             Are you sure you want to remove {student.first_name} {student.last_name} from this class?
-                            This action cannot be undone and will remove all their assessment data and progress records.
+                            This only removes them from this class — their record and any other class enrolments will not be affected.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDeleteStudent(student.id, `${student.first_name} ${student.last_name}`)}
+                            onClick={() => handleRemoveFromClass(student.id, `${student.first_name} ${student.last_name}`)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Remove Student
