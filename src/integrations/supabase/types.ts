@@ -123,6 +123,58 @@ export type Database = {
           },
         ]
       }
+      class_resources: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          id: string
+          resource_id: string
+          status: string
+          teacher_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          id?: string
+          resource_id: string
+          status?: string
+          teacher_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          id?: string
+          resource_id?: string
+          status?: string
+          teacher_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_resources_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_resources_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_resources_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           class_id: string
@@ -444,7 +496,22 @@ export type Database = {
           student_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "enrolments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_options: {
         Row: {
@@ -591,6 +658,66 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          access_notes: string | null
+          category: string
+          created_at: string | null
+          description: string | null
+          how_to_use: string | null
+          id: string
+          school_id: string
+          tags: string[] | null
+          teacher_id: string
+          title: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          access_notes?: string | null
+          category: string
+          created_at?: string | null
+          description?: string | null
+          how_to_use?: string | null
+          id?: string
+          school_id: string
+          tags?: string[] | null
+          teacher_id: string
+          title: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          access_notes?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          how_to_use?: string | null
+          id?: string
+          school_id?: string
+          tags?: string[] | null
+          teacher_id?: string
+          title?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -883,47 +1010,39 @@ export type Database = {
       }
       students: {
         Row: {
-          class_id: string
           created_at: string
           email: string | null
           first_name: string
           id: string
           last_name: string
           student_id: string
+          teacher_id: string
           updated_at: string
           year_level: string | null
         }
         Insert: {
-          class_id: string
           created_at?: string
           email?: string | null
           first_name: string
           id?: string
           last_name: string
           student_id: string
+          teacher_id: string
           updated_at?: string
           year_level?: string | null
         }
         Update: {
-          class_id?: string
           created_at?: string
           email?: string | null
           first_name?: string
           id?: string
           last_name?: string
           student_id?: string
+          teacher_id?: string
           updated_at?: string
           year_level?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "students_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tag: {
         Row: {
@@ -1022,6 +1141,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_class_session_id_fkey"
+            columns: ["class_session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_content_item_id_fkey"
             columns: ["content_item_id"]
             isOneToOne: false
@@ -1076,7 +1202,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_openai_vault_secret: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      get_decrypted_openai_key: {
+        Args: { p_vault_id: string }
+        Returns: string
+      }
+      upsert_openai_vault_secret: {
+        Args: { p_secret: string; p_user_id: string }
+        Returns: string
+      }
     }
     Enums: {
       activity_type:
@@ -1226,3 +1363,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.90.0 (currently installed v2.45.5)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
