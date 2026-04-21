@@ -122,7 +122,7 @@ A "search and enrol existing student" UI (finding a student by name/ID across cl
 - `src/hooks/useAssessmentImport.tsx` — find-or-create-enrol pattern replaces current insert
 
 ### Components
-- `src/components/class-dashboard/adjust-class/ClassStudentsTab.tsx` — manual add and CSV insert use new find-or-create-enrol pattern; "delete student from class" becomes "remove enrolment" (student row itself only deleted if no other enrolments exist)
+- `src/components/class-dashboard/adjust-class/ClassStudentsTab.tsx` — manual add and CSV insert use new find-or-create-enrol pattern; delete button becomes "Remove from Class" (deletes the enrolment row; student row itself only deleted if no other enrolments exist)
 
 ### Types
 - `src/integrations/supabase/types.ts` — regenerate after migration to reflect schema changes
