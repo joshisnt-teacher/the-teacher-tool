@@ -77,49 +77,66 @@ export const useAssessmentImport = () => {
           questions = insertedQuestions;
         }
 
-        // Step 3: Get or create students
-        const existingStudents = await supabase
+        // Step 3: Get or create students, then ensure they are enrolled in this class
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) throw new Error('Not authenticated');
+        const teacherId = currentUser.id;
+
+        const incomingStudentIds = assessmentData.students
+          .filter(s => s.studentId)
+          .map(s => s.studentId);
+
+        const { data: existingStudents, error: fetchExistingError } = await supabase
           .from('students')
           .select('*')
-          .eq('class_id', classId)
-          .order('last_name');
+          .eq('teacher_id', teacherId)
+          .in('student_id', incomingStudentIds.length > 0 ? incomingStudentIds : ['__none__']);
+        if (fetchExistingError) throw fetchExistingError;
 
-        const existingStudentIds = new Set<string>();
-        existingStudents.data?.forEach(student => {
-          if (student.student_id) {
-            existingStudentIds.add(student.student_id);
+        const existingStudentMap = new Map<string, (typeof existingStudents)[0]>(
+          existingStudents?.map(s => [s.student_id, s]) ?? []
+        );
+
+        let newStudentsCount = 0;
+        if (assessmentData.sourceFormat === 'standard') {
+          const studentsToCreate = assessmentData.students
+            .filter(s => s.studentId && !existingStudentMap.has(s.studentId))
+            .map(s => ({
+              student_id: s.studentId,
+              first_name: s.firstName,
+              last_name: s.lastName,
+              teacher_id: teacherId,
+            }));
+
+          if (studentsToCreate.length > 0) {
+            const { data: newStudents, error: createStudentsError } = await supabase
+              .from('students')
+              .insert(studentsToCreate)
+              .select('*');
+            if (createStudentsError) throw createStudentsError;
+            newStudents?.forEach(s => existingStudentMap.set(s.student_id, s));
+            newStudentsCount = newStudents?.length ?? 0;
           }
-        });
-
-        // Create missing students (only for standard imports where an ID is provided)
-        const studentsToCreate =
-          assessmentData.sourceFormat === 'standard'
-            ? assessmentData.students
-                .filter(s => s.studentId && !existingStudentIds.has(s.studentId))
-                .map(s => ({
-                  student_id: s.studentId,
-                  first_name: s.firstName,
-                  last_name: s.lastName,
-                  class_id: classId,
-                }))
-            : [];
-
-        if (studentsToCreate.length > 0) {
-          const { error: createStudentsError } = await supabase
-            .from('students')
-            .insert(studentsToCreate);
-
-          if (createStudentsError) throw createStudentsError;
         }
 
-        // Get all students for the class (including newly created ones)
-        const { data: allStudents, error: studentsError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('class_id', classId)
-          .order('last_name');
+        const studentUuids = [...existingStudentMap.values()].map(s => s.id);
+        if (studentUuids.length > 0) {
+          const { error: enrolError } = await supabase
+            .from('enrolments')
+            .upsert(
+              studentUuids.map(id => ({ class_id: classId, student_id: id })),
+              { ignoreDuplicates: true }
+            );
+          if (enrolError) throw enrolError;
+        }
 
+        const { data: allStudentsRaw, error: studentsError } = await supabase
+          .from('students')
+          .select('id, student_id, first_name, last_name, email, year_level, teacher_id, created_at, updated_at, enrolments!inner(class_id)')
+          .eq('enrolments.class_id', classId)
+          .order('last_name');
         if (studentsError) throw studentsError;
+        const allStudents = allStudentsRaw?.map(({ enrolments: _, ...s }) => s) ?? [];
 
         const studentIdMap = new Map<string, string>();
         const normalizedNameMap = new Map<string, string>();
@@ -261,7 +278,7 @@ export const useAssessmentImport = () => {
           task,
           questionsCount: questions?.length || 0,
           studentsCount: assessmentData.students.length,
-          newStudentsCount: studentsToCreate.length,
+          newStudentsCount,
           unmatchedNames,
         };
 
