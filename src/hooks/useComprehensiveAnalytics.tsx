@@ -41,11 +41,12 @@ export const useClassKPIs = (classId: string, assessmentRange?: { start: string;
     queryKey: ['class-kpis', classId, assessmentRange],
     queryFn: async () => {
       // Get all students in the class
-      const { data: students, error: studentsError } = await supabase
+      const { data: studentsRaw, error: studentsError } = await supabase
         .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId)
+        .select('id, first_name, last_name, enrolments!inner(class_id)')
+        .eq('enrolments.class_id', classId)
         .order('last_name');
+      const students = studentsRaw?.map(({ enrolments: _, ...s }) => s);
 
       if (studentsError) throw studentsError;
 
@@ -237,11 +238,12 @@ export const useInterventionFlags = (classId: string, threshold: number = 20) =>
       const flags: InterventionFlag[] = [];
 
       // Get students and their recent performance
-      const { data: students, error: studentsError } = await supabase
+      const { data: studentsRaw, error: studentsError } = await supabase
         .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId)
+        .select('id, first_name, last_name, enrolments!inner(class_id)')
+        .eq('enrolments.class_id', classId)
         .order('last_name');
+      const students = studentsRaw?.map(({ enrolments: _, ...s }) => s);
 
       if (studentsError) throw studentsError;
 
@@ -342,11 +344,12 @@ export const useStudentGrowthAnalytics = (classId: string) => {
     queryKey: ['student-growth-analytics', classId],
     queryFn: async () => {
       // Get all students in the class
-      const { data: students, error: studentsError } = await supabase
+      const { data: studentsRaw, error: studentsError } = await supabase
         .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId)
+        .select('id, first_name, last_name, enrolments!inner(class_id)')
+        .eq('enrolments.class_id', classId)
         .order('last_name');
+      const students = studentsRaw?.map(({ enrolments: _, ...s }) => s);
 
       if (studentsError) throw studentsError;
 

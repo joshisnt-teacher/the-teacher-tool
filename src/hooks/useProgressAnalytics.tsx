@@ -27,11 +27,12 @@ export const useStudentProgressAnalytics = (classId: string) => {
     queryKey: ['student-progress-analytics', classId],
     queryFn: async () => {
       // Get all students in this class
-      const { data: students, error: studentsError } = await supabase
+      const { data: studentsRaw, error: studentsError } = await supabase
         .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId)
+        .select('id, first_name, last_name, enrolments!inner(class_id)')
+        .eq('enrolments.class_id', classId)
         .order('last_name');
+      const students = studentsRaw?.map(({ enrolments: _, ...s }) => s);
 
       if (studentsError) throw studentsError;
 
@@ -156,11 +157,12 @@ export const useContentItemPerformance = (classId: string) => {
     queryKey: ['content-item-performance', classId],
     queryFn: async () => {
       // Get students in this class
-      const { data: students, error: studentsError } = await supabase
+      const { data: studentsRaw, error: studentsError } = await supabase
         .from('students')
-        .select('id, first_name, last_name')
-        .eq('class_id', classId)
+        .select('id, first_name, last_name, enrolments!inner(class_id)')
+        .eq('enrolments.class_id', classId)
         .order('last_name');
+      const students = studentsRaw?.map(({ enrolments: _, ...s }) => s);
 
       if (studentsError) throw studentsError;
 

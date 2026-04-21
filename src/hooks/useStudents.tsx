@@ -8,7 +8,7 @@ export interface Student {
   last_name: string;
   email?: string;
   year_level?: string;
-  class_id: string;
+  teacher_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -17,14 +17,19 @@ export const useStudents = (classId?: string) => {
   return useQuery({
     queryKey: classId ? ['students', classId] : ['students'],
     queryFn: async () => {
-      let query = supabase.from('students').select('*');
-      
       if (classId) {
-        query = query.eq('class_id', classId);
+        const { data, error } = await supabase
+          .from('students')
+          .select('id, student_id, first_name, last_name, email, year_level, teacher_id, created_at, updated_at, enrolments!inner(class_id)')
+          .eq('enrolments.class_id', classId)
+          .order('last_name');
+        if (error) throw error;
+        return data?.map(({ enrolments: _enrolments, ...student }) => student) as Student[];
       }
-      
-      const { data, error } = await query.order('last_name');
-      
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, student_id, first_name, last_name, email, year_level, teacher_id, created_at, updated_at')
+        .order('last_name');
       if (error) throw error;
       return data as Student[];
     },
@@ -37,18 +42,13 @@ export const useStudentCounts = () => {
     queryKey: ['student-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('students')
-        .select('class_id, id')
-        .order('class_id');
-      
+        .from('enrolments')
+        .select('class_id, student_id');
       if (error) throw error;
-      
-      // Group by class_id and count
       const counts: Record<string, number> = {};
-      data.forEach(student => {
-        counts[student.class_id] = (counts[student.class_id] || 0) + 1;
+      data?.forEach(enrolment => {
+        counts[enrolment.class_id] = (counts[enrolment.class_id] || 0) + 1;
       });
-      
       return counts;
     },
     enabled: true,
@@ -59,14 +59,13 @@ export const useTotalStudentCount = () => {
   return useQuery({
     queryKey: ['total-student-count'],
     queryFn: async () => {
-      // Join to classes so we can exclude demo classes
       const { data, error } = await supabase
-        .from('students')
-        .select('id, classes!inner(is_demo)')
+        .from('enrolments')
+        .select('student_id, classes!inner(is_demo)')
         .eq('classes.is_demo', false);
-
       if (error) throw error;
-      return data?.length ?? 0;
+      const uniqueStudents = new Set(data?.map(e => e.student_id));
+      return uniqueStudents.size;
     },
     enabled: true,
   });
