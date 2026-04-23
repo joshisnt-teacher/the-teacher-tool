@@ -270,6 +270,23 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   const allFilteredSelected =
     filteredCandidates.length > 0 && filteredCandidates.every(s => selectedIds.has(s.id));
 
+  const toggleStudent = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCandidates.map(s => s.id)));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Add Student Form */}
@@ -373,7 +390,100 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
             </TabsContent>
 
             <TabsContent value="existing">
-              {/* Empty placeholder — Task 2 will fill this in */}
+              {otherClasses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">You don't have any other classes to enroll students from yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Filters row */}
+                  <div className="flex gap-3">
+                    <Select value={selectedSourceClassId} onValueChange={setSelectedSourceClassId}>
+                      <SelectTrigger className="w-52">
+                        <SelectValue placeholder="All classes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All classes</SelectItem>
+                        {otherClasses.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.class_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        placeholder="Search by name..."
+                        value={nameSearch}
+                        onChange={e => setNameSearch(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Candidate list */}
+                  {filteredCandidates.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">All your students are already enrolled in this class.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Select-all row */}
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <Checkbox
+                          id="select-all-existing"
+                          checked={allFilteredSelected}
+                          onCheckedChange={toggleAll}
+                        />
+                        <label
+                          htmlFor="select-all-existing"
+                          className="text-sm text-muted-foreground cursor-pointer select-none"
+                        >
+                          {allFilteredSelected
+                            ? 'Deselect all'
+                            : `Select all (${filteredCandidates.length})`}
+                        </label>
+                      </div>
+
+                      {/* Scrollable student list */}
+                      <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                        {filteredCandidates.map(student => (
+                          <div
+                            key={student.id}
+                            className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 cursor-pointer transition-colors"
+                            onClick={() => toggleStudent(student.id)}
+                          >
+                            <Checkbox
+                              checked={selectedIds.has(student.id)}
+                              onCheckedChange={() => toggleStudent(student.id)}
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm leading-tight">
+                                {student.first_name} {student.last_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">ID: {student.student_id}</p>
+                            </div>
+                            {selectedSourceClassId && (
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {otherClasses.find(c => c.id === selectedSourceClassId)?.class_name}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Enroll button — disabled placeholder, Task 3 will wire this up */}
+                      <div className="flex justify-end pt-2">
+                        <Button disabled={selectedIds.size === 0}>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          {selectedIds.size > 0 ? `Enroll ${selectedIds.size} Selected` : 'Enroll Selected'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
