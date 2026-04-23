@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, Trash2, Upload, FileText } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Users, UserPlus, Trash2, Upload, FileText, Search } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStudents } from '@/hooks/useStudents';
-import { Class } from '@/hooks/useClasses';
+import { useClasses, Class } from '@/hooks/useClasses';
 
 interface ClassStudentsTabProps {
   classData: Class;
@@ -79,12 +82,21 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: students = [], isLoading: studentsLoading } = useStudents(classData.id);
+  const { data: classes = [] } = useClasses();
+  const { data: allStudents = [] } = useStudents();
+  const { data: classFilteredStudents = [] } = useStudents(selectedSourceClassId || undefined);
 
   const [newStudent, setNewStudent] = useState({ first_name: '', last_name: '', student_id: '' });
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+
+  const [activeAddTab, setActiveAddTab] = useState<'new' | 'existing'>('new');
+  const [selectedSourceClassId, setSelectedSourceClassId] = useState<string>('');
+  const [nameSearch, setNameSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   const handleAddStudent = async () => {
     if (!newStudent.first_name || !newStudent.last_name || !newStudent.student_id) {
@@ -241,6 +253,19 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
     }
   };
 
+  const enrolledIdSet = new Set(students.map(s => s.id));
+  const otherClasses = classes.filter(c => c.id !== classData.id);
+  const candidatePool = selectedSourceClassId ? classFilteredStudents : allStudents;
+  const filteredCandidates = candidatePool
+    .filter(s => !enrolledIdSet.has(s.id))
+    .filter(s => {
+      if (!nameSearch.trim()) return true;
+      const full = `${s.first_name} ${s.last_name}`.toLowerCase();
+      return full.includes(nameSearch.toLowerCase());
+    });
+  const allFilteredSelected =
+    filteredCandidates.length > 0 && filteredCandidates.every(s => selectedIds.has(s.id));
+
   return (
     <div className="space-y-6">
       {/* Add Student Form */}
@@ -248,92 +273,105 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5" />
-            Add New Student
+            Add Student
           </CardTitle>
           <CardDescription>
-            Add a student to this class by entering their details below
+            Add a new student or enroll an existing student from another class
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="student_first_name">First Name</Label>
-              <Input
-                id="student_first_name"
-                value={newStudent.first_name}
-                onChange={(e) => setNewStudent(prev => ({ ...prev, first_name: e.target.value }))}
-                placeholder="e.g., John"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="student_last_name">Last Name</Label>
-              <Input
-                id="student_last_name"
-                value={newStudent.last_name}
-                onChange={(e) => setNewStudent(prev => ({ ...prev, last_name: e.target.value }))}
-                placeholder="e.g., Smith"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="student_id">Student ID</Label>
-              <Input
-                id="student_id"
-                value={newStudent.student_id}
-                onChange={(e) => setNewStudent(prev => ({ ...prev, student_id: e.target.value }))}
-                placeholder="e.g., 12345"
-              />
-            </div>
-          </div>
+          <Tabs value={activeAddTab} onValueChange={(v) => setActiveAddTab(v as 'new' | 'existing')}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="new">New Student</TabsTrigger>
+              <TabsTrigger value="existing">Existing Student</TabsTrigger>
+            </TabsList>
 
-          <div className="flex justify-between items-end mt-4">
-            <div className="flex-1 max-w-md">
-              <Label htmlFor="csv-upload" className="text-sm font-medium mb-2 block">
-                Or upload CSV file
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="csv-upload"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="text-sm"
-                />
-                {csvFile && (
-                  <Button
-                    onClick={handleCSVUpload}
-                    disabled={isUploadingCSV}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isUploadingCSV ? 'Uploading...' : 'Upload'}
-                  </Button>
-                )}
+            <TabsContent value="new">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="student_first_name">First Name</Label>
+                  <Input
+                    id="student_first_name"
+                    value={newStudent.first_name}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, first_name: e.target.value }))}
+                    placeholder="e.g., John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="student_last_name">Last Name</Label>
+                  <Input
+                    id="student_last_name"
+                    value={newStudent.last_name}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, last_name: e.target.value }))}
+                    placeholder="e.g., Smith"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="student_id">Student ID</Label>
+                  <Input
+                    id="student_id"
+                    value={newStudent.student_id}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, student_id: e.target.value }))}
+                    placeholder="e.g., 12345"
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-muted-foreground">CSV format: studentID, firstname, lastname</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={downloadSampleCSV}
-                  className="h-auto p-0 text-xs text-primary hover:text-primary/80"
-                >
-                  Download sample
+
+              <div className="flex justify-between items-end mt-4">
+                <div className="flex-1 max-w-md">
+                  <Label htmlFor="csv-upload" className="text-sm font-medium mb-2 block">
+                    Or upload CSV file
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="csv-upload"
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      className="text-sm"
+                    />
+                    {csvFile && (
+                      <Button
+                        onClick={handleCSVUpload}
+                        disabled={isUploadingCSV}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isUploadingCSV ? 'Uploading...' : 'Upload'}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-muted-foreground">CSV format: studentID, firstname, lastname</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={downloadSampleCSV}
+                      className="h-auto p-0 text-xs text-primary hover:text-primary/80"
+                    >
+                      Download sample
+                    </Button>
+                  </div>
+                  {csvFile && (
+                    <p className="text-xs text-green-600 mt-1">
+                      <FileText className="w-3 h-3 inline mr-1" />
+                      {csvFile.name} selected
+                    </p>
+                  )}
+                </div>
+
+                <Button onClick={handleAddStudent} disabled={isAddingStudent}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  {isAddingStudent ? 'Adding...' : 'Add Student'}
                 </Button>
               </div>
-              {csvFile && (
-                <p className="text-xs text-green-600 mt-1">
-                  <FileText className="w-3 h-3 inline mr-1" />
-                  {csvFile.name} selected
-                </p>
-              )}
-            </div>
+            </TabsContent>
 
-            <Button onClick={handleAddStudent} disabled={isAddingStudent}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              {isAddingStudent ? 'Adding...' : 'Add Student'}
-            </Button>
-          </div>
+            <TabsContent value="existing">
+              {/* Empty placeholder — Task 2 will fill this in */}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
