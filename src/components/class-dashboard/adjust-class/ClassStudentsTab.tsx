@@ -326,6 +326,11 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
     }
   };
 
+  const handleSourceClassChange = (value: string) => {
+    setSelectedSourceClassId(value);
+    setSelectedIds(new Set());
+  };
+
   return (
     <div className="space-y-6">
       {/* Add Student Form */}
@@ -438,7 +443,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                 <div className="space-y-4">
                   {/* Filters row */}
                   <div className="flex gap-3">
-                    <Select value={selectedSourceClassId} onValueChange={setSelectedSourceClassId}>
+                    <Select value={selectedSourceClassId} onValueChange={handleSourceClassChange}>
                       <SelectTrigger className="w-52">
                         <SelectValue placeholder="All classes" />
                       </SelectTrigger>
@@ -500,6 +505,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                               checked={selectedIds.has(student.id)}
                               onCheckedChange={() => toggleStudent(student.id)}
                               onClick={e => e.stopPropagation()}
+                              aria-label={`Select ${student.first_name} ${student.last_name}`}
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm leading-tight">
