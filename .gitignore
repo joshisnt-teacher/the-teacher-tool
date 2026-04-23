@@ -12,8 +12,9 @@ dist
 dist-ssr
 *.local
 
-# Environment files (IMPORTANT: Keep these secret!)
+# Environment files and local config (IMPORTANT: Keep these secret!)
 .env
+.mcp.json
 .env.local
 .env.development.local
 .env.test.local

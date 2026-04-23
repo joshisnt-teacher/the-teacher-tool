@@ -41,7 +41,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   // Public student pages (no sidebar)
   const isStudentPage =
     currentPath === "/join" ||
-    currentPath.startsWith("/exit-ticket") ||
+    currentPath.startsWith("/exit-ticket/") ||
     /^\/(?=.*\d)[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2 (must contain a digit)
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {

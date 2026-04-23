@@ -2,29 +2,78 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { AlertCircle, Loader2, School } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClassByCode } from '@/hooks/useClassByCode';
 import { useActiveExitTickets } from '@/hooks/useActiveExitTickets';
-import { useStudents } from '@/hooks/useStudents';
-
-// TODO: Student auth is pending. The current flow uses class code + roster selection
-// without any authentication. Future work: add Supabase auth accounts or per-student PINs.
+import { useStudentVerification } from '@/hooks/useStudentVerification';
+import { supabase } from '@/integrations/supabase/client';
 
 const ClassJoin = () => {
   const { classCode } = useParams<{ classCode: string }>();
   const navigate = useNavigate();
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  const [username, setUsername] = useState('');
+  const [pin, setPin] = useState('');
+  const [verifiedStudentId, setVerifiedStudentId] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isCheckingEnrolment, setIsCheckingEnrolment] = useState(false);
 
   const { data: classData, isLoading: isLoadingClass, error: classError } = useClassByCode(classCode);
   const { data: activeTickets, isLoading: isLoadingTickets } = useActiveExitTickets(classData?.id);
-  const { data: students, isLoading: isLoadingStudents } = useStudents(classData?.id);
+  const { verify, isLoading: isVerifying } = useStudentVerification();
 
-  const isLoading = isLoadingClass || isLoadingTickets || isLoadingStudents;
+  const isLoading = isLoadingClass || isLoadingTickets;
+  const isSubmitting = isVerifying || isCheckingEnrolment;
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    const student = await verify(username, pin);
+    if (!student) {
+      setLoginError("That username or PIN doesn't look right. Check with your teacher.");
+      return;
+    }
+
+    // Find the local student record linked to this central account
+    setIsCheckingEnrolment(true);
+    try {
+      const { data: localStudent, error: localError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('central_id', student.id)
+        .single();
+
+      if (localError || !localStudent) {
+        setLoginError("That username or PIN doesn't look right. Check with your teacher.");
+        return;
+      }
+
+      // Confirm that local student is enrolled in this class
+      const { data: enrolment, error: enrolmentError } = await supabase
+        .from('enrolments')
+        .select('student_id')
+        .eq('student_id', localStudent.id)
+        .eq('class_id', classData!.id)
+        .single();
+
+      if (enrolmentError || !enrolment) {
+        setLoginError("That username or PIN doesn't look right. Check with your teacher.");
+        return;
+      }
+
+      setVerifiedStudentId(localStudent.id);
+    } finally {
+      setIsCheckingEnrolment(false);
+    }
+  };
 
   const handleJoin = (ticketId: string) => {
-    if (!selectedStudentId) return;
-    navigate(`/exit-ticket/${ticketId}?studentId=${selectedStudentId}`);
+    if (!verifiedStudentId) return;
+    navigate(`/exit-ticket/${ticketId}?studentId=${verifiedStudentId}`);
   };
 
   if (isLoading) {
@@ -79,6 +128,43 @@ const ClassJoin = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>There are no active exit tickets right now. Check back later!</AlertDescription>
             </Alert>
+          ) : !verifiedStudentId ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pin">PIN</Label>
+                <Input
+                  id="pin"
+                  type="password"
+                  autoComplete="current-password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Enter your PIN"
+                  required
+                />
+              </div>
+              {loginError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{loginError}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign In
+              </Button>
+            </form>
           ) : (
             <>
               <div className="space-y-3">
@@ -98,29 +184,10 @@ const ClassJoin = () => {
                 ))}
               </div>
 
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  Select Your Name
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                  {students?.map((student) => (
-                    <Button
-                      key={student.id}
-                      variant={selectedStudentId === student.id ? 'default' : 'outline'}
-                      className="justify-start"
-                      onClick={() => setSelectedStudentId(student.id)}
-                    >
-                      {student.first_name} {student.last_name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
               {activeTickets.length === 1 ? (
                 <Button
                   className="w-full"
                   size="lg"
-                  disabled={!selectedStudentId}
                   onClick={() => handleJoin(activeTickets[0].id)}
                 >
                   Start Exit Ticket
@@ -133,7 +200,6 @@ const ClassJoin = () => {
                       key={ticket.id}
                       className="w-full"
                       variant="outline"
-                      disabled={!selectedStudentId}
                       onClick={() => handleJoin(ticket.id)}
                     >
                       {ticket.name}

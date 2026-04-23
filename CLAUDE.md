@@ -24,9 +24,11 @@ No test runner is configured.
 
 ## Environment Setup
 
-Copy `env.example` to `.env` and set:
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase anon key
+Copy `env.example` to `.env` and set all four vars — the app will throw a clear error at startup if any are missing:
+- `VITE_SUPABASE_URL` — Teacher Tool Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — Teacher Tool Supabase anon key
+- `VITE_CENTRAL_SUPABASE_URL` — edufied-auth central DB URL (student SSO)
+- `VITE_CENTRAL_SUPABASE_ANON_KEY` — edufied-auth central DB anon key (this is actually a service role key)
 
 For local development, `src/config/database.ts` auto-switches between local (`127.0.0.1:54321`) and production Supabase based on environment.
 
@@ -72,6 +74,35 @@ All server state goes through TanStack React Query via custom hooks in `src/hook
 ---
 
 ## Recent Changes
+
+### Central Student Authentication + PIN Hashing + Credential Hardening (2026-04-23)
+
+**What was built:**
+
+- **Two-database student auth** — students in `ClassJoin.tsx` now log in with a username + PIN instead of picking their name from a list. Verification runs against a separate central Supabase DB (`edufied-auth`) that will eventually serve as SSO across all teacher tools.
+- **`students.central_id`** (migration: `20260423000000_add_central_id_to_students.sql`) — nullable UUID column added to the local `students` table to bridge local records to the central DB. All 129 students have been manually populated.
+- **Three-step verification flow** in `ClassJoin.tsx`:
+  1. `verify(username, pin)` — queries central DB by username, uses `bcrypt.compare()` to check PIN against hash
+  2. Local lookup — finds the local student row where `central_id` matches the central UUID
+  3. Enrolment check — confirms the local student is enrolled in this class
+  - All three must pass or the student sees an error. The `studentId` passed downstream (exit tickets, results, analytics) is always the **local UUID** — nothing else changed.
+- **bcrypt PIN hashing** — `scripts/hash-pins.js` ran once to hash all 129 plain-text PINs in the central DB (salt rounds: 10). PINs are now irreversibly hashed. `useStudentVerification.ts` uses `bcrypt.compare()` accordingly.
+- **Hardcoded credentials removed** — `src/integrations/supabase/client.ts`, `centralClient.ts`, and `src/config/database.ts` no longer have fallback keys baked in. All four env vars are required; missing vars throw a clear error at startup.
+- **Netlify MCP configured** — `.mcp.json` created with `@netlify/mcp` server and token. Approved via `enabledMcpjsonServers` in `.claude/settings.local.json`. Both files are in `.gitignore`.
+
+**Pending:**
+- Confirm Netlify MCP connects (needs Claude Code restart)
+- Add all four env vars to Netlify site settings → Environment variables
+- Run `npm run db:push` if `central_id` migration hasn't been applied to remote yet
+
+**Key files:**
+- `supabase/migrations/20260423000000_add_central_id_to_students.sql` — adds `central_id` to students
+- `src/integrations/supabase/centralClient.ts` — second Supabase client for edufied-auth
+- `src/hooks/useStudentVerification.ts` — central DB username + bcrypt PIN verification
+- `src/pages/ClassJoin.tsx` — three-step login flow replacing name picker
+- `scripts/hash-pins.js` — one-off PIN hashing script (already run, keep for reference)
+
+---
 
 ### AI Marking Fixes + Improved Prompt (2026-04-14)
 
