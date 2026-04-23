@@ -297,6 +297,35 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
     }
   };
 
+  const handleEnrollSelected = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    setIsEnrolling(true);
+    try {
+      const { error } = await supabase
+        .from('enrolments')
+        .upsert(
+          [...selectedIds].map(id => ({ class_id: classData.id, student_id: id })),
+          { ignoreDuplicates: true }
+        );
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['students', classData.id] });
+      setSelectedIds(new Set());
+      toast({
+        title: 'Students Enrolled',
+        description: `${count} student${count !== 1 ? 's' : ''} added to this class.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to enroll students.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Add Student Form */}
@@ -487,11 +516,18 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                         ))}
                       </div>
 
-                      {/* Enroll button — disabled placeholder, Task 3 will wire this up */}
+                      {/* Enroll button */}
                       <div className="flex justify-end pt-2">
-                        <Button disabled={selectedIds.size === 0}>
+                        <Button
+                          onClick={handleEnrollSelected}
+                          disabled={selectedIds.size === 0 || isEnrolling}
+                        >
                           <UserPlus className="w-4 h-4 mr-2" />
-                          {selectedIds.size > 0 ? `Enroll ${selectedIds.size} Selected` : 'Enroll Selected'}
+                          {isEnrolling
+                            ? 'Enrolling...'
+                            : selectedIds.size > 0
+                              ? `Enroll ${selectedIds.size} Selected`
+                              : 'Enroll Selected'}
                         </Button>
                       </div>
                     </>
