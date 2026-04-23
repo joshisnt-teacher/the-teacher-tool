@@ -19,7 +19,7 @@ The "Add New Student" card in `ClassStudentsTab.tsx` gains two tabs at the top o
 - **"Existing Student"** — new panel containing:
   1. **Class filter dropdown** — lists all the teacher's other classes (excluding the current one). Default: "All classes"
   2. **Name search box** — filters the list by first or last name as you type
-  3. **Scrollable checklist** — matching students not already enrolled in this class. Each row shows: full name + student ID + class badges (which classes they're currently in)
+  3. **Scrollable checklist** — matching students not already enrolled in this class. Each row shows: full name + student ID. When a specific source class is selected, a badge showing that class name appears on each row. When "All classes" is selected, no class badge is shown (we don't fetch full enrolment data for the unfiltered view).
   4. **"Enroll X Selected" button** — disabled when nothing is ticked, shows "Enrolling..." during the request. Upserts all selected students into `enrolments` in one batch.
 
 ---
