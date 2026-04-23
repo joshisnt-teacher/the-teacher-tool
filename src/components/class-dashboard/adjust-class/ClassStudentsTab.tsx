@@ -82,6 +82,10 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: students = [], isLoading: studentsLoading } = useStudents(classData.id);
+
+  // selectedSourceClassId must be declared before the hook call that uses it
+  const [selectedSourceClassId, setSelectedSourceClassId] = useState<string>('');
+
   const { data: classes = [] } = useClasses();
   const { data: allStudents = [] } = useStudents();
   const { data: classFilteredStudents = [] } = useStudents(selectedSourceClassId || undefined);
@@ -93,7 +97,6 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   const [csvFile, setCsvFile] = useState<File | null>(null);
 
   const [activeAddTab, setActiveAddTab] = useState<'new' | 'existing'>('new');
-  const [selectedSourceClassId, setSelectedSourceClassId] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isEnrolling, setIsEnrolling] = useState(false);
