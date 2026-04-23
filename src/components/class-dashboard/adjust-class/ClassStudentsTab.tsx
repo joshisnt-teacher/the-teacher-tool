@@ -81,25 +81,26 @@ const downloadSampleCSV = () => {
 export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // --- data hooks ---
   const { data: students = [], isLoading: studentsLoading } = useStudents(classData.id);
-
-  // selectedSourceClassId must be declared before the hook call that uses it
-  const [selectedSourceClassId, setSelectedSourceClassId] = useState<string>('');
-
   const { data: classes = [] } = useClasses();
   const { data: allStudents = [] } = useStudents();
-  const { data: classFilteredStudents = [] } = useStudents(selectedSourceClassId || undefined);
 
+  // --- state ---
   const [newStudent, setNewStudent] = useState({ first_name: '', last_name: '', student_id: '' });
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
-
   const [activeAddTab, setActiveAddTab] = useState<'new' | 'existing'>('new');
+  const [selectedSourceClassId, setSelectedSourceClassId] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isEnrolling, setIsEnrolling] = useState(false);
+
+  // --- hook that depends on state ---
+  const { data: classFilteredStudents = [] } = useStudents(selectedSourceClassId || undefined);
 
   const handleAddStudent = async () => {
     if (!newStudent.first_name || !newStudent.last_name || !newStudent.student_id) {
