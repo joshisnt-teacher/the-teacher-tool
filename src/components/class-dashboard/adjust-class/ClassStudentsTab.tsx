@@ -100,6 +100,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   const [isEnrolling, setIsEnrolling] = useState(false);
 
   // --- hook that depends on state ---
+  // When no class is selected, this shares the ['students'] cache key with allStudents above — intentional.
   const { data: classFilteredStudents = [] } = useStudents(selectedSourceClassId || undefined);
 
   const handleAddStudent = async () => {
@@ -269,6 +270,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
     });
   const allFilteredSelected =
     filteredCandidates.length > 0 && filteredCandidates.every(s => selectedIds.has(s.id));
+  const selectedClassName = otherClasses.find(c => c.id === selectedSourceClassId)?.class_name;
 
   const toggleStudent = (id: string) => {
     setSelectedIds(prev => {
@@ -281,9 +283,17 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
 
   const toggleAll = () => {
     if (allFilteredSelected) {
-      setSelectedIds(new Set());
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredCandidates.forEach(s => next.delete(s.id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filteredCandidates.map(s => s.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredCandidates.forEach(s => next.add(s.id));
+        return next;
+      });
     }
   };
 
@@ -424,7 +434,11 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                   {/* Candidate list */}
                   {filteredCandidates.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">All your students are already enrolled in this class.</p>
+                      <p className="text-sm">
+                        {nameSearch.trim()
+                          ? 'No students match your search.'
+                          : 'All your students are already enrolled in this class.'}
+                      </p>
                     </div>
                   ) : (
                     <>
@@ -464,9 +478,9 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                               </p>
                               <p className="text-xs text-muted-foreground">ID: {student.student_id}</p>
                             </div>
-                            {selectedSourceClassId && (
+                            {selectedSourceClassId && selectedClassName && (
                               <Badge variant="secondary" className="text-xs shrink-0">
-                                {otherClasses.find(c => c.id === selectedSourceClassId)?.class_name}
+                                {selectedClassName}
                               </Badge>
                             )}
                           </div>
