@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { StudentSessionProvider } from "@/hooks/useStudentSession";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -27,6 +28,9 @@ import Resources from "./pages/Resources";
 import ClassJoin from "./pages/ClassJoin";
 import TakeExitTicket from "./pages/TakeExitTicket";
 import StudentLanding from "./pages/StudentLanding";
+import StudentSSO from "./pages/StudentSSO";
+import StudentDashboard from "./pages/StudentDashboard";
+import TeacherSSO from "./pages/TeacherSSO";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 
@@ -35,13 +39,15 @@ const queryClient = new QueryClient();
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const isAuthPage = currentPath === "/" || currentPath === "/login";
+  const isAuthPage = currentPath === "/" || currentPath === "/login" || currentPath === "/auth/teacher/sso";
   const isSpinnerPage = currentPath.startsWith("/spinner");
-  
+
   // Public student pages (no sidebar)
   const isStudentPage =
     currentPath === "/join" ||
     currentPath.startsWith("/exit-ticket/") ||
+    currentPath.startsWith("/auth/sso") ||
+    currentPath.startsWith("/student/") ||
     /^\/(?=.*\d)[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2 (must contain a digit)
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
@@ -68,12 +74,13 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider delayDuration={300}>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppLayout>
-            <Routes>
+      <StudentSessionProvider>
+        <TooltipProvider delayDuration={300}>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppLayout>
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route 
@@ -204,6 +211,9 @@ const App = () => (
               <Route path="/join" element={<StudentLanding />} />
               <Route path="/:classCode" element={<ClassJoin />} />
               <Route path="/exit-ticket/:taskId" element={<TakeExitTicket />} />
+              <Route path="/auth/sso" element={<StudentSSO />} />
+              <Route path="/auth/teacher/sso" element={<TeacherSSO />} />
+              <Route path="/student/dashboard" element={<StudentDashboard />} />
               <Route 
                 path="/student/:studentId/class/:classId" 
                 element={
@@ -218,6 +228,7 @@ const App = () => (
           </AppLayout>
         </BrowserRouter>
       </TooltipProvider>
+      </StudentSessionProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
