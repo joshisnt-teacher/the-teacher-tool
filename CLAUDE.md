@@ -73,7 +73,102 @@ All server state goes through TanStack React Query via custom hooks in `src/hook
 
 ---
 
+## Edufied System Architecture
+
+Pulse (this app) is one of several apps in the **Edufied ecosystem**. All apps share a single central auth database (`edufied-auth`) hosted at `https://kjjazhqkvefkesqfzcok.supabase.co`. Each app also has its own local Supabase project for app-specific data.
+
+```
+edufied.com.au (hub)
+    │
+    ├── edufied-auth DB (central Supabase project)
+    │       teachers, students, classes, sso_tokens
+    │
+    ├── pulse.edufied.com.au  ←── this app
+    │       local DB: classes, assessments, results, etc.
+    │
+    └── (future apps...)
+```
+
+### Teacher SSO Flow (working as of 2026-04-27)
+
+1. Teacher clicks "Sign in with edufied" on Pulse's login page (`/login`)
+2. Pulse redirects to `https://edufied.com.au/auth/sso?app=pulse&redirect_uri=https://pulse.edufied.com.au/auth/teacher/sso`
+3. The hub authenticates the teacher, then inserts a row into `sso_tokens` on the central DB:
+   - `teacher_id` = teacher's UUID from the central `teachers` table
+   - `app_slug` = `'pulse'`
+   - `token` = random 64-char hex
+   - `used` = false, `expires_at` = now + 5 minutes
+4. Hub redirects to `https://pulse.edufied.com.au/auth/teacher/sso?token=<64-hex>`
+5. `TeacherSSO.tsx` POSTs the token to the `teacher-sso` Supabase edge function
+6. Edge function (`supabase/functions/teacher-sso/index.ts`):
+   - Validates token against central DB (unused, not expired, has teacher_id)
+   - Marks token `used = true` immediately (replay prevention)
+   - Looks up teacher email from central `teachers` table
+   - Finds or creates a local shadow auth account in Pulse's Supabase Auth
+   - Upserts a `teacher_profiles` row linking local `auth.users.id` → central `teacher_id`
+   - Calls `local.auth.admin.generateLink({ type: 'magiclink', email })` — returns `properties.hashed_token`
+   - Returns `{ token_hash: hashed_token }`
+7. Client calls `supabase.auth.verifyOtp({ token_hash, type: 'magiclink' })` — establishes a real session
+8. Navigates to `/dashboard`
+
+**Key gotchas learned:**
+- `generateLink` returns `properties.hashed_token`, NOT `properties.token_hash`
+- The edge function must be deployed with `--no-verify-jwt` (teachers have no session when they call it)
+- Required edge function secrets: `CENTRAL_SUPABASE_URL`, `CENTRAL_SUPABASE_SERVICE_ROLE_KEY`
+
+### Student SSO Flow
+
+Students log in via `ClassJoin.tsx` (route `/:classCode`) using a username + PIN:
+1. Username + PIN verified against central `students` table (bcrypt PIN hash)
+2. Local student found via `students.central_id` (bridges to central UUID)
+3. Enrolment confirmed in the local DB
+4. `studentId` passed downstream is always the **local UUID** — all analytics/results work unchanged
+
+Student session is stored in localStorage via `useStudentSession` hook. A separate `StudentSSO` page (`/auth/sso`) handles SSO from the student hub (`student.edufied.com.au`) for future use.
+
+### Central DB Tables (edufied-auth)
+
+| Table | Purpose |
+|---|---|
+| `teachers` | Teacher accounts (id, email, first_name, last_name) |
+| `students` | Student accounts (id, username, pin [bcrypt], central_id) |
+| `sso_tokens` | Short-lived SSO tokens (teacher_id OR student_id, app_slug, token, used, expires_at) |
+| `classes` | Classes linked to teacher accounts |
+| `student_classes` | Student ↔ class enrolments |
+
+### Local DB Bridge Tables (Pulse)
+
+| Table | Purpose |
+|---|---|
+| `teacher_profiles` | Links local `auth.users.id` → central `teacher_id`; created on first SSO login |
+| `students.central_id` | Nullable UUID linking each local student row to the central DB |
+
+---
+
 ## Recent Changes
+
+### Teacher SSO — End-to-End Working (2026-04-27)
+
+**What was fixed and deployed:**
+
+- **Teacher SSO flow is now fully working** — teachers can sign in via edufied.com.au and land on the Pulse dashboard with a real Supabase session.
+- **Root cause of "Session expired" loop** — `generateLink` returns `properties.hashed_token`, not `properties.token_hash`. The edge function was checking the wrong field name, so the token_hash was always undefined and the function returned a 500.
+- **Secondary issue** — edge function was deployed with `verify_jwt: true` (default), which rejected unauthenticated requests before the function code ran. Fixed with `--no-verify-jwt` flag on deploy.
+- **Tertiary issue** — if a teacher previously did a direct email/password login, a Supabase auth account already existed. `createUser` would fail with duplicate email. Fixed by calling `listUsers` first and finding the existing account before attempting to create.
+- **`teacher_profiles` upsert made non-fatal** — wrapped in try/catch so a missing table can't block the SSO login.
+- **Netlify env var added** — `VITE_CENTRAL_HUB_URL` added to Netlify site environment variables.
+
+**Key files:**
+- `supabase/functions/teacher-sso/index.ts` — all fixes above (deployed with `--no-verify-jwt`)
+- `src/pages/TeacherSSO.tsx` — handles SSO callback at `/auth/teacher/sso`
+- `src/pages/Login.tsx` — "Sign in with edufied" primary button, collapsible fallback
+
+**Deploy command (if re-deploying the edge function):**
+```bash
+npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --no-verify-jwt
+```
+
+---
 
 ### Central Student Authentication + PIN Hashing + Credential Hardening (2026-04-23)
 
