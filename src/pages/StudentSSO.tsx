@@ -3,9 +3,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { centralSupabase } from '@/integrations/supabase/centralClient';
-import { supabase } from '@/integrations/supabase/client';
 import { useStudentSession } from '@/hooks/useStudentSession';
+
+const STUDENT_HUB_URL = 'https://student.edufied.com.au';
 
 const StudentSSO = () => {
   const [searchParams] = useSearchParams();
@@ -17,7 +17,7 @@ const StudentSSO = () => {
 
   useEffect(() => {
     if (!token) {
-      window.location.href = 'https://student.edufied.com.au?error=session_expired';
+      window.location.href = `${STUDENT_HUB_URL}?error=invalid_token`;
       return;
     }
 
@@ -25,76 +25,40 @@ const StudentSSO = () => {
 
     async function handleSSO() {
       try {
-        // 1. Look up the token in central DB
-        const { data: tokenRow, error: tokenError } = await centralSupabase
-          .from('sso_tokens')
-          .select('token, student_id, used, expires_at')
-          .eq('token', token)
-          .eq('used', false)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle();
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/student-sso`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ token }),
+          }
+        );
 
-        if (tokenError || !tokenRow) {
+        const result = await res.json();
+
+        if (!res.ok || result.error) {
           if (!cancelled) {
-            window.location.href = 'https://student.edufied.com.au?error=session_expired';
+            window.location.href = `${STUDENT_HUB_URL}?error=session_expired`;
           }
           return;
         }
 
-        // 2. Mark token as used
-        const { error: updateError } = await centralSupabase
-          .from('sso_tokens')
-          .update({ used: true })
-          .eq('token', token);
-
-        if (updateError) {
-          console.error('Failed to mark SSO token as used:', updateError);
-        }
-
-        // 3. Retrieve student record from central DB
-        const { data: centralStudent, error: studentError } = await centralSupabase
-          .from('students')
-          .select('id, first_name, last_name, year_level')
-          .eq('id', tokenRow.student_id)
-          .maybeSingle();
-
-        if (studentError || !centralStudent) {
-          if (!cancelled) {
-            window.location.href = 'https://student.edufied.com.au?error=session_expired';
-          }
-          return;
-        }
-
-        // 4. Look up local student record by central_id
-        const { data: localStudent, error: localError } = await supabase
-          .from('students')
-          .select('id, central_id')
-          .eq('central_id', centralStudent.id)
-          .maybeSingle();
-
-        if (localError || !localStudent) {
-          if (!cancelled) {
-            window.location.href = 'https://student.edufied.com.au?error=session_expired';
-          }
-          return;
-        }
-
-        // 5. Store student session
         if (!cancelled) {
           setSession({
-            student_id: localStudent.id,
-            central_id: centralStudent.id,
-            first_name: centralStudent.first_name,
-            last_name: centralStudent.last_name,
-            year_level: centralStudent.year_level ?? null,
+            student_id: result.student_id,
+            central_id: result.central_id,
+            first_name: result.first_name,
+            last_name: result.last_name,
+            year_level: result.year_level,
           });
           navigate('/student/dashboard', { replace: true });
         }
       } catch (err) {
-        console.error('SSO error:', err);
-        if (!cancelled) {
-          setError('Something went wrong. Please try again.');
-        }
+        console.error('Student SSO error:', err);
+        if (!cancelled) setError('Something went wrong. Please try again.');
       }
     }
 
