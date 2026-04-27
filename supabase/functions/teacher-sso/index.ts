@@ -11,6 +11,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const centralUrl = Deno.env.get('CENTRAL_SUPABASE_URL')
+    const centralKey = Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!centralUrl || !centralKey) {
+      console.error('Missing secrets: CENTRAL_SUPABASE_URL=' + !!centralUrl + ' CENTRAL_SUPABASE_SERVICE_ROLE_KEY=' + !!centralKey)
+      return json({ error: 'Server misconfiguration: missing central DB secrets' }, 500)
+    }
+
     const { token } = await req.json()
 
     if (!token) {
@@ -18,10 +26,7 @@ Deno.serve(async (req) => {
     }
 
     // Central DB — service role to bypass RLS
-    const central = createClient(
-      Deno.env.get('CENTRAL_SUPABASE_URL')!,
-      Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    const central = createClient(centralUrl, centralKey)
 
     // Local DB — service role for admin auth operations
     const local = createClient(
@@ -61,19 +66,16 @@ Deno.serve(async (req) => {
       return json({ error: 'Teacher not found' }, 401)
     }
 
-    // 4. Find or create local shadow auth account
+    // 4. Find or create local auth account for this teacher
     let localUserId: string
 
-    const { data: existingProfile } = await local
-      .from('teacher_profiles')
-      .select('id')
-      .eq('central_teacher_id', teacher.id)
-      .maybeSingle()
+    // Look for an existing auth user by email (handles previous direct logins)
+    const listResult = await local.auth.admin.listUsers()
+    const existingAuthUser = listResult.data?.users?.find(u => u.email === teacher.email) ?? null
 
-    if (existingProfile) {
-      localUserId = existingProfile.id
+    if (existingAuthUser) {
+      localUserId = existingAuthUser.id
     } else {
-      // First login — create shadow account (no password, email pre-confirmed)
       const { data: newUser, error: createError } = await local.auth.admin.createUser({
         email: teacher.email,
         email_confirm: true,
@@ -84,20 +86,25 @@ Deno.serve(async (req) => {
         },
       })
 
-      if (createError || !newUser.user) {
+      if (createError || !newUser?.user) {
+        console.error('Create user error:', JSON.stringify(createError))
         return json({ error: 'Failed to create account' }, 500)
       }
 
       localUserId = newUser.user.id
+    }
 
-      // Insert profile bridge record
-      await local.from('teacher_profiles').insert({
+    // Upsert teacher_profiles bridge record (non-fatal — don't block SSO if table is missing)
+    try {
+      await local.from('teacher_profiles').upsert({
         id: localUserId,
         central_teacher_id: teacher.id,
         email: teacher.email,
         first_name: teacher.first_name,
         last_name: teacher.last_name,
-      })
+      }, { onConflict: 'id' })
+    } catch (profileErr) {
+      console.warn('teacher_profiles upsert skipped:', profileErr)
     }
 
     // 5. Generate a one-time magic link token for the client to establish a session
@@ -106,11 +113,12 @@ Deno.serve(async (req) => {
       email: teacher.email,
     })
 
-    if (linkError || !linkData?.properties?.token_hash) {
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('Generate link error:', JSON.stringify(linkError))
       return json({ error: 'Failed to generate session token' }, 500)
     }
 
-    return json({ token_hash: linkData.properties.token_hash, email: teacher.email })
+    return json({ token_hash: linkData.properties.hashed_token, email: teacher.email })
 
   } catch (err) {
     console.error('Teacher SSO error:', err)
