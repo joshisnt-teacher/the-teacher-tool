@@ -113,10 +113,7 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10 py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to your class</h1>
-          <p className="text-muted-foreground mt-1">
-            {session.first_name} {session.last_name}
-          </p>
+          <h1 className="text-3xl font-bold">Welcome to class, {session.first_name}</h1>
         </div>
 
         {isLoading ? (

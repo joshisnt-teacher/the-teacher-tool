@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, matchPath } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { StudentSessionProvider } from "@/hooks/useStudentSession";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -36,6 +36,45 @@ import Spinner from "./pages/Spinner";
 
 const queryClient = new QueryClient();
 
+const PAGE_TITLES: { path: string; title: string }[] = [
+  { path: "/dashboard", title: "Dashboard" },
+  { path: "/settings", title: "Settings" },
+  { path: "/create-class", title: "Create Class" },
+  { path: "/class/:classId/session/:sessionId", title: "Session" },
+  { path: "/class/:classId", title: "Class" },
+  { path: "/assessment/:assessmentId", title: "Assessment" },
+  { path: "/create-assessment/:classId", title: "Create Assessment" },
+  { path: "/curriculum-browser/strand/:strandId", title: "Curriculum" },
+  { path: "/curriculum-browser/content/:contentItemId", title: "Curriculum" },
+  { path: "/curriculum-browser", title: "Curriculum" },
+  { path: "/classroom/:classId", title: "Classroom" },
+  { path: "/classroom", title: "Classroom" },
+  { path: "/exit-tickets/create", title: "Create Exit Ticket" },
+  { path: "/exit-tickets", title: "Exit Tickets" },
+  { path: "/resources", title: "Resources" },
+  { path: "/student/:studentId/class/:classId", title: "Student Report" },
+  { path: "/student/dashboard", title: "Student Dashboard" },
+  { path: "/exit-ticket/:taskId", title: "Exit Ticket" },
+  { path: "/join", title: "Join Class" },
+  { path: "/login", title: "Login" },
+  { path: "/auth/teacher/sso", title: "Signing in..." },
+  { path: "/auth/sso", title: "Signing in..." },
+  { path: "/spinner", title: "Pulse" },
+  { path: "/", title: "Pulse" },
+];
+
+function PageTitle() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const match = PAGE_TITLES.find(({ path }) => matchPath({ path, end: true }, location.pathname));
+    const label = match?.title ?? "Pulse";
+    document.title = label === "Pulse" ? "Pulse · by Edufied" : `Pulse - ${label}`;
+  }, [location.pathname]);
+
+  return null;
+}
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
@@ -51,11 +90,12 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     /^\/(?=.*\d)[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2 (must contain a digit)
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
-    return <>{children}</>;
+    return <><PageTitle />{children}</>;
   }
 
   return (
     <SidebarProvider>
+      <PageTitle />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
