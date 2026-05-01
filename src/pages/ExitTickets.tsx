@@ -4,91 +4,220 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ArrowLeft, Plus, Ticket, Trash2, Loader2, Play, RotateCcw, CheckCircle2, X, Filter } from 'lucide-react';
+  ArrowLeft, Plus, Ticket, Trash2, Loader2, ChevronDown, ChevronUp,
+  Rocket, RefreshCw, X,
+} from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useClasses } from '@/hooks/useClasses';
-import { useExitTickets } from '@/hooks/useExitTickets';
+import { useExitTicketTemplates, type ExitTicketTemplate } from '@/hooks/useExitTicketTemplates';
+import { useRunsForTemplate, type TemplateRun } from '@/hooks/useRunsForTemplate';
+import { useDeployTemplate } from '@/hooks/useDeployTemplate';
+import { useClearRun } from '@/hooks/useClearRun';
+import { useDeleteRun } from '@/hooks/useDeleteRun';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import CreateExitTicket from './CreateExitTicket';
+
+// ── Sub-component: runs list for a single template ──────────────────────────
+
+interface TemplateRunsSectionProps {
+  template: ExitTicketTemplate;
+}
+
+const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { data: runs = [], isLoading, refetch } = useRunsForTemplate(template.id);
+  const clearRun = useClearRun();
+  const deleteRun = useDeleteRun();
+
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [deleteRunDialogOpen, setDeleteRunDialogOpen] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<TemplateRun | null>(null);
+
+  const handleClear = async () => {
+    if (!selectedRun) return;
+    try {
+      await clearRun.mutateAsync({
+        taskId: selectedRun.id, classId: selectedRun.class_id, templateId: template.id,
+      });
+      toast({ title: 'Results cleared', description: 'The run has been reset to draft.' });
+      refetch();
+    } catch (e: unknown) {
+      toast({ title: 'Failed to clear', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setClearDialogOpen(false);
+      setSelectedRun(null);
+    }
+  };
+
+  const handleDeleteRun = async () => {
+    if (!selectedRun) return;
+    try {
+      await deleteRun.mutateAsync({
+        taskId: selectedRun.id, classId: selectedRun.class_id, templateId: template.id,
+      });
+      toast({ title: 'Run removed' });
+      refetch();
+    } catch (e: unknown) {
+      toast({ title: 'Failed to remove run', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setDeleteRunDialogOpen(false);
+      setSelectedRun(null);
+    }
+  };
+
+  const getStatusVariant = (status: string) => {
+    if (status === 'active') return 'default' as const;
+    if (status === 'closed') return 'secondary' as const;
+    return 'outline' as const;
+  };
+
+  if (isLoading) return <div className="py-3 text-sm text-muted-foreground">Loading runs...</div>;
+
+  if (runs.length === 0) {
+    return (
+      <div className="py-3 text-sm text-muted-foreground">
+        Not deployed to any class yet. Use the Deploy button above.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-2 pt-1">
+        {runs.map((run) => (
+          <div key={run.id} className="flex items-center justify-between gap-2 p-2.5 rounded-md border bg-background/50 text-sm">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant={getStatusVariant(run.status)} className="capitalize text-xs shrink-0">
+                {run.status}
+              </Badge>
+              <span className="truncate font-medium">{run.class_name}</span>
+              {run.class_code && (
+                <span className="text-xs text-muted-foreground font-mono shrink-0">{run.class_code}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                onClick={() => navigate(`/classroom/${run.class_id}`)}
+              >
+                Classroom
+              </Button>
+              <Button
+                variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                onClick={() => { setSelectedRun(run); setClearDialogOpen(true); }}
+                disabled={clearRun.isPending || deleteRun.isPending}
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />Clear
+              </Button>
+              <Button
+                variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={() => { setSelectedRun(run); setDeleteRunDialogOpen(true); }}
+                disabled={clearRun.isPending || deleteRun.isPending}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Results?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes all student responses for this run and resets it to draft. The questions stay intact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedRun(null)} disabled={clearRun.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClear} disabled={clearRun.isPending}>
+              {clearRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Clearing...</> : 'Clear Results'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteRunDialogOpen} onOpenChange={setDeleteRunDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Run?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes this run (including all student responses) from {selectedRun?.class_name}. The template is not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedRun(null)} disabled={deleteRun.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRun} disabled={deleteRun.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Removing...</> : 'Remove Run'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
+// ── Main page ────────────────────────────────────────────────────────────────
 
 const ExitTickets = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: currentUser } = useCurrentUser();
   const { data: classes = [] } = useClasses();
-  const {
-    data: exitTickets,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useExitTickets(currentUser?.school_id || undefined);
+  const { data: templates = [], isLoading, isError, error, refetch } = useExitTicketTemplates(currentUser?.school_id || undefined);
+  const deployTemplate = useDeployTemplate();
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetTemplateId, setSheetTemplateId] = useState<string | null>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [selectedClassId, setSelectedClassId] = useState<string>('all');
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetTaskId, setSheetTaskId] = useState<string | null>(null);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [deployTemplateId, setDeployTemplateId] = useState<string | null>(null);
+  const [deployClassId, setDeployClassId] = useState<string>('');
 
-  const filteredTickets = selectedClassId !== 'all'
-    ? exitTickets?.filter((t) => t.class_id === selectedClassId)
-    : exitTickets;
+  const [openRunsMap, setOpenRunsMap] = useState<Record<string, boolean>>({});
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'default' as const;
-      case 'closed':
-        return 'secondary' as const;
-      default:
-        return 'outline' as const;
-    }
-  };
+  const openCreateSheet = () => { setSheetTemplateId(null); setSheetOpen(true); };
+  const openEditSheet = (templateId: string) => { setSheetTemplateId(templateId); setSheetOpen(true); };
+  const closeSheet = () => { setSheetOpen(false); setSheetTemplateId(null); refetch(); };
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setTicketToDelete(id);
+    setTemplateToDelete(id);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!ticketToDelete) return;
+    if (!templateToDelete) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from('tasks').delete().eq('id', ticketToDelete);
+      const { error } = await supabase.from('exit_ticket_templates').delete().eq('id', templateToDelete);
       if (error) throw error;
       toast({ title: 'Exit ticket deleted' });
       refetch();
@@ -97,30 +226,34 @@ const ExitTickets = () => {
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
-      setTicketToDelete(null);
+      setTemplateToDelete(null);
     }
   };
 
-  const handleActivate = (e: React.MouseEvent, ticket: { class_id: string; id: string }) => {
+  const handleDeployClick = (e: React.MouseEvent, templateId: string) => {
     e.stopPropagation();
-    navigate(`/classroom/${ticket.class_id}?activateTicket=${ticket.id}`);
+    setDeployTemplateId(templateId);
+    setDeployClassId('');
+    setDeployDialogOpen(true);
   };
 
-  const openCreateSheet = () => {
-    setSheetTaskId(null);
-    setSheetOpen(true);
+  const handleDeployConfirm = async () => {
+    if (!deployTemplateId || !deployClassId) return;
+    try {
+      await deployTemplate.mutateAsync({ templateId: deployTemplateId, classId: deployClassId });
+      toast({ title: 'Deployed!', description: 'Exit ticket is now ready in that class. Go to the classroom to activate it.' });
+      setOpenRunsMap((prev) => ({ ...prev, [deployTemplateId]: true }));
+    } catch (err: unknown) {
+      toast({ title: 'Deploy failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setDeployDialogOpen(false);
+      setDeployTemplateId(null);
+      setDeployClassId('');
+    }
   };
 
-  const openEditSheet = (taskId: string) => {
-    setSheetTaskId(taskId);
-    setSheetOpen(true);
-  };
-
-  const closeSheet = () => {
-    setSheetOpen(false);
-    setSheetTaskId(null);
-    refetch();
-  };
+  const toggleRuns = (templateId: string) =>
+    setOpenRunsMap((prev) => ({ ...prev, [templateId]: !prev[templateId] }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10">
@@ -128,20 +261,14 @@ const ExitTickets = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
+              <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back to Dashboard</Button>
             </Link>
             <div>
               <h1 className="text-xl font-bold">Exit Tickets</h1>
-              <p className="text-sm text-muted-foreground">Create and manage exit tickets for your classes</p>
+              <p className="text-sm text-muted-foreground">Create templates and deploy them to your classes</p>
             </div>
           </div>
-          <Button onClick={openCreateSheet}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Exit Ticket
-          </Button>
+          <Button onClick={openCreateSheet}><Plus className="w-4 h-4 mr-2" />Create Exit Ticket</Button>
         </div>
       </header>
 
@@ -149,41 +276,16 @@ const ExitTickets = () => {
         <Card className="bg-card/50 backdrop-blur-sm border-border/50">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Ticket className="w-5 h-5" />
-                Exit Ticket Library
-              </CardTitle>
-              <CardDescription>View and manage exit tickets created for your school</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" />Exit Ticket Library</CardTitle>
+              <CardDescription>Templates you've built — deploy them to any class when you're ready</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter by class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All classes</SelectItem>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.class_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-                Refresh
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>Refresh</Button>
           </CardHeader>
           <CardContent>
             {isError && (
               <div className="p-4 border border-destructive rounded-md bg-destructive/10">
                 <p className="text-sm text-destructive font-medium">Failed to load exit tickets.</p>
-                <p className="text-xs text-destructive/80 mt-1">
-                  {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-                </p>
+                <p className="text-xs text-destructive/80 mt-1">{error instanceof Error ? error.message : 'Unknown error'}</p>
               </div>
             )}
 
@@ -195,114 +297,60 @@ const ExitTickets = () => {
                       <div key={i} className="animate-pulse rounded-lg border p-4 bg-muted/50 h-24" />
                     ))}
                   </div>
-                ) : filteredTickets && filteredTickets.length > 0 ? (
+                ) : templates.length > 0 ? (
                   <div className="space-y-3">
-                    {filteredTickets.map((ticket) => {
-                      const isCompleted = ticket.is_completed;
-                      return (
-                        <Card
-                          key={ticket.id}
-                          className={`border-border/80 cursor-pointer hover:border-primary hover:shadow-md transition-all ${
-                            isCompleted ? 'bg-muted/40 border-muted' : ''
-                          }`}
-                          onClick={() => openEditSheet(ticket.id)}
-                        >
-                          <CardContent className="py-4">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                              <div className="space-y-2 flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <Badge variant={getStatusVariant(ticket.status)} className="capitalize">
-                                    {ticket.status}
-                                  </Badge>
-                                  {isCompleted ? (
-                                    <Badge variant="secondary" className="bg-green-100 text-green-800 gap-1">
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      Completed
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="gap-1">
-                                      <Play className="w-3 h-3" />
-                                      Created
-                                    </Badge>
-                                  )}
-                                  <Badge variant="outline">{ticket.class_name}</Badge>
+                    {templates.map((template) => (
+                      <Card key={template.id} className="border-border/80">
+                        <CardContent className="py-4">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                              <div className="space-y-1 flex-1 cursor-pointer" onClick={() => openEditSheet(template.id)}>
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant="outline">
-                                    {ticket.question_count} question{ticket.question_count === 1 ? '' : 's'}
-                                  </Badge>
-                                  <Badge variant="secondary" className="font-mono">
-                                    {window.location.origin}/{ticket.class_code}
+                                    {template.question_count} question{template.question_count === 1 ? '' : 's'}
                                   </Badge>
                                 </div>
-                                <div>
-                                  <h3 className={`text-lg font-semibold ${isCompleted ? 'text-muted-foreground' : ''}`}>
-                                    {ticket.name}
-                                  </h3>
-                                  {ticket.description && (
-                                    <p className="text-sm text-muted-foreground line-clamp-2">
-                                      {ticket.description}
-                                    </p>
-                                  )}
-                                </div>
+                                <h3 className="text-lg font-semibold">{template.name}</h3>
+                                {template.description && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">{template.description}</p>
+                                )}
                                 <div className="text-xs text-muted-foreground">
-                                  Created {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true })}
-                                  <span className="ml-2">• {ticket.class_subject || 'No subject'}</span>
+                                  Created {formatDistanceToNow(new Date(template.created_at), { addSuffix: true })}
                                 </div>
                               </div>
-                              <div
-                                className="flex items-center gap-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Button
-                                  variant={isCompleted ? 'outline' : 'default'}
-                                  size="sm"
-                                  onClick={(e) => handleActivate(e, ticket)}
-                                >
-                                  {isCompleted ? (
-                                    <>
-                                      <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                                      Rerun
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Play className="w-3.5 h-3.5 mr-1.5" />
-                                      Launch
-                                    </>
-                                  )}
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Button size="sm" onClick={(e) => handleDeployClick(e, template.id)}>
+                                  <Rocket className="w-3.5 h-3.5 mr-1.5" />Deploy
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openEditSheet(ticket.id)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={(e) => handleDeleteClick(e, ticket.id)}
-                                >
+                                <Button variant="outline" size="sm" onClick={() => openEditSheet(template.id)}>Edit</Button>
+                                <Button variant="destructive" size="sm" onClick={(e) => handleDeleteClick(e, template.id)}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+
+                            <Collapsible open={openRunsMap[template.id] || false} onOpenChange={() => toggleRuns(template.id)}>
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground h-7 px-2">
+                                  <span>Deployed runs</span>
+                                  {openRunsMap[template.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <TemplateRunsSection template={template} />
+                              </CollapsibleContent>
+                            </Collapsible>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <Ticket className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">
-                      {selectedClassId !== 'all' ? 'No exit tickets for this class' : 'No exit tickets yet'}
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      {selectedClassId !== 'all' ? 'Try clearing the filter or create a new exit ticket.' : 'Create your first exit ticket to get started.'}
-                    </p>
-                    <Button onClick={openCreateSheet}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Exit Ticket
-                    </Button>
+                    <h3 className="text-lg font-semibold mb-2">No exit tickets yet</h3>
+                    <p className="text-muted-foreground mb-6">Create your first exit ticket template to get started.</p>
+                    <Button onClick={openCreateSheet}><Plus className="w-4 h-4 mr-2" />Create Exit Ticket</Button>
                   </div>
                 )}
               </div>
@@ -314,37 +362,52 @@ const ExitTickets = () => {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-3xl p-0 overflow-y-auto">
           <SheetHeader className="sr-only">
-            <SheetTitle>{sheetTaskId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</SheetTitle>
+            <SheetTitle>{sheetTemplateId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</SheetTitle>
           </SheetHeader>
-          <CreateExitTicket
-            embedded
-            taskId={sheetTaskId}
-            onClose={closeSheet}
-          />
+          <CreateExitTicket embedded templateId={sheetTemplateId} onClose={closeSheet} />
         </SheetContent>
       </Sheet>
+
+      <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deploy to Class</DialogTitle>
+            <DialogDescription>
+              Choose a class. A copy of this ticket's questions will be created for that class, ready to activate from the classroom.
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={deployClassId} onValueChange={setDeployClassId}>
+            <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
+            <SelectContent>
+              {classes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.class_name} ({c.subject})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeployDialogOpen(false)} disabled={deployTemplate.isPending}>Cancel</Button>
+            <Button onClick={handleDeployConfirm} disabled={!deployClassId || deployTemplate.isPending}>
+              {deployTemplate.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deploying...</> : 'Deploy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Exit Ticket</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete this exit ticket?</AlertDialogDescription>
+            <AlertDialogTitle>Delete Exit Ticket?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the template and its questions. Any runs already deployed to classes will remain but lose their template link.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
+              onClick={handleDeleteConfirm} disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
+              {isDeleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting...</> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
