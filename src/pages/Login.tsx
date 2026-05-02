@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { LogIn, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -24,7 +25,26 @@ const Login = () => {
 
   const handleSSOLogin = () => {
     const redirectUri = `${window.location.origin}/auth/teacher/sso`;
-    window.location.href = `${CENTRAL_HUB_URL}/auth/sso?app=pulse&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const ssoUrl = `${CENTRAL_HUB_URL}/auth/sso?app=pulse&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    const popup = window.open(ssoUrl, 'edufied-sso', 'width=500,height=620,left=400,top=200');
+
+    const onMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'sso_success') return;
+
+      window.removeEventListener('message', onMessage);
+      popup?.close();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard');
+      } else {
+        toast.error('Sign in failed. Please try again.');
+      }
+    };
+
+    window.addEventListener('message', onMessage);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {

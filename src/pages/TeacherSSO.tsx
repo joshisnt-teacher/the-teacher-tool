@@ -59,8 +59,15 @@ const TeacherSSO = () => {
           return;
         }
 
-        // 3. Session is now set — navigate to dashboard
-        if (!cancelled) navigate('/dashboard', { replace: true });
+        // 3. Session is now set — notify opener and close, or navigate directly
+        if (!cancelled) {
+          if (window.opener) {
+            window.opener.postMessage({ type: 'sso_success' }, window.location.origin);
+            window.close();
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        }
 
       } catch (err) {
         console.error('Teacher SSO error:', err);
