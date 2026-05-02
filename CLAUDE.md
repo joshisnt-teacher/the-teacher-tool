@@ -147,6 +147,58 @@ Student session is stored in localStorage via `useStudentSession` hook. A separa
 
 ## Recent Changes
 
+### Exit Ticket Templates + Runs (2026-05-02)
+
+**What was built:**
+
+- **Templates vs Runs separation** — Exit tickets are now split into two concepts. A **template** is the reusable definition (title + questions, not tied to any class). A **run** is a deployment of a template into a specific class, stored as a `tasks` row. Deleting an assessment or clearing responses no longer touches the underlying template.
+- **Database changes** (migration: `20260430000000_exit_ticket_templates.sql`):
+  - New `exit_ticket_templates` table — stores template title, description, `teacher_id`, `school_id`
+  - New `template_questions` table — stores questions per template (mirrors `questions` schema)
+  - New `template_question_options` table — stores MCQ options per template question
+  - `exit_ticket_template_id` nullable FK added to `tasks` — links a run back to its source template; ON DELETE SET NULL so deleting the template leaves runs intact
+  - All three new tables have RLS: teachers manage only their own rows via `auth.uid()`
+- **Deploy flow** — teacher clicks "Deploy" on a template card, selects a class; app creates a `tasks` row (`is_exit_ticket=true`, `status='draft'`) and copies questions + options from template tables into `questions` + `question_options`. Editing the template later does NOT affect existing runs.
+- **Clear Results** — new `useClearRun` mutation deletes `results` + `question_results` for a run and resets `status='draft'`; questions stay intact and the run can be reused.
+- **Remove Run** — `useDeleteRun` deletes the entire run (task + copied questions + all responses); template is unaffected.
+
+**New hooks:**
+
+| Hook | Purpose |
+|---|---|
+| `useExitTicketTemplates(schoolId)` | List templates for a school |
+| `useTemplateQuestions(templateId)` | Fetch questions + options for a template |
+| `useRunsForTemplate(templateId)` | List all runs (tasks) for a template |
+| `useDeployTemplate()` | Create run + copy questions from template |
+| `useClearRun()` | Delete results, reset run to draft |
+| `useDeleteRun()` | Delete the run task and its questions |
+
+**UI changes:**
+
+- `src/pages/ExitTickets.tsx` — now lists templates (not tasks); each card has Deploy, Edit, Delete buttons plus a collapsible "Deployed runs" section with Clear/Remove per run
+- `src/pages/CreateExitTicket.tsx` — saves to `exit_ticket_templates` / `template_questions` / `template_question_options`; prop changed from `taskId` to `templateId`; class picker removed (templates are class-agnostic); AI panel uses `aiContextClassId` for curriculum context only (not saved)
+- `src/components/classroom/ClassroomActivities.tsx` — Edit button now navigates to `/exit-tickets/create?templateId=...` (only shown when `exit_ticket_template_id` is set); new "Clear" button appears on closed/completed runs
+- `src/hooks/useExitTicketsByClass.ts` — `ExitTicketByClass` interface now includes `exit_ticket_template_id`
+- `src/hooks/useAssessments.tsx` — exit ticket runs (`is_exit_ticket=true`) filtered out of the class assessments list
+
+**Deleted:**
+- `src/hooks/useExitTickets.ts` — replaced by `useExitTicketTemplates`
+
+**Unchanged (still work without modification):**
+- `TakeExitTicket.tsx`, `AssessmentDetail.tsx`, all analytics hooks, `useSubmitExitTicket`, `useActiveExitTickets` — all query by `task_id` and are unaffected
+
+**Key files:**
+- `supabase/migrations/20260430000000_exit_ticket_templates.sql` — schema changes
+- `src/hooks/useExitTicketTemplates.ts` — template query hook
+- `src/hooks/useRunsForTemplate.ts` — runs per template query hook
+- `src/hooks/useDeployTemplate.ts` — deploy mutation
+- `src/hooks/useClearRun.ts` — clear results mutation
+- `src/hooks/useDeleteRun.ts` — remove run mutation
+- `src/pages/CreateExitTicket.tsx` — template editor
+- `src/pages/ExitTickets.tsx` — template library page
+
+---
+
 ### Teacher SSO — End-to-End Working (2026-04-27)
 
 **What was fixed and deployed:**
