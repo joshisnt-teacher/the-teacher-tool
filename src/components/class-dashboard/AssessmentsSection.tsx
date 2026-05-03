@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Plus, CheckCircle, Clock, Loader2, Trash2, Share } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Loader2, Trash2, Share, Ticket, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast } from 'date-fns';
 import { useAssessments, type Assessment } from '@/hooks/useAssessments';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 // Timeline moved to page level; no imports needed here
 
 interface AssessmentsSectionProps {
@@ -20,7 +22,9 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
   const { data: assessments = [], isLoading, error } = useAssessments(classId);
   const { deleteTask } = useTaskMutations();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hidingId, setHidingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Filter assessments by due date, handling null due_date values
   const previousAssessments = assessments.filter(a => 
@@ -65,9 +69,27 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
     }
   };
 
+  const handleHideFromAssessments = async (assessmentId: string) => {
+    setHidingId(assessmentId);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ hidden_from_assessments: true } as Record<string, unknown>)
+        .eq('id', assessmentId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['assessments', classId] });
+      toast({ title: 'Removed from class page', description: 'Results are still accessible from the Exit Tickets page.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Unknown error';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setHidingId(null);
+    }
+  };
+
   const AssessmentCard = ({ assessment }: { assessment: Assessment }) => (
     <div className="p-1.5 rounded-lg border bg-background/50">
-      <div 
+      <div
         className="cursor-pointer hover:bg-background/70 transition-colors p-1.5 rounded-lg"
         onClick={() => navigate(`/assessment/${assessment.id}`)}
       >
@@ -89,11 +111,17 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
             <Clock className="w-4 h-4 text-orange-600 flex-shrink-0 ml-2" />
           )}
         </div>
-        
+
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge className={`${getTypeColor(assessment.task_type)} text-xs`}>
-            {assessment.task_type || 'Assessment'}
-          </Badge>
+          {assessment.is_exit_ticket ? (
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs gap-1">
+              <Ticket className="w-2.5 h-2.5" />Exit Ticket
+            </Badge>
+          ) : (
+            <Badge className={`${getTypeColor(assessment.task_type)} text-xs`}>
+              {assessment.task_type || 'Assessment'}
+            </Badge>
+          )}
           {assessment.weight_percent && (
             <span className="text-xs text-muted-foreground">
               {assessment.weight_percent}% weight
@@ -106,41 +134,74 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
           )}
         </div>
       </div>
-      
+
       <div className="flex justify-end mt-1">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              disabled={deletingId === assessment.id}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-5 px-1.5"
-            >
-              {deletingId === assessment.id ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Trash2 className="w-3 h-3" />
-              )}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{assessment.name}"? This action cannot be undone and will remove all associated questions and results.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => handleDelete(assessment.id)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        {assessment.is_exit_ticket ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={hidingId === assessment.id}
+                className="text-muted-foreground hover:text-foreground h-5 px-1.5 text-xs gap-1"
               >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                {hidingId === assessment.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <EyeOff className="w-3 h-3" />
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove from class page?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  "{assessment.name}" will no longer appear here, but the results are kept and still accessible from the Exit Tickets page.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleHideFromAssessments(assessment.id)}>
+                  Remove from view
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={deletingId === assessment.id}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-5 px-1.5"
+              >
+                {deletingId === assessment.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3" />
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{assessment.name}"? This action cannot be undone and will remove all associated questions and results.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleDelete(assessment.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );

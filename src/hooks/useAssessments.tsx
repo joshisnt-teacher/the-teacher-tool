@@ -12,6 +12,7 @@ export interface Assessment {
   class_id: string;
   created_at: string;
   updated_at: string;
+  is_exit_ticket: boolean;
 }
 
 export const useAssessments = (classId?: string) => {
@@ -35,14 +36,17 @@ export const useAssessments = (classId?: string) => {
         return [];
       }
 
-      const nonExitTickets = tasks.filter(task => !task.is_exit_ticket);
+      // Exclude tasks the teacher has hidden from the assessments view
+      const visibleTasks = tasks.filter(
+        task => !(task as { hidden_from_assessments?: boolean }).hidden_from_assessments
+      );
 
-      if (nonExitTickets.length === 0) {
+      if (visibleTasks.length === 0) {
         return [];
       }
 
       // Get all results for tasks in this class to determine completion status
-      const taskIds = nonExitTickets.map(task => task.id);
+      const taskIds = visibleTasks.map(task => task.id);
       const { data: results, error: resultsError } = await supabase
         .from('results')
         .select('task_id')
@@ -54,7 +58,7 @@ export const useAssessments = (classId?: string) => {
       const completedTaskIds = new Set(results?.map(result => result.task_id) || []);
 
       // Transform tasks into assessments with status
-      const assessments: Assessment[] = nonExitTickets.map(task => ({
+      const assessments: Assessment[] = visibleTasks.map(task => ({
         id: task.id,
         name: task.name,
         task_type: task.task_type,
@@ -65,6 +69,7 @@ export const useAssessments = (classId?: string) => {
         class_id: task.class_id,
         created_at: task.created_at,
         updated_at: task.updated_at,
+        is_exit_ticket: task.is_exit_ticket ?? false,
       }));
 
       return assessments;
