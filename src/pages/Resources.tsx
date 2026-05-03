@@ -103,12 +103,13 @@ function AssignToClassButton({ resource, teacherId }: { resource: Resource; teac
       await assign.mutateAsync({ class_id: classId, resource_id: resource.id, teacher_id: teacherId });
       toast({ title: 'Resource assigned', description: `"${resource.title}" is now on the Classroom page for ${cls?.class_name ?? 'that class'}.` });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      // Unique violation means already assigned
-      if (msg.includes('unique') || msg.includes('duplicate')) {
-        toast({ title: 'Already assigned', description: `This resource is already assigned to ${cls?.class_name ?? 'that class'}.`, variant: 'destructive' });
+      const msg = (err as any)?.message ?? (err instanceof Error ? err.message : '');
+      const code = (err as any)?.code ?? '';
+      // 23505 = unique_violation; 409 = conflict (PostgREST unique constraint)
+      if (code === '23505' || msg.includes('unique') || msg.includes('duplicate')) {
+        toast({ title: 'Already assigned', description: `"${resource.title}" is already assigned to ${cls?.class_name ?? 'that class'}.` });
       } else {
-        toast({ title: 'Failed to assign', description: msg, variant: 'destructive' });
+        toast({ title: 'Failed to assign', description: msg || 'Unknown error', variant: 'destructive' });
       }
     }
     setOpen(false);
