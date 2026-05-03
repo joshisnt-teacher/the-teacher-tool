@@ -248,7 +248,11 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
       toast({ title: 'Exit ticket saved' });
       if (onClose) onClose(); else navigate('/exit-tickets');
     } catch (e: unknown) {
-      toast({ title: 'Failed to save', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      console.error('Exit ticket save error:', e);
+      const msg = e instanceof Error
+        ? e.message
+        : (e as { message?: string })?.message ?? 'Unknown error';
+      toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -263,7 +267,11 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
       toast({ title: 'Exit ticket deleted' });
       if (onClose) onClose(); else navigate('/exit-tickets');
     } catch (e: unknown) {
-      toast({ title: 'Failed to delete', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+      console.error('Exit ticket delete error:', e);
+      const msg = e instanceof Error
+        ? e.message
+        : (e as { message?: string })?.message ?? 'Unknown error';
+      toast({ title: 'Failed to delete', description: msg, variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
