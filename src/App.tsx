@@ -55,7 +55,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/student/:studentId/class/:classId", title: "Student Report" },
   { path: "/student/dashboard", title: "Student Dashboard" },
   { path: "/exit-ticket/:taskId", title: "Exit Ticket" },
-  { path: "/join", title: "Join Class" },
+  { path: "/join", title: "Student Sign In" },
   { path: "/login", title: "Login" },
   { path: "/auth/teacher/sso", title: "Signing in..." },
   { path: "/auth/sso", title: "Signing in..." },
@@ -86,8 +86,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     currentPath === "/join" ||
     currentPath.startsWith("/exit-ticket/") ||
     currentPath.startsWith("/auth/sso") ||
-    currentPath.startsWith("/student/") ||
-    /^\/(?=.*\d)[A-Z0-9]{4,10}$/i.test(currentPath); // class code paths like /X7K9P2 (must contain a digit)
+    currentPath.startsWith("/student/");
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
     return <><PageTitle />{children}</>;
@@ -248,8 +247,8 @@ const App = () => (
                 } 
               />
               {/* Public student routes */}
-              <Route path="/join" element={<StudentLanding />} />
-              <Route path="/:classCode" element={<ClassJoin />} />
+              <Route path="/join" element={<ClassJoin />} />
+              <Route path="/student-landing" element={<StudentLanding />} />
               <Route path="/exit-ticket/:taskId" element={<TakeExitTicket />} />
               <Route path="/auth/sso" element={<StudentSSO />} />
               <Route path="/auth/teacher/sso" element={<TeacherSSO />} />

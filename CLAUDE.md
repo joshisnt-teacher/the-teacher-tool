@@ -116,15 +116,17 @@ edufied.com.au (hub)
 - The edge function must be deployed with `--no-verify-jwt` (teachers have no session when they call it)
 - Required edge function secrets: `CENTRAL_SUPABASE_URL`, `CENTRAL_SUPABASE_SERVICE_ROLE_KEY`
 
-### Student SSO Flow
+### Student Sign-In Flow
 
-Students log in via `ClassJoin.tsx` (route `/:classCode`) using a username + PIN:
+Students sign in via `ClassJoin.tsx` (route `/join`) using a username + PIN:
 1. Username + PIN verified against central `students` table (bcrypt PIN hash)
 2. Local student found via `students.central_id` (bridges to central UUID)
-3. Enrolment confirmed in the local DB
-4. `studentId` passed downstream is always the **local UUID** — all analytics/results work unchanged
+3. Student session stored in localStorage via `useStudentSession` hook (student_id, central_id, first_name, last_name, year_level)
+4. Redirected to `/student/dashboard` — their personalised dashboard showing exit tickets and homework across all enrolled classes
 
-Student session is stored in localStorage via `useStudentSession` hook. A separate `StudentSSO` page (`/auth/sso`) handles SSO from the student hub (`student.edufied.com.au`) for future use.
+A separate `StudentSSO` page (`/auth/sso`) handles SSO from the student hub (`student.edufied.com.au`) for future use.
+
+**Note:** Class codes have been removed. Students no longer join via `/:classCode`. All student access is through authenticated login.
 
 ### Central DB Tables (edufied-auth)
 
@@ -146,6 +148,59 @@ Student session is stored in localStorage via `useStudentSession` hook. A separa
 ---
 
 ## Recent Changes
+
+### Exit Ticket UX Simplification + Homework Flow (2026-05-03)
+
+**What was changed:**
+
+- **Terminology standardised** across all exit ticket UIs to reduce confusion:
+  - "Clear Results" → **"Reset to Draft"**
+  - "Deactivate" → **"Close"**
+  - "Rerun" → **"Reactivate"**
+  - "Remove Run" → **"Delete from Class"**
+  - Assessment Detail page shows **"Exit Ticket"** badge (instead of generic task type) and **"Back to Classroom"** breadcrumb
+- **Removed "Hide from Assessments" footgun** — the eye-off button in `AssessmentsSection` was confusing (hid from one view but not another, with no way to unhide). Replaced with a simple **"View Results"** link for exit tickets.
+- **Visibility hints added** in Classroom — each ticket now shows a status hint:
+  - Draft: "Visible to you only • Not yet active for students"
+  - Active: "Students can access via class code"
+  - Closed: "Results saved • View in Assessment Detail"
+- **Recent closed tickets shown in Classroom** — the 3 most recently closed tickets remain visible (faded) so teachers can quickly check results or reactivate.
+- **Better empty state** in Classroom — "No exit tickets in this class yet" with "Go to Exit Ticket Library" (primary) and "Create New Exit Ticket" (secondary).
+- **AI context dropdown clarified** in `CreateExitTicket.tsx` — label changed to "Curriculum Context for AI", placed in a tinted callout box, with explicit helper text: "This helps the AI generate relevant questions. It does **not** assign this exit ticket to any class."
+
+**Homework flow improvements:**
+
+- **Student Dashboard** (`src/pages/StudentDashboard.tsx`) now has two separate sections:
+  - **"Exit Tickets"** — live classroom tickets only (`is_homework=false`)
+  - **"Homework"** — homework tickets with due dates, sorted by due date ascending, with blue styling and due date badges
+- **Homework tickets remain visible in Classroom** until the due date passes — they no longer disappear when a lesson ends.
+- **Teacher Class Dashboard** (`src/pages/ClassDashboard.tsx`) now has a **"Homework"** section in the left column (below Assessments) showing active homework with due dates and "View Results" links.
+- **Homework auto-activates** when assigned — setting homework sets `status='active'`, `is_homework=true`, and `due_date`. No separate activation step needed.
+- **`TakeExitTicket.tsx`** updated to allow access to homework tickets that are active with a valid due date.
+
+**Class codes removed from student flow:**
+
+- **`ClassJoin.tsx`** — completely rewritten from a class-code-based join page to a simple **student sign-in page** (username + PIN). On success, stores session and redirects to `/student/dashboard`.
+- **`StudentLanding.tsx`** — simplified from a class code input to a "Student Portal" landing with a "Sign In" button.
+- **`ClassroomActivities.tsx`** — removed all class code UI (copy link, display popup, class code bar). The `classCode` prop was removed entirely.
+- **`App.tsx`** — removed the `/:classCode` route and the regex that treated code paths as student pages. `/join` now renders the sign-in form.
+- **`TakeExitTicket.tsx`** — "Back to Class" button now goes to `/student/dashboard`. Error message changed from "join via class code" to "sign in from the student dashboard".
+
+**Key files:**
+- `src/pages/AssessmentDetail.tsx` — conditional exit ticket badge/title
+- `src/components/class-dashboard/AssessmentsSection.tsx` — removed hide button, added View Results link
+- `src/components/classroom/ClassroomActivities.tsx` — renamed buttons, visibility hints, homework filtering, removed class code
+- `src/pages/ExitTickets.tsx` — renamed actions, "Open in Classroom" links
+- `src/pages/CreateExitTicket.tsx` — clarified AI context dropdown
+- `src/pages/StudentDashboard.tsx` — split Exit Tickets / Homework sections
+- `src/pages/ClassJoin.tsx` — rewritten as student sign-in
+- `src/pages/StudentLanding.tsx` — simplified landing page
+- `src/pages/TakeExitTicket.tsx` — homework access, dashboard redirect
+- `src/pages/ClassDashboard.tsx` — added HomeworkSection
+- `src/components/class-dashboard/HomeworkSection.tsx` — new component for teacher homework view
+- `src/App.tsx` — routing updates, removed class code paths
+
+---
 
 ### Exit Ticket Templates + Runs (2026-05-02)
 
@@ -273,7 +328,7 @@ npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --n
   - Class code bar with copy-link button and "Display" popup (opens a full-screen window showing the class code and join URL, matching the timer/name-picker popup pattern)
   - Per-ticket Activate/Deactivate toggle with loading state
   - Edit button navigating to `/exit-tickets/create?taskId=...`
-- **Student landing page** (`src/pages/StudentLanding.tsx`) — new public page at `/join`. Large monospace class code input, auto-uppercases, navigates to `/:classCode` on submit.
+- **Student landing page** (`src/pages/StudentLanding.tsx`) — new public page at `/student-landing`. Simple "Student Portal" landing with a "Sign In" button that navigates to `/join`.
 - **TakeExitTicket question rendering** (`src/pages/TakeExitTicket.tsx`) — fixed question type normalisation. Now handles legacy `"MCQ"` (uppercase) alongside `"multiple_choice"`. Multiple choice only renders radio buttons when options exist; falls back to text input otherwise.
 - **App routing** (`src/App.tsx`) — added `/join` route and `isStudentPage` check so StudentLanding renders without the sidebar.
 - **Permission fixes** (applied via SQL/MCP):
@@ -285,7 +340,7 @@ npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --n
 
 **Key files:**
 - `src/components/classroom/ClassroomActivities.tsx` — classroom exit ticket panel
-- `src/pages/StudentLanding.tsx` — new `/join` landing page
+- `src/pages/StudentLanding.tsx` — student portal landing page (redirects to `/join`)
 - `src/pages/TakeExitTicket.tsx` — question type normalisation fix
 - `src/App.tsx` — routing updates
 
@@ -296,7 +351,7 @@ npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --n
 **What was built:**
 - **Replaced Activities with Exit Tickets** — the old Activities section (`activities`, `activity_quizzes`, `quiz_questions`, `quiz_answers`, `activity_forms`) was removed and replaced with Exit Tickets built directly on the `tasks` + `questions` tables. This means student submissions are automatically stored as assessment results and appear in dashboards/reports with zero extra work.
 - **Database changes** (migration: `20260414000000_add_exit_ticket_support.sql`):
-  - `class_code` added to `classes` for friendly URLs (`myurl.com/X7K9P2`)
+  - `class_code` added to `classes` (legacy — no longer used by student flow; students now sign in via `/join`)
   - `is_exit_ticket` and `status` (`draft` / `active` / `closed`) added to `tasks`
   - New `question_options` table for multiple-choice answer storage
   - `response_data` JSONB added to `question_results` for text-based answers
@@ -305,8 +360,9 @@ npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --n
   - `Activities` renamed to `Exit Tickets` in the sidebar and page titles
   - `src/pages/Activities.tsx` — lists exit tickets with status, question count, and class code URL
   - `src/pages/CreateExitTicket.tsx` — creation/editing page supporting title, class, tags (Bloom's, content descriptor, key skill, task type), and dynamic questions (multiple choice, short answer, extended answer). Teachers can add/remove options, mark correct answers, and activate/deactivate tickets.
-- **Student UI** (public, no auth):
-  - `src/pages/ClassJoin.tsx` — route `/:classCode`. Students enter a class code, see active exit tickets, and select their name from the class roster.
+- **Student UI** (public, authenticated via username + PIN):
+  - `src/pages/ClassJoin.tsx` — route `/join`. Students sign in with username + PIN (verified against central DB), then redirected to `/student/dashboard`.
+  - `src/pages/StudentDashboard.tsx` — route `/student/dashboard`. Shows active exit tickets and homework across all enrolled classes.
   - `src/pages/TakeExitTicket.tsx` — route `/exit-ticket/:taskId?studentId=...`. Renders questions, prevents double submission, auto-grades multiple choice, and stores text answers for manual grading.
 - **Auto-grading**:
   - Multiple choice: scored automatically (full `max_score` if correct, else `0`)
@@ -318,7 +374,8 @@ npx supabase functions deploy teacher-sso --project-ref aogorchudxilnkhtfvqq --n
 **Key files:**
 - `supabase/migrations/20260414000000_add_exit_ticket_support.sql` — schema changes
 - `src/pages/CreateExitTicket.tsx` — teacher creation/editing UI
-- `src/pages/ClassJoin.tsx` — student class code landing page
+- `src/pages/ClassJoin.tsx` — student sign-in page (username + PIN)
+- `src/pages/StudentDashboard.tsx` — student dashboard with exit tickets and homework
 - `src/pages/TakeExitTicket.tsx` — student exit ticket submission UI
 - `src/pages/Activities.tsx` — teacher exit ticket library
 - `src/hooks/useExitTickets.ts`, `useExitTicketsByClass.ts`, `useActiveExitTickets.ts` — data fetching

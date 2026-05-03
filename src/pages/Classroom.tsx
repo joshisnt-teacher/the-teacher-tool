@@ -342,7 +342,7 @@ function ClassroomContent() {
           </Card>
 
           {/* Activities Section */}
-          <ClassroomActivities classId={classId} classCode={currentClass.class_code} currentSession={currentSession || null} />
+          <ClassroomActivities classId={classId} currentSession={currentSession || null} />
         </div>
 
         {/* Modules Section */}

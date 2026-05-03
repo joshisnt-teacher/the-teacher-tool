@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Calendar, BookOpen, Plus, Monitor } from 'lucide-react';
+import { HomeworkSection } from '@/components/class-dashboard/HomeworkSection';
 import { useClasses } from '@/hooks/useClasses';
 import { format } from 'date-fns';
 import { AssessmentsSection } from '@/components/class-dashboard/AssessmentsSection';
@@ -149,9 +150,10 @@ const ClassDashboard = () => {
 
           <TabsContent value="overview">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left column - Assessments (1/3 width) */}
-              <div className="lg:col-span-1">
+              {/* Left column - Assessments + Homework (1/3 width) */}
+              <div className="lg:col-span-1 space-y-6">
                 <AssessmentsSection classId={classId!} />
+                <HomeworkSection classId={classId!} />
               </div>
               
               {/* Right column - Class Sessions (2/3 width) */}

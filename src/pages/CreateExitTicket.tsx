@@ -376,8 +376,8 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                   No OpenAI API key found. Add your key in Settings to use AI generation.
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="ai-class">Curriculum context (AI only)</Label>
+              <div className="space-y-2 rounded-md border border-purple-100 bg-purple-50/50 px-3 py-3">
+                <Label htmlFor="ai-class">Curriculum Context for AI</Label>
                 <Select value={aiContextClassId} onValueChange={setAiContextClassId} disabled={isBusy}>
                   <SelectTrigger id="ai-class"><SelectValue placeholder="Pick a class to pull curriculum tags from" /></SelectTrigger>
                   <SelectContent>
@@ -386,7 +386,9 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Helps AI generate relevant questions — not saved to the template and does not assign this ticket to the class.</p>
+                <p className="text-xs text-muted-foreground">
+                  This helps the AI generate relevant questions. It does <strong>not</strong> assign this exit ticket to any class.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ai-prompt">Describe the topic</Label>

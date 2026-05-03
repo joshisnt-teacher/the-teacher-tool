@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ClipboardList, Link2, LogOut } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, ClipboardList, Link2, LogOut, BookOpen } from 'lucide-react';
 import { useStudentSession } from '@/hooks/useStudentSession';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -34,7 +35,7 @@ const StudentDashboard = () => {
 
   const classIds = enrolments.map((e: any) => e.class_id);
 
-  // Fetch active exit tickets for those classes
+  // Fetch active (non-homework) exit tickets for those classes
   const { data: activeTickets = [], isLoading: isLoadingTickets } = useQuery({
     queryKey: ['student-active-exit-tickets', classIds],
     queryFn: async () => {
@@ -44,6 +45,7 @@ const StudentDashboard = () => {
         .select('id, name, description, class_id, classes(class_name)')
         .eq('is_exit_ticket', true)
         .eq('status', 'active')
+        .eq('is_homework', false)
         .in('class_id', classIds)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -53,6 +55,34 @@ const StudentDashboard = () => {
         description: t.description,
         class_id: t.class_id,
         class_name: t.classes?.class_name ?? '',
+      }));
+    },
+    enabled: classIds.length > 0,
+  });
+
+  // Fetch homework exit tickets for those classes
+  const { data: homeworkTickets = [], isLoading: isLoadingHomework } = useQuery({
+    queryKey: ['student-homework-exit-tickets', classIds],
+    queryFn: async () => {
+      if (classIds.length === 0) return [];
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, name, description, class_id, due_date, classes(class_name)')
+        .eq('is_exit_ticket', true)
+        .eq('is_homework', true)
+        .eq('status', 'active')
+        .in('class_id', classIds)
+        .gte('due_date', today)
+        .order('due_date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        class_id: t.class_id,
+        class_name: t.classes?.class_name ?? '',
+        due_date: t.due_date,
       }));
     },
     enabled: classIds.length > 0,
@@ -87,7 +117,10 @@ const StudentDashboard = () => {
     enabled: classIds.length > 0,
   });
 
-  const isLoading = sessionLoading || isLoadingEnrolments || isLoadingTickets || isLoadingResources;
+  const isLoading = sessionLoading || isLoadingEnrolments || isLoadingTickets || isLoadingHomework || isLoadingResources;
+
+  const formatDueDate = (dateStr: string) =>
+    new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const handleStartExitTicket = (ticketId: string) => {
     if (!session) return;
@@ -151,6 +184,47 @@ const StudentDashboard = () => {
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground">
                     Stay tuned for the next activity
+                  </CardContent>
+                </Card>
+              )}
+            </section>
+
+            {/* Homework Section */}
+            <section>
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-blue-600" />
+                Homework
+              </h2>
+              {homeworkTickets.length > 0 ? (
+                <div className="space-y-3">
+                  {homeworkTickets.map((ticket) => (
+                    <Card key={ticket.id} className="hover:border-blue-400 transition-colors border-blue-200 bg-blue-50/30">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{ticket.name}</p>
+                          {ticket.description && (
+                            <p className="text-sm text-muted-foreground">{ticket.description}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-muted-foreground">{ticket.class_name}</p>
+                            {ticket.due_date && (
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                                Due {formatDueDate(ticket.due_date)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button onClick={() => handleStartExitTicket(ticket.id)}>
+                          Start
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    No homework right now
                   </CardContent>
                 </Card>
               )}

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, CheckCircle, Clock, Loader2, Trash2, Share, Ticket, EyeOff } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Loader2, Trash2, Share, Ticket, EyeOff, BarChart3, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast } from 'date-fns';
 import { useAssessments, type Assessment } from '@/hooks/useAssessments';
@@ -23,6 +23,7 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
   const { deleteTask } = useTaskMutations();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [hidingId, setHidingId] = useState<string | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -69,16 +70,21 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
     }
   };
 
-  const handleHideFromAssessments = async (assessmentId: string) => {
+  const handleHideFromAssessments = async (assessmentId: string, hide: boolean) => {
     setHidingId(assessmentId);
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ hidden_from_assessments: true } as Record<string, unknown>)
+        .update({ hidden_from_assessments: hide } as Record<string, unknown>)
         .eq('id', assessmentId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['assessments', classId] });
-      toast({ title: 'Removed from class page', description: 'Results are still accessible from the Exit Tickets page.' });
+      toast({
+        title: hide ? 'Hidden from assessments' : 'Shown in assessments',
+        description: hide
+          ? 'The exit ticket is still accessible from the Classroom and Exit Tickets pages.'
+          : 'The exit ticket now appears in the assessments list again.',
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Unknown error';
       toast({ title: 'Error', description: msg, variant: 'destructive' });
@@ -86,6 +92,8 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
       setHidingId(null);
     }
   };
+
+
 
   const AssessmentCard = ({ assessment }: { assessment: Assessment }) => (
     <div className="p-1.5 rounded-lg border bg-background/50">
@@ -135,38 +143,50 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
         </div>
       </div>
 
-      <div className="flex justify-end mt-1">
+      <div className="flex justify-end mt-1 gap-1">
         {assessment.is_exit_ticket ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={hidingId === assessment.id}
-                className="text-muted-foreground hover:text-foreground h-5 px-1.5 text-xs gap-1"
-              >
-                {hidingId === assessment.id ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <EyeOff className="w-3 h-3" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove from class page?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  "{assessment.name}" will no longer appear here, but the results are kept and still accessible from the Exit Tickets page.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleHideFromAssessments(assessment.id)}>
-                  Remove from view
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/assessment/${assessment.id}`)}
+              className="text-muted-foreground hover:text-foreground h-5 px-1.5 text-xs gap-1"
+            >
+              <BarChart3 className="w-3 h-3" />
+              View Results
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={hidingId === assessment.id}
+                  className="text-muted-foreground hover:text-foreground h-5 px-1.5 text-xs gap-1"
+                >
+                  {hidingId === assessment.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <EyeOff className="w-3 h-3" />
+                  )}
+                  Hide
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hide from assessments?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    "{assessment.name}" will be hidden from this assessments list, but you can still access it from the Classroom page and the Exit Tickets page. The results are kept.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleHideFromAssessments(assessment.id, true)}>
+                    Hide
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         ) : (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -208,6 +228,10 @@ export const AssessmentsSection: React.FC<AssessmentsSectionProps> = ({ classId 
 
   return (
     <div className="space-y-6">
+      <p className="text-xs text-muted-foreground px-1">
+        Exit tickets are managed from the Classroom page.
+      </p>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">

@@ -564,10 +564,10 @@ const AssessmentDetail = () => {
       <header className="bg-card border-b border-border/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-4">
-            <Link to={`/class/${assessment.class_id}`}>
+            <Link to={`/classroom/${assessment.class_id}`}>
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Class
+                Back to Classroom
               </Button>
             </Link>
           </div>
@@ -576,9 +576,15 @@ const AssessmentDetail = () => {
             <div>
               <h1 className="text-3xl font-bold mb-2">{assessment.name}</h1>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <Badge className={getTypeColor(assessment.task_type)}>
-                  {assessment.task_type}
-                </Badge>
+                {assessment.is_exit_ticket ? (
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                    Exit Ticket
+                  </Badge>
+                ) : (
+                  <Badge className={getTypeColor(assessment.task_type)}>
+                    {assessment.task_type}
+                  </Badge>
+                )}
                 {assessment.due_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />

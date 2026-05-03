@@ -26,12 +26,13 @@ const TakeExitTicket = () => {
   const { data: task, isLoading: isLoadingTask } = useQuery({
     queryKey: ['public-exit-ticket', taskId],
     queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, name, description, class_id, max_score')
+        .select('id, name, description, class_id, max_score, is_homework, due_date')
         .eq('id', taskId)
         .eq('is_exit_ticket', true)
-        .eq('status', 'active')
+        .or(`status.eq.active,and(status.eq.closed,is_homework.eq.true,due_date.gte.${today})`)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -143,7 +144,7 @@ const TakeExitTicket = () => {
           <CardContent className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Missing Student ID</h2>
-            <p className="text-muted-foreground">Please join via your class code first.</p>
+            <p className="text-muted-foreground">Please sign in from the student dashboard first.</p>
           </CardContent>
         </Card>
       </div>
@@ -185,8 +186,8 @@ const TakeExitTicket = () => {
             <p className="text-muted-foreground mb-4">
               Your exit ticket has been submitted successfully.
             </p>
-            <Button variant="outline" onClick={() => navigate(`/${searchParams.get('classCode') || ''}`)}>
-              Back to Class
+            <Button variant="outline" onClick={() => navigate('/student/dashboard')}>
+              Back to Dashboard
             </Button>
           </CardContent>
         </Card>

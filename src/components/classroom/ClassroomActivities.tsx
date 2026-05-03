@@ -2,14 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Ticket, AlertCircle, ExternalLink, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X } from "lucide-react";
+import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useClassroomTheme } from "@/contexts/ClassroomThemeContext";
+
 import { useCreateClassSession } from "@/hooks/useClassSessions";
 import { useClearRun } from "@/hooks/useClearRun";
 import {
@@ -27,22 +27,19 @@ import { Label } from "@/components/ui/label";
 
 interface ClassroomActivitiesProps {
   classId: string;
-  classCode?: string | null;
   currentSession?: { id: string; ended_at: string | null; started_at?: string | null } | null;
 }
 
-export function ClassroomActivities({ classId, classCode, currentSession }: ClassroomActivitiesProps) {
+export function ClassroomActivities({ classId, currentSession }: ClassroomActivitiesProps) {
   const { data: allExitTickets = [], isLoading: ticketsLoading } = useExitTicketsByClass(classId);
   const { data: classResources = [] } = useClassResources(classId);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { currentTheme } = useClassroomTheme();
+
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [copiedCode, setCopiedCode] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [codeWindow, setCodeWindow] = useState<Window | null>(null);
   const [rerunDialogOpen, setRerunDialogOpen] = useState(false);
   const [rerunTicketId, setRerunTicketId] = useState<string | null>(null);
   const [startLessonDialogOpen, setStartLessonDialogOpen] = useState(false);
@@ -58,17 +55,27 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
 
   const isLessonActive = !!currentSession && !currentSession.ended_at;
 
-  const studentUrl = classCode
-    ? `${window.location.origin}/${classCode}`
-    : null;
-
-  // Filter tickets: show draft tickets for this class, plus any tickets linked to the current session
+  // Filter tickets: show draft tickets, current session tickets, homework tickets, and recent closed tickets
   const exitTickets = React.useMemo(() => {
-    return allExitTickets.filter((ticket) => {
+    const today = new Date().toISOString().split('T')[0];
+    const draftsAndCurrent = allExitTickets.filter((ticket) => {
+      // Homework tickets stay visible until due date passes
+      if (ticket.is_homework && ticket.status === 'active') {
+        return !ticket.due_date || ticket.due_date >= today;
+      }
       if (!ticket.class_session_id) return true; // Draft tickets
       if (currentSession && ticket.class_session_id === currentSession.id) return true; // Linked to current session
       return false;
     });
+    // Also show the most recent 3 closed tickets that aren't already shown
+    const closedTickets = allExitTickets
+      .filter((ticket) =>
+        ticket.status === 'closed' &&
+        !draftsAndCurrent.some((t) => t.id === ticket.id)
+      )
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 3);
+    return [...draftsAndCurrent, ...closedTickets];
   }, [allExitTickets, currentSession]);
 
   // Handle URL param activation from Activities page
@@ -130,115 +137,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allExitTickets, ticketsLoading, classId, currentSession, isLessonActive]);
 
-  const handleCopyCode = () => {
-    if (!studentUrl) return;
-    navigator.clipboard.writeText(studentUrl).then(() => {
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-      toast({ title: "Link copied!", description: studentUrl });
-    });
-  };
 
-  const handleOpenCodeWindow = () => {
-    if (!classCode || !studentUrl) return;
-
-    if (codeWindow && !codeWindow.closed) {
-      codeWindow.focus();
-      return;
-    }
-
-    const width = 600;
-    const height = 420;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const newWindow = window.open(
-      "",
-      "class-code-display",
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes`
-    );
-
-    if (newWindow) {
-      setCodeWindow(newWindow);
-      newWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Class Code</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: ${currentTheme.gradient};
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .container {
-      text-align: center;
-      background: ${currentTheme.containerBg};
-      backdrop-filter: blur(20px);
-      border-radius: 24px;
-      padding: 48px 64px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-      border: 1px solid rgba(255,255,255,0.2);
-      max-width: 90vw;
-    }
-    .label {
-      font-size: 1.2rem;
-      color: rgba(255,255,255,0.85);
-      font-weight: 500;
-      margin-bottom: 16px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .code {
-      font-size: clamp(4rem, 18vw, 7rem);
-      font-weight: 800;
-      color: white;
-      letter-spacing: 0.15em;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.2);
-      line-height: 1;
-      margin-bottom: 24px;
-    }
-    .divider {
-      width: 60px;
-      height: 3px;
-      background: rgba(255,255,255,0.4);
-      border-radius: 2px;
-      margin: 0 auto 20px;
-    }
-    .url-label {
-      font-size: 0.9rem;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .url {
-      font-size: clamp(0.85rem, 2.5vw, 1.1rem);
-      color: rgba(255,255,255,0.9);
-      font-weight: 500;
-      word-break: break-all;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="label">Class Code</div>
-    <div class="code">${classCode}</div>
-    <div class="divider"></div>
-    <div class="url-label">Students go to</div>
-    <div class="url">${studentUrl}</div>
-  </div>
-</body>
-</html>`);
-      newWindow.document.close();
-    }
-  };
 
   const activateTicket = async (ticketId: string) => {
     if (!currentSession) return;
@@ -520,54 +419,31 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
               Manage All
             </Button>
           </div>
-
-          {/* Class code bar */}
-          {classCode && (
-            <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border/60">
-              <span className="text-sm text-muted-foreground">Class code:</span>
-              <span className="font-mono font-bold text-base tracking-widest">{classCode}</span>
-              <div className="flex items-center gap-1 ml-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopyCode}
-                  className="h-7 px-2 text-xs gap-1"
-                >
-                  {copiedCode ? (
-                    <Check className="w-3.5 h-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                  {copiedCode ? "Copied" : "Copy link"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenCodeWindow}
-                  className="h-7 px-2 text-xs gap-1"
-                  title="Open class code in popup window"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Display
-                </Button>
-              </div>
-            </div>
-          )}
         </CardHeader>
 
         <CardContent>
           {exitTickets.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-              <p className="text-muted-foreground mb-4">
-                No exit tickets linked to this class yet.
+              <p className="font-medium mb-1">No exit tickets in this class yet</p>
+              <p className="text-muted-foreground mb-4 text-sm">
+                Create an exit ticket in your library, then deploy it here.
               </p>
-              <Button
-                size="sm"
-                onClick={() => navigate("/exit-tickets/create")}
-              >
-                Create Exit Ticket
-              </Button>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/exit-tickets")}
+                >
+                  Go to Exit Ticket Library
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/exit-tickets/create")}
+                >
+                  Create New Exit Ticket
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -581,7 +457,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className={`font-semibold truncate ${ticket.is_completed ? 'text-muted-foreground' : ''}`}>
+                        <h3 className={`font-semibold truncate ${ticket.is_completed || ticket.status === 'closed' ? 'text-muted-foreground' : ''}`}>
                           {ticket.name}
                         </h3>
                         {ticket.is_homework ? (
@@ -604,6 +480,15 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                           {ticket.question_count} Q
                         </Badge>
                       </div>
+                      {ticket.status === 'draft' && !ticket.is_homework && (
+                        <p className="text-xs text-muted-foreground">Visible to you only • Not yet active for students</p>
+                      )}
+                      {ticket.status === 'active' && !ticket.is_homework && (
+                        <p className="text-xs text-muted-foreground">Students can access via class code</p>
+                      )}
+                      {(ticket.status === 'closed' || ticket.is_completed) && !ticket.is_homework && (
+                        <p className="text-xs text-muted-foreground">Results saved • View in Assessment Detail</p>
+                      )}
                       {ticket.is_homework && ticket.due_date && (
                         <p className="text-xs text-blue-700 font-medium mb-0.5">
                           Due {new Date(ticket.due_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -629,7 +514,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
-                          Clear
+                          Reset to Draft
                         </Button>
                       )}
                       {ticket.status === 'draft' && !ticket.is_completed && (
@@ -670,11 +555,11 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                         {togglingId === ticket.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
                         ) : ticket.status === "active" ? (
-                          "Deactivate"
-                        ) : ticket.is_completed ? (
+                          "Close"
+                        ) : ticket.is_completed || ticket.status === 'closed' ? (
                           <>
                             <RotateCcw className="w-3 h-3 mr-1" />
-                            Rerun
+                            Reactivate
                           </>
                         ) : (
                           <>
@@ -722,9 +607,9 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
       <AlertDialog open={rerunDialogOpen} onOpenChange={setRerunDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rerun Exit Ticket?</AlertDialogTitle>
+            <AlertDialogTitle>Reset & Activate?</AlertDialogTitle>
             <AlertDialogDescription>
-              This exit ticket has already been used in a previous lesson. Do you want to delete all previous student submissions to run it again?
+              This exit ticket has already been used. All previous student submissions will be deleted so you can run it again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -740,7 +625,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                   Working...
                 </>
               ) : (
-                "Delete & Rerun"
+                "Reset & Activate"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -750,18 +635,18 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
       <AlertDialog open={clearResultsDialogOpen} onOpenChange={setClearResultsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Results?</AlertDialogTitle>
+            <AlertDialogTitle>Reset to Draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes all student responses for this exit ticket and resets it to draft. The questions stay intact.
+              This deletes all student responses and resets the exit ticket to draft. The questions stay intact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setClearResultsTicketId(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleClearResults} disabled={clearRun.isPending}>
               {clearRun.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Clearing...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Resetting...</>
               ) : (
-                "Clear Results"
+                "Reset to Draft"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

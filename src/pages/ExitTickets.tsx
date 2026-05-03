@@ -123,21 +123,21 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
                 variant="ghost" size="sm" className="h-7 px-2 text-xs"
                 onClick={() => navigate(`/classroom/${run.class_id}`)}
               >
-                Classroom
+                Open in Classroom →
               </Button>
               <Button
                 variant="ghost" size="sm" className="h-7 px-2 text-xs"
                 onClick={() => { setSelectedRun(run); setClearDialogOpen(true); }}
                 disabled={clearRun.isPending || deleteRun.isPending}
               >
-                <RefreshCw className="w-3 h-3 mr-1" />Clear
+                <RefreshCw className="w-3 h-3 mr-1" />Reset to Draft
               </Button>
               <Button
-                variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive"
                 onClick={() => { setSelectedRun(run); setDeleteRunDialogOpen(true); }}
                 disabled={clearRun.isPending || deleteRun.isPending}
               >
-                <X className="w-3 h-3" />
+                <Trash2 className="w-3 h-3 mr-1" />Delete
               </Button>
             </div>
           </div>
@@ -147,15 +147,15 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Results?</AlertDialogTitle>
+            <AlertDialogTitle>Reset to Draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes all student responses for this run and resets it to draft. The questions stay intact.
+              This deletes all student responses and resets the exit ticket to draft. The questions stay intact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setSelectedRun(null)} disabled={clearRun.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleClear} disabled={clearRun.isPending}>
-              {clearRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Clearing...</> : 'Clear Results'}
+              {clearRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Resetting...</> : 'Reset to Draft'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -164,9 +164,9 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
       <AlertDialog open={deleteRunDialogOpen} onOpenChange={setDeleteRunDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Run?</AlertDialogTitle>
+            <AlertDialogTitle>Delete from Class?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes this run (including all student responses) from {selectedRun?.class_name}. The template is not affected.
+              This permanently deletes this exit ticket and all student responses from {selectedRun?.class_name}. The template is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -175,7 +175,7 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
               onClick={handleDeleteRun} disabled={deleteRun.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Removing...</> : 'Remove Run'}
+              {deleteRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</> : 'Delete from Class'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -256,7 +256,7 @@ const ExitTickets = () => {
       }
       toast({
         title: plural ? `Imported into ${deployClassIds.length} classes` : 'Imported!',
-        description: 'Go to each classroom to activate it when ready.',
+        description: 'Click "Open in Classroom" below to activate.',
       });
       setOpenRunsMap((prev) => ({ ...prev, [deployTemplateId]: true }));
     } catch (err: unknown) {
