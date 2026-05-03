@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X } from "lucide-react";
+import { Copy, Check, Ticket, AlertCircle, ExternalLink, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -617,19 +617,6 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                      {ticket.exit_ticket_template_id && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-3 text-xs gap-1"
-                          onClick={() =>
-                            navigate(`/exit-tickets/create?templateId=${ticket.exit_ticket_template_id}`)
-                          }
-                        >
-                          <Pencil className="w-3 h-3" />
-                          Edit
-                        </Button>
-                      )}
                       {(ticket.is_completed || ticket.status === "closed") && (
                         <Button
                           variant="outline"
