@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library } from "lucide-react";
+import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library, RefreshCw } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClassroomTheme } from "@/contexts/ClassroomThemeContext";
 import { useCreateClassSession } from "@/hooks/useClassSessions";
+import { useClearRun } from "@/hooks/useClearRun";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +46,10 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
   const [startLessonDialogOpen, setStartLessonDialogOpen] = useState(false);
   const [startLessonTicketId, setStartLessonTicketId] = useState<string | null>(null);
   const createSessionMutation = useCreateClassSession();
+  const clearRun = useClearRun();
   const hasPromptedRef = useRef(false);
+  const [clearResultsDialogOpen, setClearResultsDialogOpen] = useState(false);
+  const [clearResultsTicketId, setClearResultsTicketId] = useState<string | null>(null);
 
   const isLessonActive = !!currentSession && !currentSession.ended_at;
 
@@ -341,6 +345,27 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     }
   };
 
+  const handleClearResults = async () => {
+    if (!clearResultsTicketId) return;
+    const ticket = allExitTickets.find((t) => t.id === clearResultsTicketId);
+    if (!ticket) return;
+    setClearResultsDialogOpen(false);
+    try {
+      await clearRun.mutateAsync({
+        taskId: clearResultsTicketId,
+        classId: classId,
+        templateId: ticket.exit_ticket_template_id,
+      });
+      queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
+      toast({ title: "Results cleared", description: "The exit ticket has been reset to draft." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setClearResultsTicketId(null);
+    }
+  };
+
   const handleCancelStartLesson = () => {
     setStartLessonDialogOpen(false);
     setStartLessonTicketId(null);
@@ -531,17 +556,34 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3 text-xs gap-1"
-                        onClick={() =>
-                          navigate(`/exit-tickets/create?taskId=${ticket.id}`)
-                        }
-                      >
-                        <Pencil className="w-3 h-3" />
-                        Edit
-                      </Button>
+                      {ticket.exit_ticket_template_id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1"
+                          onClick={() =>
+                            navigate(`/exit-tickets/create?templateId=${ticket.exit_ticket_template_id}`)
+                          }
+                        >
+                          <Pencil className="w-3 h-3" />
+                          Edit
+                        </Button>
+                      )}
+                      {(ticket.is_completed || ticket.status === "closed") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1"
+                          disabled={clearRun.isPending}
+                          onClick={() => {
+                            setClearResultsTicketId(ticket.id);
+                            setClearResultsDialogOpen(true);
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Clear
+                        </Button>
+                      )}
                       <Button
                         variant={ticket.status === "active" ? "secondary" : "default"}
                         size="sm"
@@ -623,6 +665,27 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                 </>
               ) : (
                 "Delete & Rerun"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={clearResultsDialogOpen} onOpenChange={setClearResultsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Results?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes all student responses for this exit ticket and resets it to draft. The questions stay intact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setClearResultsTicketId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearResults} disabled={clearRun.isPending}>
+              {clearRun.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Clearing...</>
+              ) : (
+                "Clear Results"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

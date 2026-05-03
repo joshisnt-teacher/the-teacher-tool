@@ -9,6 +9,7 @@ export interface ExitTicketByClass {
   status: string;
   is_completed: boolean;
   class_session_id: string | null;
+  exit_ticket_template_id: string | null;
   created_at: string;
   updated_at: string;
   class_id: string;
@@ -24,28 +25,16 @@ export const useExitTicketsByClass = (classId?: string) => {
       const { data: tasks, error } = await supabase
         .from('tasks')
         .select(`
-          id,
-          name,
-          description,
-          task_type,
-          status,
-          is_completed,
-          class_session_id,
-          created_at,
-          updated_at,
-          class_id,
-          questions (
-            id
-          )
+          id, name, description, task_type, status, is_completed,
+          class_session_id, exit_ticket_template_id,
+          created_at, updated_at, class_id,
+          questions (id)
         `)
         .eq('is_exit_ticket', true)
         .eq('class_id', classId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching exit tickets by class:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       return (tasks || []).map((task) => ({
         id: task.id,
@@ -53,8 +42,10 @@ export const useExitTicketsByClass = (classId?: string) => {
         description: task.description,
         task_type: task.task_type,
         status: task.status || 'draft',
-        is_completed: task.is_completed || false,
+        is_completed: (task.is_completed as boolean) || false,
         class_session_id: task.class_session_id || null,
+        exit_ticket_template_id:
+          (task as { exit_ticket_template_id?: string | null }).exit_ticket_template_id ?? null,
         created_at: task.created_at,
         updated_at: task.updated_at,
         class_id: task.class_id,

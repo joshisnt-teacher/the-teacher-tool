@@ -35,8 +35,14 @@ export const useAssessments = (classId?: string) => {
         return [];
       }
 
+      const nonExitTickets = tasks.filter(task => !task.is_exit_ticket);
+
+      if (nonExitTickets.length === 0) {
+        return [];
+      }
+
       // Get all results for tasks in this class to determine completion status
-      const taskIds = tasks.map(task => task.id);
+      const taskIds = nonExitTickets.map(task => task.id);
       const { data: results, error: resultsError } = await supabase
         .from('results')
         .select('task_id')
@@ -48,7 +54,7 @@ export const useAssessments = (classId?: string) => {
       const completedTaskIds = new Set(results?.map(result => result.task_id) || []);
 
       // Transform tasks into assessments with status
-      const assessments: Assessment[] = tasks.map(task => ({
+      const assessments: Assessment[] = nonExitTickets.map(task => ({
         id: task.id,
         name: task.name,
         task_type: task.task_type,
