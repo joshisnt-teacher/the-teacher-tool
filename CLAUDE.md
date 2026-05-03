@@ -159,7 +159,11 @@ A separate `StudentSSO` page (`/auth/sso`) handles SSO from the student hub (`st
   - "Rerun" → **"Reactivate"**
   - "Remove Run" → **"Delete from Class"**
   - Assessment Detail page shows **"Exit Ticket"** badge (instead of generic task type) and **"Back to Classroom"** breadcrumb
-- **Removed "Hide from Assessments" footgun** — the eye-off button in `AssessmentsSection` was confusing (hid from one view but not another, with no way to unhide). Replaced with a simple **"View Results"** link for exit tickets.
+- **"Hide from Assessments" button kept but improved** — the eye-off button in `AssessmentsSection` was confusing because it hid from one view but not another with no way to unhide. Kept the functionality (teachers still want to declutter their Assessments view) but improved the UX:
+  - Exit tickets now show both **"View Results"** and **"Hide"** buttons
+  - Dialog text is clearer: *"This will be hidden from this assessments list, but you can still access it from the Classroom page and the Exit Tickets page. The results are kept."*
+  - Toast confirms the action and reminds where to find it
+  - Infrastructure added to support unhiding (the `handleHideFromAssessments` function accepts a `hide` boolean)
 - **Visibility hints added** in Classroom — each ticket now shows a status hint:
   - Draft: "Visible to you only • Not yet active for students"
   - Active: "Students can access via class code"
@@ -188,7 +192,7 @@ A separate `StudentSSO` page (`/auth/sso`) handles SSO from the student hub (`st
 
 **Key files:**
 - `src/pages/AssessmentDetail.tsx` — conditional exit ticket badge/title
-- `src/components/class-dashboard/AssessmentsSection.tsx` — removed hide button, added View Results link
+- `src/components/class-dashboard/AssessmentsSection.tsx` — improved hide button with clearer dialog, added View Results link
 - `src/components/classroom/ClassroomActivities.tsx` — renamed buttons, visibility hints, homework filtering, removed class code
 - `src/pages/ExitTickets.tsx` — renamed actions, "Open in Classroom" links
 - `src/pages/CreateExitTicket.tsx` — clarified AI context dropdown
