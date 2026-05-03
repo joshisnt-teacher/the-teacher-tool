@@ -378,7 +378,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'homework', due_date: homeworkDueDate })
+        .update({ status: 'active', is_homework: true, due_date: homeworkDueDate } as Record<string, unknown>)
         .eq('id', homeworkTicketId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['exit-tickets-by-class', classId] });
@@ -399,7 +399,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'draft', due_date: null })
+        .update({ status: 'draft', is_homework: false, due_date: null } as Record<string, unknown>)
         .eq('id', ticketId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['exit-tickets-by-class', classId] });
@@ -449,13 +449,14 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     // Deactivating an active ticket
     setTogglingId(ticketId);
     try {
-      // Set due_date to the lesson date (session start) so the assessment is dated correctly
-      const sessionDate = currentSession?.started_at
+      // Set due_date to the lesson date unless this is a homework ticket (keep its original due_date)
+      const isHomework = allExitTickets.find((t) => t.id === ticketId)?.is_homework ?? false;
+      const sessionDate = !isHomework && currentSession?.started_at
         ? new Date(currentSession.started_at).toISOString().split('T')[0]
         : null;
       const { error } = await supabase
         .from("tasks")
-        .update({ status: "closed", is_completed: true, ...(sessionDate ? { due_date: sessionDate } : {}) })
+        .update({ status: "closed", is_completed: true, ...(sessionDate ? { due_date: sessionDate } : {}) } as Record<string, unknown>)
         .eq("id", ticketId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
@@ -583,7 +584,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                         <h3 className={`font-semibold truncate ${ticket.is_completed ? 'text-muted-foreground' : ''}`}>
                           {ticket.name}
                         </h3>
-                        {ticket.status === 'homework' ? (
+                        {ticket.is_homework ? (
                           <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs gap-1">
                             <BookOpen className="w-3 h-3" />
                             Homework
@@ -603,7 +604,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                           {ticket.question_count} Q
                         </Badge>
                       </div>
-                      {ticket.status === 'homework' && ticket.due_date && (
+                      {ticket.is_homework && ticket.due_date && (
                         <p className="text-xs text-blue-700 font-medium mb-0.5">
                           Due {new Date(ticket.due_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
@@ -660,7 +661,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                           Homework
                         </Button>
                       )}
-                      {ticket.status === 'homework' && (
+                      {ticket.is_homework && ticket.status === 'active' && (
                         <Button
                           variant="ghost"
                           size="sm"

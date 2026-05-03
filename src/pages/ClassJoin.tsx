@@ -27,8 +27,8 @@ const ClassJoin = () => {
 
   const isLoading = isLoadingClass || isLoadingTickets;
 
-  const liveTickets = (activeTickets || []).filter((t) => t.status === 'active');
-  const homeworkTickets = (activeTickets || []).filter((t) => t.status === 'homework');
+  const liveTickets = (activeTickets || []).filter((t) => !t.is_homework);
+  const homeworkTickets = (activeTickets || []).filter((t) => t.is_homework);
 
   const formatDueDate = (dateStr: string) =>
     new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
