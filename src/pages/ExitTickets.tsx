@@ -11,9 +11,6 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
@@ -21,8 +18,9 @@ import {
 } from '@/components/ui/sheet';
 import {
   ArrowLeft, Plus, Ticket, Trash2, Loader2, ChevronDown, ChevronUp,
-  Rocket, RefreshCw, X,
+  Download, RefreshCw, X,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useClasses } from '@/hooks/useClasses';
 import { useExitTicketTemplates, type ExitTicketTemplate } from '@/hooks/useExitTicketTemplates';
@@ -199,7 +197,7 @@ const ExitTickets = () => {
 
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [deployTemplateId, setDeployTemplateId] = useState<string | null>(null);
-  const [deployClassId, setDeployClassId] = useState<string>('');
+  const [deployClassIds, setDeployClassIds] = useState<string[]>([]);
 
   const [openRunsMap, setOpenRunsMap] = useState<Record<string, boolean>>({});
 
@@ -233,22 +231,34 @@ const ExitTickets = () => {
   const handleDeployClick = (e: React.MouseEvent, templateId: string) => {
     e.stopPropagation();
     setDeployTemplateId(templateId);
-    setDeployClassId('');
+    setDeployClassIds([]);
     setDeployDialogOpen(true);
   };
 
+  const toggleDeployClass = (classId: string) => {
+    setDeployClassIds((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId]
+    );
+  };
+
   const handleDeployConfirm = async () => {
-    if (!deployTemplateId || !deployClassId) return;
+    if (!deployTemplateId || deployClassIds.length === 0) return;
+    const plural = deployClassIds.length > 1;
     try {
-      await deployTemplate.mutateAsync({ templateId: deployTemplateId, classId: deployClassId });
-      toast({ title: 'Deployed!', description: 'Exit ticket is now ready in that class. Go to the classroom to activate it.' });
+      for (const classId of deployClassIds) {
+        await deployTemplate.mutateAsync({ templateId: deployTemplateId, classId });
+      }
+      toast({
+        title: plural ? `Imported into ${deployClassIds.length} classes` : 'Imported!',
+        description: 'Go to each classroom to activate it when ready.',
+      });
       setOpenRunsMap((prev) => ({ ...prev, [deployTemplateId]: true }));
     } catch (err: unknown) {
-      toast({ title: 'Deploy failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setDeployDialogOpen(false);
       setDeployTemplateId(null);
-      setDeployClassId('');
+      setDeployClassIds([]);
     }
   };
 
@@ -320,7 +330,7 @@ const ExitTickets = () => {
                               </div>
                               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                 <Button size="sm" onClick={(e) => handleDeployClick(e, template.id)}>
-                                  <Rocket className="w-3.5 h-3.5 mr-1.5" />Deploy
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />Import into Class
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => openEditSheet(template.id)}>Edit</Button>
                                 <Button variant="destructive" size="sm" onClick={(e) => handleDeleteClick(e, template.id)}>
@@ -371,23 +381,38 @@ const ExitTickets = () => {
       <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deploy to Class</DialogTitle>
+            <DialogTitle>Import into Class</DialogTitle>
             <DialogDescription>
-              Choose a class. A copy of this ticket's questions will be created for that class, ready to activate from the classroom.
+              Select one or more classes. Each class gets its own independent copy — results are tracked separately per class.
             </DialogDescription>
           </DialogHeader>
-          <Select value={deployClassId} onValueChange={setDeployClassId}>
-            <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
-            <SelectContent>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.class_name} ({c.subject})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1 max-h-52 overflow-y-auto border rounded-md p-2">
+            {classes.length === 0 && (
+              <p className="text-sm text-muted-foreground px-2 py-1">No classes found.</p>
+            )}
+            {classes.map((c) => (
+              <label
+                key={c.id}
+                className="flex items-center gap-3 cursor-pointer rounded-md px-2 py-2 hover:bg-muted/60 select-none"
+              >
+                <Checkbox
+                  checked={deployClassIds.includes(c.id)}
+                  onCheckedChange={() => toggleDeployClass(c.id)}
+                  disabled={deployTemplate.isPending}
+                />
+                <span className="text-sm font-medium">{c.class_name}</span>
+                <span className="text-xs text-muted-foreground ml-auto">{c.subject}</span>
+              </label>
+            ))}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeployDialogOpen(false)} disabled={deployTemplate.isPending}>Cancel</Button>
-            <Button onClick={handleDeployConfirm} disabled={!deployClassId || deployTemplate.isPending}>
-              {deployTemplate.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deploying...</> : 'Deploy'}
+            <Button onClick={handleDeployConfirm} disabled={deployClassIds.length === 0 || deployTemplate.isPending}>
+              {deployTemplate.isPending
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</>
+                : deployClassIds.length > 1
+                  ? `Import into ${deployClassIds.length} classes`
+                  : 'Import into Class'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -329,7 +329,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
       <Card>
         <CardHeader>
           <CardTitle>Exit Ticket Details</CardTitle>
-          <CardDescription>Set the title and description. Choose which class to deploy to after saving.</CardDescription>
+          <CardDescription>Set the title and description. After saving, import this template into any class from the Exit Tickets library.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -369,16 +369,16 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="ai-class">Class for curriculum context</Label>
+                <Label htmlFor="ai-class">Curriculum context (AI only)</Label>
                 <Select value={aiContextClassId} onValueChange={setAiContextClassId} disabled={isBusy}>
-                  <SelectTrigger id="ai-class"><SelectValue placeholder="Select a class (for curriculum tags)" /></SelectTrigger>
+                  <SelectTrigger id="ai-class"><SelectValue placeholder="Pick a class to pull curriculum tags from" /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.class_name} ({c.subject})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Used only for AI curriculum context — not saved to the template.</p>
+                <p className="text-xs text-muted-foreground">Helps AI generate relevant questions — not saved to the template and does not assign this ticket to the class.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ai-prompt">Describe the topic</Label>
