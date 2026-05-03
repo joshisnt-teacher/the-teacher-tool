@@ -38,5 +38,8 @@ dist-ssr
 # Supabase
 .supabase
 
+# Database backups (may contain sensitive data)
+backups/
+
 # Claude Code
 .claude/
