@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library, RefreshCw } from "lucide-react";
+import { Copy, Check, Ticket, AlertCircle, ExternalLink, Pencil, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ClassroomActivitiesProps {
   classId: string;
@@ -50,6 +52,9 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
   const hasPromptedRef = useRef(false);
   const [clearResultsDialogOpen, setClearResultsDialogOpen] = useState(false);
   const [clearResultsTicketId, setClearResultsTicketId] = useState<string | null>(null);
+  const [homeworkDialogOpen, setHomeworkDialogOpen] = useState(false);
+  const [homeworkTicketId, setHomeworkTicketId] = useState<string | null>(null);
+  const [homeworkDueDate, setHomeworkDueDate] = useState('');
 
   const isLessonActive = !!currentSession && !currentSession.ended_at;
 
@@ -366,6 +371,48 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     }
   };
 
+  const handleHomeworkConfirm = async () => {
+    if (!homeworkTicketId || !homeworkDueDate) return;
+    setHomeworkDialogOpen(false);
+    setTogglingId(homeworkTicketId);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'homework', due_date: homeworkDueDate })
+        .eq('id', homeworkTicketId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['exit-tickets-by-class', classId] });
+      queryClient.invalidateQueries({ queryKey: ['active-exit-tickets', classId] });
+      toast({ title: 'Set as homework', description: `Students can access it via the class code until ${new Date(homeworkDueDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}.` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Unknown error';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setTogglingId(null);
+      setHomeworkTicketId(null);
+      setHomeworkDueDate('');
+    }
+  };
+
+  const handleCancelHomework = async (ticketId: string) => {
+    setTogglingId(ticketId);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'draft', due_date: null })
+        .eq('id', ticketId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['exit-tickets-by-class', classId] });
+      queryClient.invalidateQueries({ queryKey: ['active-exit-tickets', classId] });
+      toast({ title: 'Homework cancelled', description: 'Moved back to draft.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Unknown error';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleCancelStartLesson = () => {
     setStartLessonDialogOpen(false);
     setStartLessonTicketId(null);
@@ -429,6 +476,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
     switch (status) {
       case "active": return "default" as const;
       case "closed": return "secondary" as const;
+      case "homework": return "secondary" as const;
       default: return "outline" as const;
     }
   };
@@ -535,9 +583,16 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                         <h3 className={`font-semibold truncate ${ticket.is_completed ? 'text-muted-foreground' : ''}`}>
                           {ticket.name}
                         </h3>
-                        <Badge variant={getStatusVariant(ticket.status)} className="capitalize text-xs">
-                          {ticket.status}
-                        </Badge>
+                        {ticket.status === 'homework' ? (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs gap-1">
+                            <BookOpen className="w-3 h-3" />
+                            Homework
+                          </Badge>
+                        ) : (
+                          <Badge variant={getStatusVariant(ticket.status)} className="capitalize text-xs">
+                            {ticket.status}
+                          </Badge>
+                        )}
                         {ticket.is_completed && (
                           <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs gap-1">
                             <Check className="w-3 h-3" />
@@ -548,6 +603,11 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                           {ticket.question_count} Q
                         </Badge>
                       </div>
+                      {ticket.status === 'homework' && ticket.due_date && (
+                        <p className="text-xs text-blue-700 font-medium mb-0.5">
+                          Due {new Date(ticket.due_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      )}
                       {ticket.description && (
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           {ticket.description}
@@ -555,7 +615,7 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                       {ticket.exit_ticket_template_id && (
                         <Button
                           variant="outline"
@@ -582,6 +642,34 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
                           Clear
+                        </Button>
+                      )}
+                      {ticket.status === 'draft' && !ticket.is_completed && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1"
+                          disabled={togglingId === ticket.id}
+                          onClick={() => {
+                            setHomeworkTicketId(ticket.id);
+                            setHomeworkDueDate('');
+                            setHomeworkDialogOpen(true);
+                          }}
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          Homework
+                        </Button>
+                      )}
+                      {ticket.status === 'homework' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1 text-muted-foreground"
+                          disabled={togglingId === ticket.id}
+                          onClick={() => handleCancelHomework(ticket.id)}
+                        >
+                          <X className="w-3 h-3" />
+                          Cancel
                         </Button>
                       )}
                       <Button
@@ -687,6 +775,35 @@ export function ClassroomActivities({ classId, classCode, currentSession }: Clas
               ) : (
                 "Clear Results"
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={homeworkDialogOpen} onOpenChange={setHomeworkDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set as Homework</AlertDialogTitle>
+            <AlertDialogDescription>
+              Students can access this exit ticket via the class code until the due date passes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2 space-y-1">
+            <Label htmlFor="homework-due-date">Due Date</Label>
+            <Input
+              id="homework-due-date"
+              type="date"
+              value={homeworkDueDate}
+              min={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setHomeworkDueDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setHomeworkTicketId(null); setHomeworkDueDate(''); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleHomeworkConfirm} disabled={!homeworkDueDate}>
+              Set as Homework
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

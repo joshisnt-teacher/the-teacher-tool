@@ -10,6 +10,7 @@ export interface ExitTicketByClass {
   is_completed: boolean;
   class_session_id: string | null;
   exit_ticket_template_id: string | null;
+  due_date: string | null;
   created_at: string;
   updated_at: string;
   class_id: string;
@@ -26,7 +27,7 @@ export const useExitTicketsByClass = (classId?: string) => {
         .from('tasks')
         .select(`
           id, name, description, task_type, status, is_completed,
-          class_session_id, exit_ticket_template_id,
+          class_session_id, exit_ticket_template_id, due_date,
           created_at, updated_at, class_id,
           questions (id)
         `)
@@ -46,6 +47,7 @@ export const useExitTicketsByClass = (classId?: string) => {
         class_session_id: task.class_session_id || null,
         exit_ticket_template_id:
           (task as { exit_ticket_template_id?: string | null }).exit_ticket_template_id ?? null,
+        due_date: (task as { due_date?: string | null }).due_date ?? null,
         created_at: task.created_at,
         updated_at: task.updated_at,
         class_id: task.class_id,

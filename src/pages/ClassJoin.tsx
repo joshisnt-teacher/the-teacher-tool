@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Loader2, School } from 'lucide-react';
+import { AlertCircle, BookOpen, Loader2, School } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClassByCode } from '@/hooks/useClassByCode';
 import { useActiveExitTickets } from '@/hooks/useActiveExitTickets';
@@ -26,6 +26,12 @@ const ClassJoin = () => {
   const { verify, isLoading: isVerifying } = useStudentVerification();
 
   const isLoading = isLoadingClass || isLoadingTickets;
+
+  const liveTickets = (activeTickets || []).filter((t) => t.status === 'active');
+  const homeworkTickets = (activeTickets || []).filter((t) => t.status === 'homework');
+
+  const formatDueDate = (dateStr: string) =>
+    new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
   const isSubmitting = isVerifying || isCheckingEnrolment;
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -123,12 +129,7 @@ const ClassJoin = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {!activeTickets || activeTickets.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>There are no active exit tickets right now. Check back later!</AlertDescription>
-            </Alert>
-          ) : !verifiedStudentId ? (
+          {!verifiedStudentId ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
@@ -165,49 +166,59 @@ const ClassJoin = () => {
                 Sign In
               </Button>
             </form>
+          ) : liveTickets.length === 0 && homeworkTickets.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>No tasks right now. Check back later!</AlertDescription>
+            </Alert>
           ) : (
-            <>
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  Active Exit Tickets
-                </h3>
-                {activeTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="p-3 rounded-lg border bg-card hover:border-primary transition-colors"
-                  >
-                    <div className="font-medium">{ticket.name}</div>
-                    {ticket.description && (
-                      <div className="text-sm text-muted-foreground">{ticket.description}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {activeTickets.length === 1 ? (
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={() => handleJoin(activeTickets[0].id)}
-                >
-                  Start Exit Ticket
-                </Button>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Choose an exit ticket to start:</p>
-                  {activeTickets.map((ticket) => (
-                    <Button
-                      key={ticket.id}
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => handleJoin(ticket.id)}
-                    >
-                      {ticket.name}
+            <div className="space-y-6">
+              {liveTickets.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                    Active Exit Tickets
+                  </h3>
+                  {liveTickets.length === 1 ? (
+                    <Button className="w-full" size="lg" onClick={() => handleJoin(liveTickets[0].id)}>
+                      Start — {liveTickets[0].name}
                     </Button>
+                  ) : (
+                    liveTickets.map((ticket) => (
+                      <Button key={ticket.id} className="w-full" variant="default" onClick={() => handleJoin(ticket.id)}>
+                        {ticket.name}
+                      </Button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {homeworkTickets.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4" />
+                    Homework
+                  </h3>
+                  {homeworkTickets.map((ticket) => (
+                    <div key={ticket.id} className="p-3 rounded-lg border bg-blue-50/50 border-blue-200">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium">{ticket.name}</div>
+                          {ticket.due_date && (
+                            <div className="text-xs text-blue-700 mt-0.5">Due {formatDueDate(ticket.due_date)}</div>
+                          )}
+                          {ticket.description && (
+                            <div className="text-sm text-muted-foreground mt-0.5">{ticket.description}</div>
+                          )}
+                        </div>
+                        <Button size="sm" onClick={() => handleJoin(ticket.id)} className="shrink-0">
+                          Start
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

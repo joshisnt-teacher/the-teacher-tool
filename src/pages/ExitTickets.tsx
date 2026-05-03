@@ -115,6 +115,12 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
             <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                onClick={() => navigate(`/assessment/${run.id}`)}
+              >
+                Results
+              </Button>
+              <Button
+                variant="ghost" size="sm" className="h-7 px-2 text-xs"
                 onClick={() => navigate(`/classroom/${run.class_id}`)}
               >
                 Classroom
