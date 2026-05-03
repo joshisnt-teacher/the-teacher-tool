@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X, ExternalLink } from "lucide-react";
+import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCreateClassSession } from "@/hooks/useClassSessions";
 import { useClearRun } from "@/hooks/useClearRun";
 import { useDeleteRun } from "@/hooks/useDeleteRun";
+import { useUnassignResource, useUpdateClassResourceStatus } from "@/hooks/useClassResources";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +53,9 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
   const [clearResultsDialogOpen, setClearResultsDialogOpen] = useState(false);
   const [clearResultsTicketId, setClearResultsTicketId] = useState<string | null>(null);
   const [deleteRunTicket, setDeleteRunTicket] = useState<{ id: string; templateId: string | null } | null>(null);
+  const unassignResource = useUnassignResource();
+  const updateResourceStatus = useUpdateClassResourceStatus();
+  const [unassignResourceId, setUnassignResourceId] = useState<string | null>(null);
   const [homeworkDialogOpen, setHomeworkDialogOpen] = useState(false);
   const [homeworkTicketId, setHomeworkTicketId] = useState<string | null>(null);
   const [homeworkDueDate, setHomeworkDueDate] = useState('');
@@ -747,33 +751,100 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {classResources.map((cr) => (
-                <div key={cr.id} className="p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="font-semibold truncate">{cr.resource.title}</h3>
-                        <Badge variant="secondary" className="text-xs">{cr.resource.category}</Badge>
+              {classResources.map((cr) => {
+                const isOnDashboard = cr.status === 'active';
+                return (
+                  <div key={cr.id} className="p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h3 className="font-semibold truncate">{cr.resource.title}</h3>
+                          <Badge variant="secondary" className="text-xs">{cr.resource.category}</Badge>
+                          {isOnDashboard && (
+                            <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
+                              On student dashboard
+                            </Badge>
+                          )}
+                        </div>
+                        {cr.resource.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">{cr.resource.description}</p>
+                        )}
                       </div>
-                      {cr.resource.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">{cr.resource.description}</p>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                          variant={isOnDashboard ? "secondary" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs"
+                          disabled={updateResourceStatus.isPending}
+                          onClick={() => updateResourceStatus.mutate({
+                            id: cr.id,
+                            classId,
+                            status: isOnDashboard ? 'created' : 'active',
+                          })}
+                        >
+                          {isOnDashboard
+                            ? <><EyeOff className="w-3.5 h-3.5 mr-1.5" />Hide</>
+                            : <><Eye className="w-3.5 h-3.5 mr-1.5" />Show students</>
+                          }
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => window.open(cr.resource.url, "_blank", "noopener,noreferrer")}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                          Open
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={unassignResource.isPending}
+                          onClick={() => setUnassignResourceId(cr.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => window.open(cr.resource.url, "_blank", "noopener,noreferrer")}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                      Launch
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={!!unassignResourceId} onOpenChange={(open) => { if (!open) setUnassignResourceId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from class?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the resource from this class. The resource itself stays in your library and can be reassigned anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unassignResource.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={unassignResource.isPending}
+              onClick={async () => {
+                if (!unassignResourceId) return;
+                try {
+                  await unassignResource.mutateAsync({ id: unassignResourceId, classId });
+                  toast({ title: "Removed", description: "Resource removed from this class." });
+                } catch {
+                  toast({ title: "Error", description: "Could not remove the resource.", variant: "destructive" });
+                } finally {
+                  setUnassignResourceId(null);
+                }
+              }}
+            >
+              {unassignResource.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Removing...</> : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

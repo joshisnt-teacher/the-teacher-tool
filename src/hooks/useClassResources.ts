@@ -68,3 +68,18 @@ export function useUnassignResource() {
     },
   });
 }
+
+export function useUpdateClassResourceStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, classId, status }: { id: string; classId: string; status: 'created' | 'active' | 'closed' }) => {
+      const { error } = await supabase.from('class_resources').update({ status }).eq('id', id);
+      if (error) throw error;
+      return { classId };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['class-resources', result.classId] });
+      queryClient.invalidateQueries({ queryKey: ['student-class-resources'] });
+    },
+  });
+}
