@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useCreateClassSession } from "@/hooks/useClassSessions";
 import { useClearRun } from "@/hooks/useClearRun";
+import { useDeleteRun } from "@/hooks/useDeleteRun";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,9 +47,11 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
   const [startLessonTicketId, setStartLessonTicketId] = useState<string | null>(null);
   const createSessionMutation = useCreateClassSession();
   const clearRun = useClearRun();
+  const deleteRun = useDeleteRun();
   const hasPromptedRef = useRef(false);
   const [clearResultsDialogOpen, setClearResultsDialogOpen] = useState(false);
   const [clearResultsTicketId, setClearResultsTicketId] = useState<string | null>(null);
+  const [deleteRunTicket, setDeleteRunTicket] = useState<{ id: string; templateId: string | null } | null>(null);
   const [homeworkDialogOpen, setHomeworkDialogOpen] = useState(false);
   const [homeworkTicketId, setHomeworkTicketId] = useState<string | null>(null);
   const [homeworkDueDate, setHomeworkDueDate] = useState('');
@@ -546,6 +549,16 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                         </Button>
                       )}
                       <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={deleteRun.isPending}
+                        onClick={() => setDeleteRunTicket({ id: ticket.id, templateId: ticket.exit_ticket_template_id })}
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                      <Button
                         variant={ticket.status === "active" ? "secondary" : "default"}
                         size="sm"
                         className="h-8 px-3 text-xs gap-1"
@@ -648,6 +661,37 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
               ) : (
                 "Reset to Draft"
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteRunTicket} onOpenChange={(open) => { if (!open) setDeleteRunTicket(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete from Class?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes this exit ticket from the class, including all student responses. The template in your Exit Ticket Library is not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRun.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deleteRun.isPending}
+              onClick={async () => {
+                if (!deleteRunTicket) return;
+                try {
+                  await deleteRun.mutateAsync({ taskId: deleteRunTicket.id, classId, templateId: deleteRunTicket.templateId });
+                  toast({ title: "Deleted", description: "Exit ticket removed from this class." });
+                } catch {
+                  toast({ title: "Error", description: "Could not delete the exit ticket.", variant: "destructive" });
+                } finally {
+                  setDeleteRunTicket(null);
+                }
+              }}
+            >
+              {deleteRun.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</> : "Delete from Class"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
