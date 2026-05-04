@@ -304,6 +304,24 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
+[functions.student-sso]
+verify_jwt = false
+
+[functions.student-login]
+verify_jwt = false
+
+[functions.teacher-sso]
+verify_jwt = false
+
+[functions.ai-mark-response]
+verify_jwt = false
+
+[functions.generate-exit-ticket]
+verify_jwt = false
+
+[functions.save-openai-key]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

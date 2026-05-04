@@ -36,44 +36,24 @@ Deno.serve(async (req) => {
     )
 
     // 1. Validate and atomically claim the SSO token
-    // First fetch the raw row (ignoring used/expires/student_id) so we can log why it fails
-    const { data: debugRow } = await central
+    const { data: tokenRow, error: tokenError } = await central
       .from('sso_tokens')
-      .select('id, student_id, teacher_id, used, expires_at')
+      .select('id, student_id, used, expires_at')
       .eq('token', token)
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .not('student_id', 'is', null)
       .maybeSingle()
 
-    if (!debugRow) {
-      console.error('Token not found in sso_tokens at all. Token prefix:', token.slice(0, 8))
+    if (tokenError) {
+      console.error('Token lookup error:', JSON.stringify(tokenError))
+      return json({ error: 'Failed to validate token' }, 500)
+    }
+
+    if (!tokenRow) {
+      console.error('Token not found, expired, already used, or has no student_id')
       return json({ error: 'Invalid or expired token' }, 401)
     }
-
-    console.log('Token row found:', JSON.stringify({
-      id: debugRow.id,
-      student_id: debugRow.student_id,
-      teacher_id: debugRow.teacher_id,
-      used: debugRow.used,
-      expires_at: debugRow.expires_at,
-      now: new Date().toISOString(),
-      expired: debugRow.expires_at < new Date().toISOString(),
-    }))
-
-    if (debugRow.used) {
-      console.error('Token already used')
-      return json({ error: 'Token already used' }, 401)
-    }
-
-    if (debugRow.expires_at < new Date().toISOString()) {
-      console.error('Token expired at:', debugRow.expires_at)
-      return json({ error: 'Token expired' }, 401)
-    }
-
-    if (!debugRow.student_id) {
-      console.error('Token has no student_id — this is a teacher token, not a student token')
-      return json({ error: 'Invalid token type' }, 401)
-    }
-
-    const tokenRow = debugRow
 
     // 2. Mark token as used immediately to prevent replay
     await central
