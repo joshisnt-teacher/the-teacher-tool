@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     // 4. Find matching local student by central_id
     const { data: localStudent, error: localError } = await local
       .from('students')
-      .select('id, central_id')
+      .select('id, central_id, first_name, last_name, year_level')
       .eq('central_id', centralStudent.id)
       .maybeSingle()
 
@@ -84,13 +84,56 @@ Deno.serve(async (req) => {
       return json({ error: 'Student not found in local DB' }, 401)
     }
 
-    // 5. Return student data for client to set session
+    // 5. Find or create a Supabase auth account for this student
+    const studentEmail = `student-${localStudent.id}@pulse.internal`
+
+    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
+    const existingUser = listResult.data?.users?.find(u => u.email === studentEmail) ?? null
+
+    let localUserId: string
+
+    if (existingUser) {
+      localUserId = existingUser.id
+    } else {
+      const { data: newUser, error: createError } = await local.auth.admin.createUser({
+        email: studentEmail,
+        email_confirm: true,
+        user_metadata: {
+          student_id: localStudent.id,
+          first_name: localStudent.first_name,
+          last_name: localStudent.last_name,
+          year_level: localStudent.year_level,
+          role: 'student',
+        },
+      })
+
+      if (createError || !newUser?.user) {
+        console.error('Create student auth user error:', JSON.stringify(createError))
+        return json({ error: 'Failed to create student account' }, 500)
+      }
+
+      localUserId = newUser.user.id
+    }
+
+    // 6. Generate a one-time magic link token for the client to establish a session
+    const { data: linkData, error: linkError } = await local.auth.admin.generateLink({
+      type: 'magiclink',
+      email: studentEmail,
+    })
+
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('Generate link error:', JSON.stringify(linkError))
+      return json({ error: 'Failed to generate session token' }, 500)
+    }
+
+    // 7. Return token_hash and student data for client to establish session
     return json({
+      token_hash: linkData.properties.hashed_token,
       student_id: localStudent.id,
       central_id: centralStudent.id,
-      first_name: centralStudent.first_name,
-      last_name: centralStudent.last_name,
-      year_level: centralStudent.year_level ?? null,
+      first_name: localStudent.first_name,
+      last_name: localStudent.last_name,
+      year_level: localStudent.year_level ?? null,
     })
 
   } catch (err) {

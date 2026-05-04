@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStudentSession } from '@/hooks/useStudentSession';
+import { supabase } from '@/integrations/supabase/client';
 
 const STUDENT_HUB_URL = 'https://student.edufied.com.au';
 
@@ -43,6 +44,18 @@ const StudentSSO = () => {
           if (!cancelled) {
             window.location.href = `${STUDENT_HUB_URL}?error=session_expired`;
           }
+          return;
+        }
+
+        // Establish a real Supabase auth session using the magic link token
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: result.token_hash,
+          type: 'magiclink',
+        });
+
+        if (otpError) {
+          console.error('OTP verify error:', otpError);
+          if (!cancelled) setError('Failed to establish session. Please try again.');
           return;
         }
 
