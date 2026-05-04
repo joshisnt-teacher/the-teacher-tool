@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface StudentSession {
   student_id: string;
@@ -49,7 +50,9 @@ export function StudentSessionProvider({ children }: { children: React.ReactNode
   const signOut = useCallback(() => {
     setSessionState(null);
     localStorage.removeItem(STORAGE_KEY);
-    window.location.href = 'https://student.edufied.com.au';
+    supabase.auth.signOut().finally(() => {
+      window.location.href = 'https://student.edufied.com.au';
+    });
   }, []);
 
   return (

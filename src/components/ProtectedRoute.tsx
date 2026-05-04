@@ -25,6 +25,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Students have role='student' in user_metadata — they must not access teacher routes
+  if (user.user_metadata?.role === 'student') {
+    return <Navigate to="/student/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
