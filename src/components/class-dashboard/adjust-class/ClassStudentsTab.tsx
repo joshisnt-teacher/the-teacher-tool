@@ -327,7 +327,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
   };
 
   const handleSourceClassChange = (value: string) => {
-    setSelectedSourceClassId(value);
+    setSelectedSourceClassId(value === 'all' ? '' : value);
     setSelectedIds(new Set());
   };
 
@@ -443,12 +443,12 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
                 <div className="space-y-4">
                   {/* Filters row */}
                   <div className="flex gap-3">
-                    <Select value={selectedSourceClassId} onValueChange={handleSourceClassChange}>
+                    <Select value={selectedSourceClassId || 'all'} onValueChange={handleSourceClassChange}>
                       <SelectTrigger className="w-52">
                         <SelectValue placeholder="All classes" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All classes</SelectItem>
+                        <SelectItem value="all">All classes</SelectItem>
                         {otherClasses.map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.class_name}</SelectItem>
                         ))}
