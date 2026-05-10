@@ -776,11 +776,18 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                           size="sm"
                           className="h-8 px-3 text-xs"
                           disabled={updateResourceStatus.isPending}
-                          onClick={() => updateResourceStatus.mutate({
-                            id: cr.id,
-                            classId,
-                            status: isOnDashboard ? 'created' : 'active',
-                          })}
+                          onClick={async () => {
+                            try {
+                              await updateResourceStatus.mutateAsync({
+                                id: cr.id,
+                                classId,
+                                status: isOnDashboard ? 'created' : 'active',
+                              });
+                            } catch (err: unknown) {
+                              const msg = err instanceof Error ? err.message : 'Unknown error';
+                              toast({ title: 'Failed to update resource', description: msg, variant: 'destructive' });
+                            }
+                          }}
                         >
                           {isOnDashboard
                             ? <><EyeOff className="w-3.5 h-3.5 mr-1.5" />Hide</>

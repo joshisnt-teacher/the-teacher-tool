@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  Home, 
-  Users, 
-  BookOpen, 
-  Settings, 
+import {
+  Home,
+  Users,
+  BookOpen,
+  Settings,
   Plus,
   GraduationCap,
   ChevronRight,
   User,
   Monitor,
   Ticket,
-  Library
+  Library,
+  ExternalLink
 } from "lucide-react";
 
 import {
@@ -100,6 +101,15 @@ export function AppSidebar() {
               <span className="text-xs text-sidebar-foreground/60">
                 {currentUser?.name}
               </span>
+              <a
+                href="https://edufied.com.au"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 flex items-center gap-1 text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground/70 transition-colors w-fit"
+              >
+                <ExternalLink className="h-3 w-3" />
+                edufied.com.au
+              </a>
             </div>
           )}
         </div>

@@ -3,10 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, matchPath } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, matchPath } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { StudentSessionProvider } from "@/hooks/useStudentSession";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { ArrowLeft } from "lucide-react";
 import { AppSidebar } from "@/components/AppSidebar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -75,6 +76,22 @@ function PageTitle() {
   return null;
 }
 
+function ClassroomBackButton() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const match = matchPath('/classroom/:classId', location.pathname);
+  if (!match) return null;
+  return (
+    <button
+      onClick={() => navigate(`/class/${match.params.classId}`)}
+      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Class Dashboard
+    </button>
+  );
+}
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
@@ -100,6 +117,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col">
           <header className="h-12 flex items-center border-b px-4 bg-background">
             <SidebarTrigger className="mr-2" />
+            <ClassroomBackButton />
           </header>
           <div className="flex-1 overflow-auto">
             {children}
