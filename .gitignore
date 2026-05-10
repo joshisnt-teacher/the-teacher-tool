@@ -43,3 +43,6 @@ backups/
 
 # Claude Code
 .claude/
+
+# Netlify local config (may contain access tokens)
+.netlify/
