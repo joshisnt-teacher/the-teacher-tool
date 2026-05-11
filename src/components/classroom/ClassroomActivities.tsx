@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, RefreshCw, BookOpen, X, ExternalLink, Eye, EyeOff, Trash2, Check } from "lucide-react";
+import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, BookOpen, ExternalLink, Eye, EyeOff, Trash2, Check, MoreHorizontal } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -508,83 +515,95 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                      {(ticket.is_completed || ticket.status === "closed") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-3 text-xs gap-1"
-                          disabled={clearRun.isPending}
-                          onClick={() => {
-                            setClearResultsTicketId(ticket.id);
-                            setClearResultsDialogOpen(true);
-                          }}
-                        >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Reset to Draft
-                        </Button>
-                      )}
-                      {ticket.status === 'draft' && !ticket.is_completed && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-3 text-xs gap-1"
-                          disabled={togglingId === ticket.id}
-                          onClick={() => {
-                            setHomeworkTicketId(ticket.id);
-                            setHomeworkDueDate('');
-                            setHomeworkDialogOpen(true);
-                          }}
-                        >
-                          <BookOpen className="w-3 h-3" />
-                          Homework
-                        </Button>
-                      )}
-                      {ticket.is_homework && ticket.status === 'active' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-3 text-xs gap-1 text-muted-foreground"
-                          disabled={togglingId === ticket.id}
-                          onClick={() => handleCancelHomework(ticket.id)}
-                        >
-                          <X className="w-3 h-3" />
-                          Cancel
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-3 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        disabled={deleteRun.isPending}
-                        onClick={() => setDeleteRunTicket({ id: ticket.id, templateId: ticket.exit_ticket_template_id })}
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Primary action */}
                       <Button
                         variant={ticket.status === "active" ? "secondary" : "default"}
                         size="sm"
-                        className="h-8 px-3 text-xs gap-1"
+                        className="h-8 px-3 text-xs"
                         disabled={togglingId === ticket.id}
-                        onClick={() => handleToggleStatus(ticket.id, ticket.status, ticket.is_completed, ticket.class_session_id)}
+                        onClick={() =>
+                          handleToggleStatus(
+                            ticket.id,
+                            ticket.status,
+                            ticket.is_completed,
+                            ticket.class_session_id
+                          )
+                        }
                       >
                         {togglingId === ticket.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
                         ) : ticket.status === "active" ? (
                           "Close"
-                        ) : ticket.is_completed || ticket.status === 'closed' ? (
-                          <>
-                            <RotateCcw className="w-3 h-3 mr-1" />
-                            Reactivate
-                          </>
+                        ) : ticket.is_completed || ticket.status === "closed" ? (
+                          <><RotateCcw className="w-3 h-3 mr-1" />Reactivate</>
                         ) : (
-                          <>
-                            <Play className="w-3 h-3 mr-1" />
-                            Activate
-                          </>
+                          <><Play className="w-3 h-3 mr-1" />Activate</>
                         )}
                       </Button>
+
+                      {/* Overflow menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="w-4 h-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {ticket.exit_ticket_template_id && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(
+                                  `/exit-tickets/create?templateId=${ticket.exit_ticket_template_id}`
+                                )
+                              }
+                            >
+                              Edit template
+                            </DropdownMenuItem>
+                          )}
+                          {ticket.status === "draft" && !ticket.is_completed && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setHomeworkTicketId(ticket.id);
+                                setHomeworkDueDate("");
+                                setHomeworkDialogOpen(true);
+                              }}
+                            >
+                              Set as homework
+                            </DropdownMenuItem>
+                          )}
+                          {ticket.is_homework && ticket.status === "active" && (
+                            <DropdownMenuItem
+                              onClick={() => handleCancelHomework(ticket.id)}
+                            >
+                              Cancel homework
+                            </DropdownMenuItem>
+                          )}
+                          {(ticket.is_completed || ticket.status === "closed") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setClearResultsTicketId(ticket.id);
+                                setClearResultsDialogOpen(true);
+                              }}
+                            >
+                              Reset to draft
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() =>
+                              setDeleteRunTicket({
+                                id: ticket.id,
+                                templateId: ticket.exit_ticket_template_id,
+                              })
+                            }
+                          >
+                            Delete from class
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
