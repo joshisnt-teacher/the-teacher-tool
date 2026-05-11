@@ -15,6 +15,7 @@ import {
 import { useOpenAIKeyStatus, useSaveOpenAIKey, useRemoveOpenAIKey } from '@/hooks/useAISettings';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { Slider } from '@/components/ui/slider';
 
 type Theme = 'light' | 'dark' | 'system';
 
