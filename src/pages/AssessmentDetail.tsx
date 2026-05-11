@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QuestionsTab } from '@/components/assessment/QuestionsTab';
 import { AssessmentInsights } from '@/components/assessment/AssessmentInsights';
 import { QuestionHeatmap } from '@/components/assessment/QuestionHeatmap';
+import { ActionsTab } from '@/components/assessment/ActionsTab';
 import { useQuestionOptionsForTask } from '@/hooks/useQuestionOptions';
 import { useStudentResponses } from '@/hooks/useStudentResponses';
 import { useStudents } from '@/hooks/useStudents';
@@ -711,6 +712,7 @@ const AssessmentDetail = () => {
             <TabsTrigger value="heatmap">Question Heatmap</TabsTrigger>
             <TabsTrigger value="questions">Questions</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
+            {assessment.is_exit_ticket && <TabsTrigger value="actions">Actions</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="results">
@@ -1153,6 +1155,12 @@ const AssessmentDetail = () => {
           <TabsContent value="insights">
             <AssessmentInsights taskId={assessmentId!} />
           </TabsContent>
+
+          {assessment.is_exit_ticket && (
+            <TabsContent value="actions">
+              <ActionsTab taskId={assessmentId!} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>

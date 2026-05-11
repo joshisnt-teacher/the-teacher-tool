@@ -8,6 +8,7 @@ export interface CurrentUser {
   name: string | null;
   role: string;
   school_id: string | null;
+  marking_harshness: number;
   school?: {
     id: string;
     name: string;
@@ -31,6 +32,7 @@ export const useCurrentUser = () => {
           name,
           role,
           school_id,
+          marking_harshness,
           schools:school_id (
             id,
             name,
@@ -47,6 +49,7 @@ export const useCurrentUser = () => {
 
       return {
         ...data,
+        marking_harshness: data.marking_harshness ?? 3,
         school: Array.isArray(data.schools) ? data.schools[0] : data.schools
       };
     },

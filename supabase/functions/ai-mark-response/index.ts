@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function harshnessBrief(level: number): string {
+  switch (level) {
+    case 1: return 'Be very generous. If the student shows any understanding of the core concept, award full marks. Give benefit of the doubt at every step.'
+    case 2: return 'Be lenient and encouraging. Lean towards the higher mark whenever the answer demonstrates partial understanding.'
+    case 4: return 'Apply strict standards. Only award full marks for answers that clearly address all required concepts. Partial credit for partial answers.'
+    case 5: return 'Apply rigorous standards. Full marks require a complete and precise answer covering all key concepts. Award marks strictly proportionally to demonstrated knowledge.'
+    default: return 'Be fair. If the student understood the main point and answered the question, lean towards the higher mark.'
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -54,7 +64,7 @@ Deno.serve(async (req) => {
 
   const { data: userData } = await supabaseAdmin
     .from('users')
-    .select('openai_vault_id')
+    .select('openai_vault_id, marking_harshness')
     .eq('id', cls.teacher_id)
     .single()
 
@@ -146,7 +156,7 @@ Deno.serve(async (req) => {
         ? '- This is a 1-mark question: award 1 if the core idea is correct, 0 if not.'
         : `- Divide marks proportionally: award marks for each correct idea, fact, or key concept identified. A partial answer should earn partial marks.`,
       `- Full marks (${maxScore}) should be awarded whenever the answer clearly demonstrates understanding of the key concept(s) — do not withhold full marks just because extra detail could have been added.`,
-      '- Be fair and generous: if the student has understood the main point and answered the question, lean towards the higher mark.',
+      `- ${harshnessBrief(userData.marking_harshness ?? 3)}`,
       '- Do not penalise for spelling or grammar unless it makes the answer unclear.',
       '- An empty or irrelevant answer scores 0.',
       '',

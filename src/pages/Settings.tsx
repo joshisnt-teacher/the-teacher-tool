@@ -56,6 +56,10 @@ const Settings = () => {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
 
+  // Harshness
+  const [harshness, setHarshness] = useState<number>(3);
+  const harshnessSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Security
   const [resetSent, setResetSent] = useState(false);
   const [resetSending, setResetSending] = useState(false);
@@ -78,6 +82,12 @@ const Settings = () => {
   // Sync name field when user data loads
   useEffect(() => {
     if (currentUser?.name) setName(currentUser.name);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.marking_harshness != null) {
+      setHarshness(currentUser.marking_harshness);
+    }
   }, [currentUser]);
 
   // Apply theme
@@ -180,6 +190,31 @@ const Settings = () => {
     if (!apiKeyInput.trim()) return;
     await saveKeyMutation.mutateAsync(apiKeyInput.trim());
     setApiKeyInput('');
+  };
+
+  const HARSHNESS_LABELS: Record<number, string> = {
+    1: 'Very Lenient',
+    2: 'Lenient',
+    3: 'Standard',
+    4: 'Strict',
+    5: 'Very Strict',
+  };
+
+  const handleHarshnessChange = (value: number[]) => {
+    const level = value[0];
+    setHarshness(level);
+    if (harshnessSaveRef.current) clearTimeout(harshnessSaveRef.current);
+    harshnessSaveRef.current = setTimeout(async () => {
+      if (!currentUser) return;
+      const { error } = await supabase
+        .from('users')
+        .update({ marking_harshness: level })
+        .eq('id', currentUser.id);
+      if (!error) {
+        toast.success('Marking harshness updated');
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      }
+    }, 600);
   };
 
   const scrollToSection = (id: string) => {
@@ -542,6 +577,35 @@ const Settings = () => {
                   )}
                 </div>
               </form>
+
+              <div className="border-t pt-4 space-y-3">
+                <div className="space-y-1">
+                  <Label>Marking Harshness</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Controls how strictly the AI marks student written responses.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                    <span>Lenient</span>
+                    <span className="font-medium text-foreground">{HARSHNESS_LABELS[harshness]}</span>
+                    <span>Strict</span>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={[harshness]}
+                    onValueChange={handleHarshnessChange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground px-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <span key={n}>{n}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
