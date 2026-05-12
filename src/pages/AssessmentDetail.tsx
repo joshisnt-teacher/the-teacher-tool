@@ -708,11 +708,8 @@ const AssessmentDetail = () => {
         <Tabs defaultValue="results" className="space-y-6">
           <TabsList>
             <TabsTrigger value="results">Results</TabsTrigger>
-            {assessment.is_exit_ticket && <TabsTrigger value="responses">Responses</TabsTrigger>}
-            <TabsTrigger value="heatmap">Question Heatmap</TabsTrigger>
             <TabsTrigger value="questions">Questions</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-            {assessment.is_exit_ticket && <TabsTrigger value="actions">Actions</TabsTrigger>}
+            <TabsTrigger value="actions">Actions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="results">
@@ -972,36 +969,9 @@ const AssessmentDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Delete confirmation dialog */}
-            <AlertDialog open={!!confirmDeleteStudentId} onOpenChange={() => setConfirmDeleteStudentId(null)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove Result</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to remove this student's result? This will be deleted when you save changes.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setConfirmDeleteStudentId(null)}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (confirmDeleteStudentId) {
-                        handleRemoveRow(confirmDeleteStudentId);
-                      }
-                      setConfirmDeleteStudentId(null);
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Remove
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </TabsContent>
-
-          {assessment.is_exit_ticket && (
-            <TabsContent value="responses">
-              <Card>
+            {/* Exit ticket responses — shown below the results table */}
+            {assessment.is_exit_ticket && questions.length > 0 && (
+              <Card className="mt-6">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Student Responses</CardTitle>
                   {!editingResponses ? (
@@ -1048,7 +1018,7 @@ const AssessmentDetail = () => {
                   )}
                 </CardHeader>
                 <CardContent>
-                  {questionResults.length === 0 || questions.length === 0 ? (
+                  {questionResults.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">No responses yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
@@ -1071,7 +1041,7 @@ const AssessmentDetail = () => {
                             const studentQrs = questionResults.filter((qr: any) => qr.student_id === result.student_id);
                             return (
                               <tr key={result.student_id} className="border-b hover:bg-muted/50">
-                                <td className="p-3 align-top">
+                                <td className="p-3 align-top font-medium">
                                   {result.first_name} {result.last_name}
                                 </td>
                                 {questions.map((q: any) => {
@@ -1085,7 +1055,6 @@ const AssessmentDetail = () => {
                                   } else if (responseData?.text) {
                                     answerDisplay = responseData.text;
                                   }
-
                                   return (
                                     <td key={q.id} className="p-3 align-top">
                                       <div className="space-y-1">
@@ -1141,26 +1110,46 @@ const AssessmentDetail = () => {
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
+            )}
 
-          <TabsContent value="heatmap">
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={!!confirmDeleteStudentId} onOpenChange={() => setConfirmDeleteStudentId(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Result</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to remove this student's result? This will be deleted when you save changes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setConfirmDeleteStudentId(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (confirmDeleteStudentId) {
+                        handleRemoveRow(confirmDeleteStudentId);
+                      }
+                      setConfirmDeleteStudentId(null);
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </TabsContent>
+
+          <TabsContent value="questions" className="space-y-6">
+            <QuestionsTab taskId={assessmentId!} classId={assessment.class_id} />
             <QuestionHeatmap taskId={assessmentId!} />
           </TabsContent>
 
-          <TabsContent value="questions">
-            <QuestionsTab taskId={assessmentId!} classId={assessment.class_id} />
-          </TabsContent>
-
-          <TabsContent value="insights">
+          <TabsContent value="actions" className="space-y-6">
             <AssessmentInsights taskId={assessmentId!} />
-          </TabsContent>
-
-          {assessment.is_exit_ticket && (
-            <TabsContent value="actions">
+            {assessment.is_exit_ticket && (
               <ActionsTab taskId={assessmentId!} />
-            </TabsContent>
-          )}
+            )}
+          </TabsContent>
         </Tabs>
       </main>
     </div>

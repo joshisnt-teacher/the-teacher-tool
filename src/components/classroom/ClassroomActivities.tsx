@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, BookOpen, ExternalLink, Eye, EyeOff, Trash2, Check, MoreHorizontal } from "lucide-react";
+import { Ticket, AlertCircle, Loader2, Play, RotateCcw, Library, ExternalLink, Eye, EyeOff, Trash2, MoreHorizontal } from "lucide-react";
 import { useClassResources } from "@/hooks/useClassResources";
 import { useExitTicketsByClass } from "@/hooks/useExitTicketsByClass";
 import { useToast } from "@/hooks/use-toast";
@@ -386,13 +386,17 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "active": return "default" as const;
-      case "closed": return "secondary" as const;
-      case "homework": return "secondary" as const;
-      default: return "outline" as const;
+  const getStatusPill = (ticket: { status: string; is_homework: boolean; is_completed: boolean }) => {
+    if (ticket.is_homework && ticket.status === "active") {
+      return { label: "Homework", className: "bg-blue-100 text-blue-800 border-blue-200" };
     }
+    if (ticket.status === "active") {
+      return { label: "Live", className: "bg-green-100 text-green-800 border-green-200" };
+    }
+    if (ticket.status === "closed" || ticket.is_completed) {
+      return { label: "Closed", className: "bg-amber-100 text-amber-800 border-amber-200" };
+    }
+    return { label: "Draft", className: "bg-muted text-muted-foreground border-border" };
   };
 
   if (ticketsLoading) {
@@ -474,22 +478,14 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                         <h3 className={`font-semibold truncate ${ticket.is_completed || ticket.status === 'closed' ? 'text-muted-foreground' : ''}`}>
                           {ticket.name}
                         </h3>
-                        {ticket.is_homework ? (
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs gap-1">
-                            <BookOpen className="w-3 h-3" />
-                            Homework
-                          </Badge>
-                        ) : (
-                          <Badge variant={getStatusVariant(ticket.status)} className="capitalize text-xs">
-                            {ticket.status}
-                          </Badge>
-                        )}
-                        {ticket.is_completed && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs gap-1">
-                            <Check className="w-3 h-3" />
-                            Completed
-                          </Badge>
-                        )}
+                        {(() => {
+                          const pill = getStatusPill(ticket);
+                          return (
+                            <Badge variant="outline" className={`text-xs font-medium ${pill.className}`}>
+                              {pill.label}
+                            </Badge>
+                          );
+                        })()}
                         <Badge variant="outline" className="text-xs">
                           {ticket.question_count} Q
                         </Badge>
