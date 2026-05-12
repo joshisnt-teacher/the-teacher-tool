@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, BarChart3, Download, Share, Pencil, Plus, Trash2, X, Bot, RefreshCw } from 'lucide-react';
+import { Calendar, BarChart3, Download, Share, Pencil, Trash2, X, Bot, RefreshCw } from 'lucide-react';
 import { useAIMarkResponses } from '@/hooks/useAIMarking';
 import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +66,26 @@ const AssessmentDetail = () => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const { toast } = useToast();
   
+  const { data: classData } = useQuery({
+    queryKey: ['class-name', assessmentId],
+    queryFn: async () => {
+      if (!assessmentId) return null;
+      const { data: task } = await supabase
+        .from('tasks')
+        .select('class_id')
+        .eq('id', assessmentId)
+        .maybeSingle();
+      if (!task?.class_id) return null;
+      const { data: cls } = await supabase
+        .from('classes')
+        .select('class_name')
+        .eq('id', task.class_id)
+        .maybeSingle();
+      return cls ? { class_id: task.class_id, class_name: cls.class_name } : null;
+    },
+    enabled: !!assessmentId,
+  });
+
   const { data: assessment, isLoading: assessmentLoading } = useQuery({
     queryKey: ['assessment', assessmentId],
     queryFn: async () => {
@@ -564,14 +584,19 @@ const AssessmentDetail = () => {
       {/* Header */}
       <header className="bg-card border-b border-border/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link to={`/classroom/${assessment.class_id}`}>
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Classroom
-              </Button>
-            </Link>
-          </div>
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <span>/</span>
+            {classData ? (
+              <Link to={`/class/${classData.class_id}`} className="hover:text-foreground transition-colors truncate max-w-[200px]">
+                {classData.class_name}
+              </Link>
+            ) : (
+              <Link to={`/class/${assessment.class_id}`} className="hover:text-foreground transition-colors">Class</Link>
+            )}
+            <span>/</span>
+            <span className="text-foreground font-medium truncate max-w-[240px]">{assessment.name}</span>
+          </nav>
           
           <div className="flex items-start justify-between">
             <div>

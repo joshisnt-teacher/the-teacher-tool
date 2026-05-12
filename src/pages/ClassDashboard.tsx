@@ -9,7 +9,6 @@ import { useClasses } from '@/hooks/useClasses';
 import { format } from 'date-fns';
 import { AssessmentsSection } from '@/components/class-dashboard/AssessmentsSection';
 import { ProgressGraphsSection } from '@/components/class-dashboard/ProgressGraphsSection';
-import { CustomDashboard } from '@/components/class-dashboard/CustomDashboard';
 import { AdjustClassDataDialog } from '@/components/class-dashboard/AdjustClassDataDialog';
 import { EnhancedTimelineSection } from '@/components/class-dashboard/EnhancedTimelineSection';
 import { ImportAssessmentDialog } from '@/components/assessment/ImportAssessmentDialog';
@@ -86,14 +85,11 @@ const ClassDashboard = () => {
       {/* Header */}
       <header className="bg-card border-b border-border/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-          </div>
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <span>/</span>
+            <span className="text-foreground font-medium truncate">{currentClass.class_name}</span>
+          </nav>
           
           <div className="flex items-start justify-between">
             <div>
@@ -142,10 +138,9 @@ const ClassDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="custom">Custom</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -184,21 +179,12 @@ const ClassDashboard = () => {
               
               {/* Student Growth Analysis and other content */}
               <div className="space-y-6">
-                <CohortGrowthAnalysis 
+                <CohortGrowthAnalysis
                   classId={classId!}
                   filters={filters}
                 />
-                
-                {/* Additional Analytics - Coming Soon */}
-                <div className="h-96 bg-muted/30 rounded-lg flex items-center justify-center">
-                  <p className="text-muted-foreground">Additional Analytics - Coming Soon</p>
-                </div>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="custom">
-            <CustomDashboard classId={classId!} />
           </TabsContent>
         </Tabs>
       </main>

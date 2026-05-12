@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User } from 'lucide-react';
 import { useStudents } from '@/hooks/useStudents';
@@ -15,7 +15,6 @@ import { ParentReportView } from '@/components/student-profile/parent/ParentRepo
 
 const StudentReport = () => {
   const { studentId, classId } = useParams<{ studentId: string; classId: string }>();
-  const navigate = useNavigate();
   const { data: students = [], isLoading: studentsLoading } = useStudents(classId!);
   const { data: classes = [], isLoading: classesLoading } = useClasses();
   const [viewMode, setViewMode] = useState<'parent' | 'teacher' | 'student'>('parent');
@@ -58,15 +57,16 @@ const StudentReport = () => {
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'parent' | 'teacher' | 'student')} className="space-y-8">
           {/* Header */}
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/class/${classId}`)}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Class
-              </Button>
+            <div className="flex flex-col gap-2">
+              <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+                <span>/</span>
+                <Link to={`/class/${classId}`} className="hover:text-foreground transition-colors truncate max-w-[200px]">
+                  {currentClass.class_name}
+                </Link>
+                <span>/</span>
+                <span className="text-foreground font-medium">{currentStudent.first_name} {currentStudent.last_name}</span>
+              </nav>
               <div>
                 <h1 className="text-3xl font-bold">{currentStudent.first_name} {currentStudent.last_name}</h1>
                 <p className="text-muted-foreground">
