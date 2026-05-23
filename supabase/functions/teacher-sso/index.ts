@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
     let localUserId: string
 
     // Look for an existing auth user by email (handles previous direct logins)
-    const listResult = await local.auth.admin.listUsers()
+    // perPage:1000 avoids pagination — default 50 would miss users past page 1
+    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
     const existingAuthUser = listResult.data?.users?.find(u => u.email === teacher.email) ?? null
 
     if (existingAuthUser) {

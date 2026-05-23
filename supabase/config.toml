@@ -313,6 +313,12 @@ verify_jwt = false
 [functions.teacher-sso]
 verify_jwt = false
 
+[functions.get-teacher-apps]
+verify_jwt = false
+
+[functions.mint-teacher-sso]
+verify_jwt = false
+
 [functions.ai-mark-response]
 verify_jwt = false
 

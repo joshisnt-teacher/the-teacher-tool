@@ -6,13 +6,11 @@ import {
   BookOpen,
   Settings,
   Plus,
-  GraduationCap,
   ChevronRight,
   User,
   Monitor,
   Ticket,
   Library,
-  ExternalLink
 } from "lucide-react";
 
 import {
@@ -30,9 +28,9 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useClasses } from "@/hooks/useClasses";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuth } from "@/hooks/useAuth";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { EdufiedLogo } from "@/components/EdufiedLogo";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -49,7 +47,6 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { data: classes } = useClasses();
-  const { data: currentUser } = useCurrentUser();
   const { signOut } = useAuth();
   const [classesOpen, setClassesOpen] = useState(true);
 
@@ -61,9 +58,9 @@ export function AppSidebar() {
   };
 
   const getNavClassName = (path: string) => {
-    return isActive(path) 
-      ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-      : "hover:bg-sidebar-accent/50";
+    return isActive(path)
+      ? "bg-white/10 text-sidebar-foreground border-l-[3px] border-primary"
+      : "hover:bg-white/5 text-sidebar-foreground/70";
   };
 
   const isClassRoute = currentPath.startsWith('/class/') || currentPath.startsWith('/create-class') || currentPath.startsWith('/classroom/') || currentPath.startsWith('/create-assessment/') || (currentPath.startsWith('/student/') && currentPath.includes('/class/'));
@@ -89,30 +86,9 @@ export function AppSidebar() {
   const relatedClassId = getRelatedClassId();
 
   return (
-    <Sidebar className="border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6" />
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="font-semibold text-sidebar-foreground">
-                {currentUser?.school?.name || "Assessment Platform"}
-              </span>
-              <span className="text-xs text-sidebar-foreground/60">
-                {currentUser?.name}
-              </span>
-              <a
-                href="https://edufied.com.au"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 flex items-center gap-1 text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground/70 transition-colors w-fit"
-              >
-                <ExternalLink className="h-3 w-3" />
-                edufied.com.au
-              </a>
-            </div>
-          )}
-        </div>
+    <Sidebar className="border-sidebar-border/50 bg-sidebar">
+      <SidebarHeader className="h-16 border-b border-sidebar-border/50 flex items-center px-4">
+        <EdufiedLogo collapsed={collapsed} className="text-sidebar-foreground" />
       </SidebarHeader>
 
       <SidebarContent>
@@ -138,14 +114,14 @@ export function AppSidebar() {
         <SidebarGroup>
           <Collapsible open={shouldExpandClasses} onOpenChange={setClassesOpen}>
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent/50 rounded-md p-2 flex items-center justify-between">
+              <SidebarGroupLabel className="cursor-pointer hover:bg-primary/5 hover:text-primary/80 rounded-md p-2 flex items-center justify-between text-sidebar-foreground/60">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   {!collapsed && <span>Classes</span>}
                 </div>
                 {!collapsed && (
-                  <ChevronRight 
-                    className={`h-4 w-4 transition-transform ${shouldExpandClasses ? 'rotate-90' : ''}`} 
+                  <ChevronRight
+                    className={`h-4 w-4 transition-transform ${shouldExpandClasses ? 'rotate-90 text-primary' : ''}`}
                   />
                 )}
               </SidebarGroupLabel>
@@ -157,12 +133,12 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild className={getNavClassName('/create-class')}>
                       <NavLink to="/create-class">
-                        <Plus className="h-4 w-4" />
-                        {!collapsed && <span>Create Class</span>}
+                        <Plus className="h-5 w-5" />
+                        {!collapsed && <span className="text-sm font-medium">Create Class</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  
+
                   {/* List of Classes */}
                   {classes
                     ?.filter((classItem) => !classItem.is_demo)
@@ -170,10 +146,10 @@ export function AppSidebar() {
                       const active = isActive(`/class/${classItem.id}`);
                       const related = relatedClassId === classItem.id;
                       const className = active
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:bg-primary before:rounded-r-md"
+                        ? "bg-white/10 text-sidebar-foreground font-medium relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:bg-primary before:rounded-r-md"
                         : related
-                          ? "hover:bg-sidebar-accent/50 text-sidebar-foreground relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-3 before:w-[3px] before:bg-primary/60 before:rounded-r-md"
-                          : "hover:bg-sidebar-accent/50";
+                          ? "hover:bg-white/5 text-sidebar-foreground/70 relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-3 before:w-[3px] before:bg-primary/40 before:rounded-r-md"
+                          : "hover:bg-white/5 text-sidebar-foreground/70";
 
                       return (
                         <SidebarMenuItem key={classItem.id}>
@@ -182,13 +158,13 @@ export function AppSidebar() {
                             className={className}
                           >
                             <NavLink to={`/class/${classItem.id}`}>
-                              <User className="h-4 w-4" />
+                              <User className="h-5 w-5" />
                               {!collapsed && (
                                 <div className="flex flex-col items-start">
                                   <span className="text-sm font-medium truncate max-w-[160px]">
                                     {classItem.class_name}
                                   </span>
-                                  <span className={`text-xs ${active || related ? 'text-sidebar-accent-foreground/70' : 'text-sidebar-foreground/60'}`}>
+                                  <span className={`text-xs ${active || related ? 'text-primary/70' : 'text-sidebar-foreground/40'}`}>
                                     {classItem.subject} • {classItem.year_level}
                                   </span>
                                 </div>
@@ -205,12 +181,12 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+      <SidebarFooter className="border-t border-sidebar-border/50 p-4">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={signOut}
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+          className="w-full justify-start text-sidebar-foreground/60 hover:bg-primary/10 hover:text-primary"
         >
           <User className="h-4 w-4 mr-2" />
           {!collapsed && <span>Sign Out</span>}

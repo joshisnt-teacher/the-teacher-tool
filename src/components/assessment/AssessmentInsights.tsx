@@ -98,7 +98,7 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
         {/* Hardest Question */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
+            <CardTitle className="flex items-center gap-2 text-rose-500">
               <AlertTriangle className="w-5 h-5" />
               Hardest Question
             </CardTitle>
@@ -128,7 +128,7 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
         {/* Easiest Question */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600">
+            <CardTitle className="flex items-center gap-2 text-emerald-500">
               <CheckCircle className="w-5 h-5" />
               Easiest Question
             </CardTitle>
@@ -136,7 +136,7 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-green-100 text-green-800">
+                <Badge variant="success">
                   Q{easiestQuestion.question_number}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
@@ -192,10 +192,10 @@ export const AssessmentInsights: React.FC<AssessmentInsightsProps> = ({ taskId }
               <div key={item.level} className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
                   item.level === 'Remember' ? 'bg-blue-500' :
-                  item.level === 'Understand' ? 'bg-green-500' :
+                  item.level === 'Understand' ? 'bg-emerald-500' :
                   item.level === 'Apply' ? 'bg-yellow-500' :
                   item.level === 'Analyse' ? 'bg-orange-500' :
-                  item.level === 'Evaluate' ? 'bg-red-500' :
+                  item.level === 'Evaluate' ? 'bg-rose-500' :
                   'bg-purple-500'
                 }`} />
                 <span className="text-muted-foreground">

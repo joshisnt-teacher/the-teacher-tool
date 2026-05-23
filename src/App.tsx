@@ -3,13 +3,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate, matchPath } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, matchPath } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { StudentSessionProvider } from "@/hooks/useStudentSession";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ArrowLeft } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AppBreadcrumb } from "@/components/AppBreadcrumb";
+import { useTheme } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ToolSwitcher from "@/components/ToolSwitcher";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -76,18 +80,16 @@ function PageTitle() {
   return null;
 }
 
-function ClassroomBackButton() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const match = matchPath('/classroom/:classId', location.pathname);
-  if (!match) return null;
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
   return (
     <button
-      onClick={() => navigate(`/class/${match.params.classId}`)}
-      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/20 hover:text-foreground transition-colors"
+      title={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
     >
-      <ArrowLeft className="w-4 h-4" />
-      Class Dashboard
+      {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <span className="sr-only">Toggle theme</span>
     </button>
   );
 }
@@ -112,24 +114,31 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <PageTitle />
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-          <header className="h-12 flex items-center border-b px-4 bg-background">
-            <SidebarTrigger className="mr-2" />
-            <ClassroomBackButton />
+          <header className="h-14 flex items-center border-b border-border px-4 bg-background/80 backdrop-blur-md sticky top-0 z-30">
+            <SidebarTrigger className="mr-2 md:hidden" />
+            <div className="flex-1 min-w-0">
+              <AppBreadcrumb />
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <ThemeToggle />
+            </div>
           </header>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto pb-12">
             {children}
           </div>
         </main>
       </div>
+      <ToolSwitcher currentSlug="pulse" />
     </SidebarProvider>
   );
 }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <AuthProvider>
       <StudentSessionProvider>
         <TooltipProvider delayDuration={300}>
@@ -287,6 +296,7 @@ const App = () => (
       </TooltipProvider>
       </StudentSessionProvider>
     </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

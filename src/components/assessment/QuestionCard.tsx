@@ -47,12 +47,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
   const getBloomsColor = (level: string) => {
     const colors = {
-      'Remember': 'bg-blue-50 text-blue-700 border-blue-200',
-      'Understand': 'bg-green-50 text-green-700 border-green-200',
-      'Apply': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      'Analyse': 'bg-orange-50 text-orange-700 border-orange-200',
-      'Evaluate': 'bg-red-50 text-red-700 border-red-200',
-      'Create': 'bg-purple-50 text-purple-700 border-purple-200',
+      'Remember': 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+      'Understand': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+      'Apply': 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+      'Analyse': 'bg-orange-500/15 text-orange-400 border-orange-500/20',
+      'Evaluate': 'bg-rose-500/15 text-rose-400 border-rose-500/20',
+      'Create': 'bg-violet-500/15 text-violet-400 border-violet-500/20',
     };
     return colors[level as keyof typeof colors] || 'bg-muted text-muted-foreground';
   };

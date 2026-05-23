@@ -45,8 +45,11 @@ export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => 
   const headers = rows[0];
   const questionColumns: number[] = [];
 
+  // Match Q1, Q2, Q1a, Q1b, Q2.1, etc. — captures the full label for sorting
+  const questionColumnRegex = /^Q\d+(?:[.a-z]\w*)?$/i;
+
   headers.forEach((header, index) => {
-    if (header.match(/^Q\d+$/i)) {
+    if (questionColumnRegex.test(header)) {
       questionColumns.push(index);
     }
   });
@@ -62,7 +65,7 @@ export const parseAssessmentCSV = (csvContent: string): ParsedAssessmentData => 
   const bloomsTaxonomy = rows[4];
   const availableMarks = rows[5];
 
-  // Build questions array
+  // Build questions array — renumber sequentially regardless of original labels (Q1a → 1, Q1b → 2, etc.)
   const questions = questionColumns.map((colIndex, questionIndex) => ({
     number: questionIndex + 1,
     question: questionTexts[colIndex] || '',
@@ -188,7 +191,7 @@ export const parseKahootSummarySheet = (arrayBuffer: ArrayBuffer): ParsedAssessm
 
   const questionColumnIndexes: number[] = [];
   headerValues.forEach((value, index) => {
-    if (/^q\d+$/i.test(value)) {
+    if (/^q\d+(?:[.a-z]\w*)?$/i.test(value)) {
       questionColumnIndexes.push(index);
     }
   });

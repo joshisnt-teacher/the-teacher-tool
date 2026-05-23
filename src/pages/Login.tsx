@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { LogIn, Lock, ChevronDown, ChevronUp } from 'lucide-react';
+import { LogIn, Lock, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 
 const CENTRAL_HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || 'https://edufied.com.au';
 
@@ -61,19 +61,36 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-950/50 via-background to-cyan-950/30" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+
+      {/* Grid pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(56,189,248,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.5) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px',
+        }}
+      />
+
+      <Card className="w-full max-w-md relative z-10 border-white/10 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/10">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-            <LogIn className="w-6 h-6 text-primary-foreground" />
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/30">
+            <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Teacher Dashboard</CardTitle>
-          <CardDescription>
-            Sign in with your edufied account
-          </CardDescription>
+          <div>
+            <CardTitle className="text-2xl font-bold">Teacher Dashboard</CardTitle>
+            <CardDescription className="mt-1">
+              Sign in with your edufied account
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button className="w-full h-11" onClick={handleSSOLogin}>
+          <Button className="w-full h-11 shadow-lg shadow-primary/20" onClick={handleSSOLogin}>
             <LogIn className="w-4 h-4 mr-2" />
             Sign in with edufied
           </Button>
@@ -83,7 +100,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setShowFallback(!showFallback)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mx-auto transition-colors"
             >
               {showFallback ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               Direct login

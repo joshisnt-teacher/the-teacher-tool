@@ -11,11 +11,13 @@ interface QuestionHeatmapProps {
   taskId: string;
 }
 
-type SortOption = 'student-total-asc' | 'student-total-desc' | 'question-difficulty-asc' | 'question-difficulty-desc' | 'default';
+type StudentSort = 'total-asc' | 'total-desc' | 'default';
+type QuestionSort = 'difficulty-asc' | 'difficulty-desc' | 'default';
 
 export const QuestionHeatmap: React.FC<QuestionHeatmapProps> = ({ taskId }) => {
   const { data: heatmapData, isLoading, error } = useQuestionHeatmapData(taskId);
-  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [studentSort, setStudentSort] = useState<StudentSort>('default');
+  const [questionSort, setQuestionSort] = useState<QuestionSort>('default');
 
   if (isLoading) {
     return (
@@ -59,22 +61,30 @@ export const QuestionHeatmap: React.FC<QuestionHeatmapProps> = ({ taskId }) => {
     );
   }
 
-  // Sort data based on current sort option
+  // Sort data based on independent row and column sort options
   const getSortedData = () => {
     let sortedStudents = [...heatmapData.students];
     let sortedQuestions = [...heatmapData.questions];
 
-    switch (sortBy) {
-      case 'student-total-asc':
+    // Apply student sort independently
+    switch (studentSort) {
+      case 'total-asc':
         sortedStudents.sort((a, b) => a.totalPercent - b.totalPercent);
         break;
-      case 'student-total-desc':
+      case 'total-desc':
         sortedStudents.sort((a, b) => b.totalPercent - a.totalPercent);
         break;
-      case 'question-difficulty-asc':
+      default:
+        // Keep original order
+        break;
+    }
+
+    // Apply question sort independently
+    switch (questionSort) {
+      case 'difficulty-asc':
         sortedQuestions.sort((a, b) => a.averageScore - b.averageScore);
         break;
-      case 'question-difficulty-desc':
+      case 'difficulty-desc':
         sortedQuestions.sort((a, b) => b.averageScore - a.averageScore);
         break;
       default:
@@ -108,21 +118,21 @@ export const QuestionHeatmap: React.FC<QuestionHeatmapProps> = ({ taskId }) => {
 
   // Updated color scheme: Green=high, Yellow/Orange=medium, Red=low/no response
   const getScoreColor = (percentScore: number | null) => {
-    if (percentScore === null || percentScore === undefined) return 'bg-red-500'; // No response = incorrect
-    if (percentScore >= 80) return 'bg-green-500'; // High performance
-    if (percentScore >= 50) return 'bg-yellow-500'; // Medium performance
-    return 'bg-red-500'; // Low performance
+    if (percentScore === null || percentScore === undefined) return 'bg-rose-500'; // No response = incorrect
+    if (percentScore >= 80) return 'bg-emerald-500'; // High performance
+    if (percentScore >= 50) return 'bg-amber-500'; // Medium performance
+    return 'bg-rose-500'; // Low performance
   };
 
   const getDifficultyBadge = (difficulty: string, averageScore: number) => {
-    const baseClasses = "text-xs px-2 py-1 rounded";
+    const baseClasses = "text-xs px-2 py-1 rounded-md font-medium";
     switch (difficulty) {
       case 'Easy':
-        return <div className={`${baseClasses} bg-green-100 text-green-800`}>Easy ({averageScore}%)</div>;
+        return <div className={`${baseClasses} bg-emerald-500/15 text-emerald-400 border border-emerald-500/20`}>Easy ({averageScore}%)</div>;
       case 'Hard':
-        return <div className={`${baseClasses} bg-red-100 text-red-800`}>Hard ({averageScore}%)</div>;
+        return <div className={`${baseClasses} bg-rose-500/15 text-rose-400 border border-rose-500/20`}>Hard ({averageScore}%)</div>;
       default:
-        return <div className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Medium ({averageScore}%)</div>;
+        return <div className={`${baseClasses} bg-amber-500/15 text-amber-400 border border-amber-500/20`}>Medium ({averageScore}%)</div>;
     }
   };
 
@@ -141,33 +151,33 @@ export const QuestionHeatmap: React.FC<QuestionHeatmapProps> = ({ taskId }) => {
         {/* Sort Controls */}
         <div className="flex flex-wrap gap-2 mb-6">
           <Button
-            variant={sortBy === 'student-total-desc' ? 'default' : 'outline'}
+            variant={studentSort === 'total-desc' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSortBy(sortBy === 'student-total-desc' ? 'default' : 'student-total-desc')}
+            onClick={() => setStudentSort(studentSort === 'total-desc' ? 'default' : 'total-desc')}
           >
             <ArrowDown className="w-4 h-4 mr-1" />
             Sort by Total (High)
           </Button>
           <Button
-            variant={sortBy === 'student-total-asc' ? 'default' : 'outline'}
+            variant={studentSort === 'total-asc' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSortBy(sortBy === 'student-total-asc' ? 'default' : 'student-total-asc')}
+            onClick={() => setStudentSort(studentSort === 'total-asc' ? 'default' : 'total-asc')}
           >
             <ArrowUp className="w-4 h-4 mr-1" />
             Sort by Total (Low)
           </Button>
           <Button
-            variant={sortBy === 'question-difficulty-desc' ? 'default' : 'outline'}
+            variant={questionSort === 'difficulty-desc' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSortBy(sortBy === 'question-difficulty-desc' ? 'default' : 'question-difficulty-desc')}
+            onClick={() => setQuestionSort(questionSort === 'difficulty-desc' ? 'default' : 'difficulty-desc')}
           >
             <BarChart3 className="w-4 h-4 mr-1" />
             Easy Questions First
           </Button>
           <Button
-            variant={sortBy === 'question-difficulty-asc' ? 'default' : 'outline'}
+            variant={questionSort === 'difficulty-asc' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSortBy(sortBy === 'question-difficulty-asc' ? 'default' : 'question-difficulty-asc')}
+            onClick={() => setQuestionSort(questionSort === 'difficulty-asc' ? 'default' : 'difficulty-asc')}
           >
             <BarChart3 className="w-4 h-4 mr-1" />
             Hard Questions First
@@ -245,15 +255,15 @@ export const QuestionHeatmap: React.FC<QuestionHeatmapProps> = ({ taskId }) => {
           <h4 className="text-sm font-medium mb-3">Performance Legend</h4>
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <div className="w-4 h-4 bg-emerald-500 rounded"></div>
               <span className="text-xs">High (80%+)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+              <div className="w-4 h-4 bg-amber-500 rounded"></div>
               <span className="text-xs">Medium (50-79%)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <div className="w-4 h-4 bg-rose-500 rounded"></div>
               <span className="text-xs">Low/No Response (0-49%)</span>
             </div>
           </div>

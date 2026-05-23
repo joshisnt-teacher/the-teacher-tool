@@ -147,9 +147,9 @@ export const ActionsTab = ({ taskId }: Props) => {
             <p className="text-sm text-muted-foreground pt-3">{classData.summary}</p>
             {(
               [
-                { label: 'Class Strengths', items: classData.strengths, colour: 'text-green-700 dark:text-green-400' },
-                { label: 'Areas to Reteach', items: classData.reteach_topics, colour: 'text-amber-700 dark:text-amber-400' },
-                { label: 'Common Gaps', items: classData.gaps, colour: 'text-red-700 dark:text-red-400' },
+                { label: 'Class Strengths', items: classData.strengths, colour: 'text-emerald-600 dark:text-emerald-400' },
+                { label: 'Areas to Reteach', items: classData.reteach_topics, colour: 'text-amber-600 dark:text-amber-400' },
+                { label: 'Common Gaps', items: classData.gaps, colour: 'text-rose-600 dark:text-rose-400' },
               ] as const
             ).map(({ label, items, colour }) =>
               items?.length > 0 ? (
@@ -278,7 +278,7 @@ export const ActionsTab = ({ taskId }: Props) => {
                 {strugglingData.at_risk.map((s) => (
                   <div
                     key={s.student_id}
-                    className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg"
+                    className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg"
                   >
                     <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">

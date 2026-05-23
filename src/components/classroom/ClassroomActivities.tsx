@@ -391,10 +391,10 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       return { label: "Homework", className: "bg-blue-100 text-blue-800 border-blue-200" };
     }
     if (ticket.status === "active") {
-      return { label: "Live", className: "bg-green-100 text-green-800 border-green-200" };
+      return { label: "Live", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
     }
     if (ticket.status === "closed" || ticket.is_completed) {
-      return { label: "Closed", className: "bg-amber-100 text-amber-800 border-amber-200" };
+      return { label: "Closed", className: "bg-amber-500/15 text-amber-400 border-amber-500/20" };
     }
     return { label: "Draft", className: "bg-muted text-muted-foreground border-border" };
   };
@@ -776,7 +776,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                           <h3 className="font-semibold truncate">{cr.resource.title}</h3>
                           <Badge variant="secondary" className="text-xs">{cr.resource.category}</Badge>
                           {isOnDashboard && (
-                            <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
+                            <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
                               On student dashboard
                             </Badge>
                           )}

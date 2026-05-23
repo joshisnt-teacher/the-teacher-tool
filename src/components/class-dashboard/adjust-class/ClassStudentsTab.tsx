@@ -29,6 +29,12 @@ interface ClassStudentsTabProps {
   classData: Class;
 }
 
+// Strip leading zeros from purely numeric IDs so '091' and '91' are treated as the same student.
+const normalizeStudentId = (id: string) => {
+  const t = id.trim();
+  return /^\d+$/.test(t) ? String(parseInt(t, 10)) : t;
+};
+
 const parseStudentsCSV = (csvText: string) => {
   const lines = csvText.trim().split('\n');
   const students = [];
@@ -50,7 +56,7 @@ const parseStudentsCSV = (csvText: string) => {
     }
 
     students.push({
-      student_id: student_id.trim(),
+      student_id: normalizeStudentId(student_id),
       first_name: first_name.trim(),
       last_name: last_name.trim(),
     });
@@ -118,11 +124,13 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const normalizedId = normalizeStudentId(newStudent.student_id);
+
       const { data: existing } = await supabase
         .from('students')
         .select('id')
         .eq('teacher_id', user.id)
-        .eq('student_id', newStudent.student_id)
+        .eq('student_id', normalizedId)
         .maybeSingle();
 
       let studentUuid: string;
@@ -134,7 +142,7 @@ export const ClassStudentsTab: React.FC<ClassStudentsTabProps> = ({ classData })
           .insert({
             first_name: newStudent.first_name,
             last_name: newStudent.last_name,
-            student_id: newStudent.student_id,
+            student_id: normalizedId,
             teacher_id: user.id,
           })
           .select('id')
