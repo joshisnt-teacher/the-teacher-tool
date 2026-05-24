@@ -2,12 +2,14 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export type AIQuestionType = 'multiple_choice' | 'short_answer' | 'extended_answer';
+
 export interface AIGeneratedExitTicket {
   name: string;
   description: string;
   questions: {
     question: string;
-    question_type: 'multiple_choice' | 'short_answer' | 'extended_answer';
+    question_type: AIQuestionType;
     max_score: number;
     blooms_taxonomy?: string;
     content_item_id?: string;
@@ -33,7 +35,8 @@ export const useAIGenerateExitTicket = () => {
     }: {
       content: string;
       questionCount: number;
-      questionTypes: 'mcq' | 'short_answer' | 'extended' | 'mix';
+      // Per-question type array — one entry per question slot
+      questionTypes: AIQuestionType[];
       classId: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('generate-exit-ticket', {

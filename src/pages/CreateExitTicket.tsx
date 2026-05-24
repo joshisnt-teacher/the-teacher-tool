@@ -26,6 +26,7 @@ import { useClassContentItems } from '@/hooks/useClassContentItems';
 import { useBloomsTaxonomy } from '@/hooks/useCreateAssessment';
 import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { useAIGenerateExitTicket } from '@/hooks/useAIGenerateExitTicket';
+import type { AIQuestionType } from '@/hooks/useAIGenerateExitTicket';
 import type { MarkingCriteria } from '@/lib/autoMarkTextAnswer';
 
 const generateId = () => {
@@ -95,7 +96,10 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiQuestionCount, setAiQuestionCount] = useState(3);
-  const [aiQuestionTypes, setAiQuestionTypes] = useState<'mcq' | 'short_answer' | 'extended' | 'mix'>('mix');
+  // Per-question type selectors — one entry per question slot
+  const [aiQuestionTypesList, setAiQuestionTypesList] = useState<AIQuestionType[]>(
+    ['multiple_choice', 'multiple_choice', 'multiple_choice']
+  );
 
   const { data: classContentItems = [] } = useClassContentItems(aiContextClassId || undefined);
 
@@ -155,6 +159,19 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
     };
     load();
   }, [editTemplateId, toast]);
+
+  // Sync the AI question-types list whenever the count changes
+  const handleAiCountChange = (rawValue: string) => {
+    const newCount = Math.max(1, Math.min(10, Number(rawValue) || 1));
+    setAiQuestionCount(newCount);
+    setAiQuestionTypesList((prev) => {
+      if (newCount > prev.length) {
+        const extras = Array(newCount - prev.length).fill('multiple_choice' as AIQuestionType);
+        return [...prev, ...extras];
+      }
+      return prev.slice(0, newCount);
+    });
+  };
 
   const addQuestion = () => setQuestions((prev) => [...prev, defaultQuestion()]);
   const removeQuestion = (index: number) => setQuestions((prev) => prev.filter((_, i) => i !== index));
@@ -285,7 +302,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
     try {
       const data = await generateExitTicket.mutateAsync({
         content: aiPrompt.trim(), questionCount: aiQuestionCount,
-        questionTypes: aiQuestionTypes, classId: aiContextClassId,
+        questionTypes: aiQuestionTypesList, classId: aiContextClassId,
       });
       setTitle(data.name);
       setDescription(data.description);
@@ -394,22 +411,46 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                 <Label htmlFor="ai-prompt">Describe the topic</Label>
                 <Textarea id="ai-prompt" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="e.g. Check students' understanding of photosynthesis" rows={3} disabled={isBusy} />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="ai-count">Number of questions</Label>
-                  <Input id="ai-count" type="number" min={1} max={10} value={aiQuestionCount} onChange={(e) => setAiQuestionCount(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} disabled={isBusy} />
+                  <Input
+                    id="ai-count"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={aiQuestionCount}
+                    onChange={(e) => handleAiCountChange(e.target.value)}
+                    disabled={isBusy}
+                    className="w-24"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ai-types">Question types</Label>
-                  <Select value={aiQuestionTypes} onValueChange={(v: typeof aiQuestionTypes) => setAiQuestionTypes(v)} disabled={isBusy}>
-                    <SelectTrigger id="ai-types"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mix">Mix</SelectItem>
-                      <SelectItem value="mcq">Multiple Choice only</SelectItem>
-                      <SelectItem value="short_answer">Short Answer only</SelectItem>
-                      <SelectItem value="extended">Extended Answer only</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Question types</Label>
+                  <p className="text-xs text-muted-foreground">Choose a type for each question — the AI will generate exactly what you select.</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {aiQuestionTypesList.map((qType, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground w-7 shrink-0">Q{idx + 1}</span>
+                        <Select
+                          value={qType}
+                          onValueChange={(v: AIQuestionType) =>
+                            setAiQuestionTypesList((prev) => prev.map((t, i) => (i === idx ? v : t)))
+                          }
+                          disabled={isBusy}
+                        >
+                          <SelectTrigger className="h-8 text-xs flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                            <SelectItem value="short_answer">Short Answer</SelectItem>
+                            <SelectItem value="extended_answer">Extended Answer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end">

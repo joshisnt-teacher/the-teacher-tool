@@ -25,10 +25,8 @@ function resolveCode(
 ): string | undefined {
   if (!input) return undefined
   const trimmed = input.trim()
-  // Exact match first
   const exact = items.find((ci) => ci.code === trimmed)
   if (exact) return exact.code
-  // Case-insensitive fallback
   const lower = trimmed.toLowerCase()
   const ci = items.find((item) => item.code.toLowerCase() === lower)
   return ci?.code
@@ -61,7 +59,8 @@ Deno.serve(async (req) => {
   const { content, question_count, question_types, class_id } = body as {
     content?: string
     question_count?: number
-    question_types?: 'mcq' | 'short_answer' | 'extended' | 'mix'
+    // Array of per-question types, e.g. ['multiple_choice', 'short_answer', 'multiple_choice']
+    question_types?: string[]
     class_id?: string
   }
 
@@ -80,7 +79,18 @@ Deno.serve(async (req) => {
   }
 
   const count = Math.max(1, Math.min(10, Math.round(Number(question_count || 3))))
-  const types = question_types || 'mix'
+
+  // Validate and normalise the per-question types array.
+  // Fall back to 'multiple_choice' for any unrecognised value.
+  const validTypes = ['multiple_choice', 'short_answer', 'extended_answer']
+  const typesArray: string[] = Array.isArray(question_types) && question_types.length > 0
+    ? question_types.slice(0, count).map((t) => validTypes.includes(String(t)) ? String(t) : 'multiple_choice')
+    : Array(count).fill('multiple_choice')
+
+  // Ensure the array length matches count (pad if needed)
+  while (typesArray.length < count) {
+    typesArray.push('multiple_choice')
+  }
 
   // Resolve class → teacher → vault ID
   const { data: cls, error: clsError } = await supabaseAdmin
@@ -162,8 +172,7 @@ Deno.serve(async (req) => {
 
   // Pre-filter: pick the top 15 most topic-relevant descriptors to keep the
   // mapping prompt focused. If no descriptors score > 0, send ALL of them so
-  // the mapping call can still find the best match (e.g. civics questions for
-  // a class that has both geography and civics descriptors).
+  // the mapping call can still find the best match.
   let contentItems = allContentItems
   if (allContentItems.length > 0) {
     const scored = allContentItems
@@ -171,24 +180,32 @@ Deno.serve(async (req) => {
       .sort((a, b) => b.score - a.score)
 
     const topScored = scored.filter((s) => s.score > 0).slice(0, 15)
-    // When nothing matches by keyword, send everything — don't guess by position
     contentItems = topScored.length > 0 ? topScored.map((s) => s.ci) : allContentItems
   }
 
   // ---------------------------------------------------------------------------
-  // PASS 1 — Generate questions (no content descriptor selection here)
+  // PASS 1 — Generate questions
   // ---------------------------------------------------------------------------
   const openai = new OpenAI({ apiKey })
 
-  const typeMap: Record<string, string> = {
-    mcq: 'multiple choice only',
-    short_answer: 'short answer only',
-    extended: 'extended answer only',
-    mix: 'a mix of multiple choice, short answer, and extended answer',
+  // Human-readable type labels for the prompt
+  const typeLabel: Record<string, string> = {
+    multiple_choice: 'Multiple Choice (MCQ)',
+    short_answer: 'Short Answer',
+    extended_answer: 'Extended Answer',
   }
 
+  // Build the per-question type specification
+  const questionTypeSpec = typesArray
+    .map((t, i) => `  - Question ${i + 1}: ${typeLabel[t] || 'Short Answer'}`)
+    .join('\n')
+
+  // Count how many are MCQ — used to decide whether to include MCQ guidelines
+  const mcqCount = typesArray.filter((t) => t === 'multiple_choice').length
+
   const pass1Lines: string[] = [
-    'You are an experienced Australian teacher. Generate an exit ticket (a short formative assessment) based on the teacher\'s request.',
+    'You are an experienced Australian teacher and assessment design expert.',
+    'Generate an exit ticket (a short formative assessment used at the END of a lesson) based on the teacher\'s request.',
     'Use Australian English spelling throughout (e.g. "analyse" not "analyze", "recognise" not "recognize", "organise" not "organize").',
     '',
     'CLASS CONTEXT:',
@@ -198,19 +215,45 @@ Deno.serve(async (req) => {
     'TEACHER REQUEST:',
     content.trim(),
     '',
-    `Generate exactly ${count} question${count === 1 ? '' : 's'}.`,
-    `Question type constraint: ${typeMap[types] || typeMap.mix}.`,
+    `Generate exactly ${count} question${count === 1 ? '' : 's'} with the EXACT types listed below (do not change them):`,
+    questionTypeSpec,
     '',
-    'GUIDELINES:',
-    '- Assign each question a Bloom\'s Taxonomy level (Remember, Understand, Apply, Analyse, Evaluate, Create). Vary the levels to build progressively more challenging questions.',
-    '- For multiple choice questions: provide 3–4 options with exactly one correct answer.',
+    'GENERAL GUIDELINES:',
+    '- These are END-OF-LESSON formative checks — questions should be completable in 5–10 minutes total.',
+    '- Use language appropriate for the year level — accessible but not condescending.',
+    '- Assign each question a Bloom\'s Taxonomy level (Remember, Understand, Apply, Analyse, Evaluate, Create).',
+    '- Order questions so they build in cognitive demand (easier → harder across the set).',
     '- For short/extended answer questions: include marking_criteria with expected_keywords and a model_answer.',
     '- Max scores: 1 for MCQs, 1–3 for short answer, 3–5 for extended answer.',
     '',
+  ]
+
+  // Add MCQ-specific diagnostic guidelines if any MCQs are requested
+  if (mcqCount > 0) {
+    pass1Lines.push(
+      'MCQ DESIGN GUIDELINES (apply to every Multiple Choice question):',
+      '- Purpose: diagnostic — questions must reveal WHETHER and WHY a student doesn\'t understand, not just whether they got it right.',
+      '- Design the stem to target a specific concept or decision point (not just recall of a fact).',
+      '- Distractors (wrong options) MUST be plausible — each distractor should represent a specific, common student misconception or error pattern.',
+      '  Example: if the correct answer requires applying a rule, distractors should reflect what a student who MISAPPLIED that rule would choose.',
+      '- Avoid generic distractors like random numbers, clearly silly answers, "all of the above", or "none of the above".',
+      '- Make all options parallel in length, grammatical form, and structure — the correct answer must not stand out visually.',
+      '- Aim for 3–4 options total (3 is ideal for clarity; 4 for harder discrimination).',
+      '- Vary MCQ formats when there are multiple MCQs:',
+      '  * Standard: "Which of the following is correct?"',
+      '  * Negative: "Which does NOT ..."',
+      '  * Best explanation: "Which best explains why ..."',
+      '  * Combination: "Which TWO of the following ..." (use sparingly)',
+      '- After generating, check: could a teacher look at which wrong answer a student chose and know EXACTLY what to reteach? If yes, the distractors are diagnostic.',
+      '',
+    )
+  }
+
+  pass1Lines.push(
     'Return ONLY a JSON object (no markdown):',
     JSON.stringify({
-      name: '<concise title>',
-      description: '<1-2 sentence summary>',
+      name: '<concise exit ticket title>',
+      description: '<1-2 sentence summary of what this exit ticket checks>',
       questions: [
         {
           question: '<question text>',
@@ -218,25 +261,27 @@ Deno.serve(async (req) => {
           max_score: 1,
           blooms_taxonomy: '<Remember | Understand | Apply | Analyse | Evaluate | Create>',
           options: [
-            { option_text: '<option A>', is_correct: false },
-            { option_text: '<option B>', is_correct: true },
+            { option_text: '<option A — plausible distractor representing a common misconception>', is_correct: false },
+            { option_text: '<option B — correct answer>', is_correct: true },
+            { option_text: '<option C — plausible distractor representing a different misconception>', is_correct: false },
           ],
           marking_criteria: {
             expected_keywords: ['<keyword 1>'],
             match_type: 'any',
             case_sensitive: false,
           },
-          model_answer: '<exemplar answer>',
+          model_answer: '<exemplar answer a student at this year level should be able to write>',
         },
       ],
     }, null, 2),
     '',
-    'RULES:',
+    'STRICT RULES:',
     '- "options" REQUIRED for multiple_choice; OMIT for short_answer and extended_answer.',
     '- "marking_criteria" and "model_answer" REQUIRED for short_answer and extended_answer; OMIT for multiple_choice.',
     '- blooms_taxonomy REQUIRED on every question.',
     '- Exactly one option must have is_correct: true for each multiple_choice question.',
-  ]
+    '- You MUST generate each question with the exact type specified in the question list above — do not substitute types.',
+  )
 
   let rawPass1: string
   try {
@@ -265,7 +310,7 @@ Deno.serve(async (req) => {
 
   // Sanitize Pass 1 output
   const validBlooms = ['Remember', 'Understand', 'Apply', 'Analyse', 'Analyze', 'Evaluate', 'Create']
-  const validTypes = ['multiple_choice', 'short_answer', 'extended_answer']
+  const validQuestionTypes = ['multiple_choice', 'short_answer', 'extended_answer']
 
   const sanitized: {
     name: string
@@ -292,13 +337,23 @@ Deno.serve(async (req) => {
 
   const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions : []
 
-  for (const q of rawQuestions) {
+  for (let idx = 0; idx < rawQuestions.length; idx++) {
+    const q = rawQuestions[idx]
     if (!q || typeof q !== 'object') continue
-    const qtype = String(q.question_type || '').trim().toLowerCase()
-    const type = validTypes.includes(qtype) ? (qtype as 'multiple_choice' | 'short_answer' | 'extended_answer') : 'short_answer'
-    const maxScore = Math.max(0, Math.min(20, Math.round(Number(q.max_score || 1))))
+
     const questionText = String(q.question || '').trim()
     if (!questionText) continue
+
+    // Enforce the teacher-specified type for this slot; fall back to AI's suggestion if within range
+    const enforcedType = typesArray[idx] || 'multiple_choice'
+    const qtype = String(q.question_type || '').trim().toLowerCase()
+    const type = validQuestionTypes.includes(enforcedType)
+      ? (enforcedType as 'multiple_choice' | 'short_answer' | 'extended_answer')
+      : validQuestionTypes.includes(qtype)
+        ? (qtype as 'multiple_choice' | 'short_answer' | 'extended_answer')
+        : 'short_answer'
+
+    const maxScore = Math.max(0, Math.min(20, Math.round(Number(q.max_score || 1))))
 
     const item: typeof sanitized.questions[number] = {
       question: questionText,
