@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Home, Activity, FileCheck, BookOpen, Briefcase, GraduationCap } from "lucide-react";
+import { Home, Activity, FileCheck, BookOpen, Briefcase, GraduationCap, BarChart2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au";
@@ -8,6 +8,7 @@ const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au"
 // Fallback icon mapping based on app slug
 const ICON_MAP: Record<string, React.ElementType> = {
   pulse: Activity,
+  analytics: BarChart2,
   markmaster: FileCheck,
   circuit: BookOpen,
   venture: Briefcase,

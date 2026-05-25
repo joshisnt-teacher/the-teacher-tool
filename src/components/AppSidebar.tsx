@@ -3,7 +3,6 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
   Users,
-  BookOpen,
   Settings,
   Plus,
   ChevronRight,
@@ -34,7 +33,6 @@ import { EdufiedLogo } from "@/components/EdufiedLogo";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Curriculum", url: "/curriculum-browser", icon: BookOpen },
   { title: "Classroom", url: "/classroom", icon: Monitor },
   { title: "Exit Tickets", url: "/exit-tickets", icon: Ticket },
   { title: "Resources", url: "/resources", icon: Library },
@@ -63,22 +61,12 @@ export function AppSidebar() {
       : "hover:bg-white/5 text-sidebar-foreground/70";
   };
 
-  const isClassRoute = currentPath.startsWith('/class/') || currentPath.startsWith('/create-class') || currentPath.startsWith('/classroom/') || currentPath.startsWith('/create-assessment/') || (currentPath.startsWith('/student/') && currentPath.includes('/class/'));
+  const isClassRoute = currentPath.startsWith('/class/') || currentPath.startsWith('/create-class') || currentPath.startsWith('/classroom/');
   const shouldExpandClasses = classesOpen || isClassRoute;
 
   const getRelatedClassId = () => {
     if (currentPath.startsWith('/classroom/')) {
       return currentPath.split('/')[2];
-    }
-    if (currentPath.startsWith('/create-assessment/')) {
-      return currentPath.split('/')[2];
-    }
-    if (currentPath.startsWith('/student/') && currentPath.includes('/class/')) {
-      const parts = currentPath.split('/');
-      const classIndex = parts.indexOf('class');
-      if (classIndex !== -1 && parts[classIndex + 1]) {
-        return parts[classIndex + 1];
-      }
     }
     return null;
   };
