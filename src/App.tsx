@@ -21,10 +21,6 @@ import Settings from "./pages/Settings";
 import CreateClass from "./pages/CreateClass";
 
 import ClassDashboard from "./pages/ClassDashboard";
-import AssessmentDetail from "./pages/AssessmentDetail";
-import CreateAssessment from "./pages/CreateAssessment";
-import StudentReport from "./pages/StudentReport";
-import CurriculumBrowser from "./pages/CurriculumBrowser";
 import Classroom from "./pages/Classroom";
 import SessionDetails from "./pages/SessionDetails";
 import ExitTickets from "./pages/ExitTickets";
@@ -47,17 +43,11 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/create-class", title: "Create Class" },
   { path: "/class/:classId/session/:sessionId", title: "Session" },
   { path: "/class/:classId", title: "Class" },
-  { path: "/assessment/:assessmentId", title: "Assessment" },
-  { path: "/create-assessment/:classId", title: "Create Assessment" },
-  { path: "/curriculum-browser/strand/:strandId", title: "Curriculum" },
-  { path: "/curriculum-browser/content/:contentItemId", title: "Curriculum" },
-  { path: "/curriculum-browser", title: "Curriculum" },
   { path: "/classroom/:classId", title: "Classroom" },
   { path: "/classroom", title: "Classroom" },
   { path: "/exit-tickets/create", title: "Create Exit Ticket" },
   { path: "/exit-tickets", title: "Exit Tickets" },
   { path: "/resources", title: "Resources" },
-  { path: "/student/:studentId/class/:classId", title: "Student Report" },
   { path: "/student/dashboard", title: "Student Dashboard" },
   { path: "/exit-ticket/:taskId", title: "Exit Ticket" },
   { path: "/join", title: "Student Sign In" },
@@ -182,38 +172,6 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/assessment/:assessmentId" 
-                element={
-                  <ProtectedRoute>
-                    <AssessmentDetail />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/curriculum-browser" 
-                element={
-                  <ProtectedRoute>
-                    <CurriculumBrowser />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/curriculum-browser/strand/:strandId" 
-                element={
-                  <ProtectedRoute>
-                    <CurriculumBrowser />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/curriculum-browser/content/:contentItemId" 
-                element={
-                  <ProtectedRoute>
-                    <CurriculumBrowser />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
                 path="/classroom" 
                 element={
                   <ProtectedRoute>
@@ -257,21 +215,13 @@ const App = () => (
                 path="/spinner" 
                 element={<Spinner />}
               />
-              <Route 
-                path="/class/:classId/session/:sessionId" 
+              <Route
+                path="/class/:classId/session/:sessionId"
                 element={
                   <ProtectedRoute>
                     <SessionDetails />
                   </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/create-assessment/:classId" 
-                element={
-                  <ProtectedRoute>
-                    <CreateAssessment />
-                  </ProtectedRoute>
-                } 
+                }
               />
               {/* Public student routes */}
               <Route path="/join" element={<ClassJoin />} />
@@ -280,14 +230,6 @@ const App = () => (
               <Route path="/auth/sso" element={<StudentSSO />} />
               <Route path="/auth/teacher/sso" element={<TeacherSSO />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
-              <Route 
-                path="/student/:studentId/class/:classId" 
-                element={
-                  <ProtectedRoute>
-                    <StudentReport />
-                  </ProtectedRoute>
-                }
-              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
