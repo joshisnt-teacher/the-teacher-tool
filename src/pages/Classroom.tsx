@@ -233,7 +233,7 @@ function ClassroomContent() {
             {classes.map((classItem) => (
               <Card 
                 key={classItem.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer hover:shadow-md transition-shadow border-border/80"
                 onClick={() => navigate(`/classroom/${classItem.id}`)}
               >
                 <CardContent className="p-6">

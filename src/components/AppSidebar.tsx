@@ -155,7 +155,7 @@ export function AppSidebar() {
                         <SidebarMenuItem key={classItem.id}>
                           <SidebarMenuButton
                             asChild
-                            className={className}
+                            className={`${className} !h-auto min-h-[3rem] py-1.5`}
                           >
                             <NavLink to={`/class/${classItem.id}`}>
                               <User className="h-5 w-5" />
