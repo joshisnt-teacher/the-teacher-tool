@@ -34,6 +34,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import TeacherSSO from "./pages/TeacherSSO";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
+import ExitTicketResults from "./pages/ExitTicketResults";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/login", title: "Login" },
   { path: "/auth/teacher/sso", title: "Signing in..." },
   { path: "/auth/sso", title: "Signing in..." },
+  { path: "/assessment/:assessmentId", title: "Results" },
   { path: "/spinner", title: "Pulse" },
   { path: "/", title: "Pulse" },
 ];
@@ -230,6 +232,14 @@ const App = () => (
               <Route path="/auth/sso" element={<StudentSSO />} />
               <Route path="/auth/teacher/sso" element={<TeacherSSO />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route
+                path="/assessment/:assessmentId"
+                element={
+                  <ProtectedRoute>
+                    <ExitTicketResults />
+                  </ProtectedRoute>
+                }
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
