@@ -13,6 +13,7 @@ import {
   Ticket,
   CheckCircle2,
   Clock,
+  BarChart3,
 } from 'lucide-react';
 import { useClasses } from '@/hooks/useClasses';
 import { ClassSessions } from '@/components/class-dashboard/ClassSessions';
@@ -188,15 +189,15 @@ const ClassDashboard = () => {
                 </div>
                 {exitTicketRuns.map((run) => (
                   <Card key={run.id} className="border-border/50">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <CardContent className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         {run.is_completed ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         ) : (
                           <Clock className="w-4 h-4 text-amber-500 shrink-0" />
                         )}
-                        <div>
-                          <p className="text-sm font-medium">{run.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{run.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(run.created_at), {
                               addSuffix: true,
@@ -206,12 +207,20 @@ const ClassDashboard = () => {
                           </p>
                         </div>
                       </div>
-                      <Badge
-                        variant={run.is_completed ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {run.is_completed ? 'Completed' : run.status}
-                      </Badge>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          variant={run.is_completed ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {run.is_completed ? 'Completed' : run.status}
+                        </Badge>
+                        <Link to={`/assessment/${run.id}`}>
+                          <Button variant="outline" size="sm">
+                            <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
+                            Results
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
