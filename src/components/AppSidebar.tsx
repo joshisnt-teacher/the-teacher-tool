@@ -76,7 +76,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-sidebar-border/50 bg-sidebar">
       <SidebarHeader className="h-16 border-b border-sidebar-border/50 flex items-center px-4">
-        <EdufiedLogo collapsed={collapsed} className="text-sidebar-foreground" />
+        <EdufiedLogo collapsed={collapsed} className="text-sidebar-foreground" toolName="Pulse" />
       </SidebarHeader>
 
       <SidebarContent>

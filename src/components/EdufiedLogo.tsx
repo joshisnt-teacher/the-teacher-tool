@@ -4,9 +4,10 @@ interface EdufiedLogoProps {
   className?: string;
   collapsed?: boolean;
   href?: string;
+  toolName?: string;
 }
 
-export function EdufiedLogo({ className, collapsed, href = "/dashboard" }: EdufiedLogoProps) {
+export function EdufiedLogo({ className, collapsed, href = "/dashboard", toolName }: EdufiedLogoProps) {
   const content = (
     <>
       <div
@@ -26,7 +27,17 @@ export function EdufiedLogo({ className, collapsed, href = "/dashboard" }: Edufi
           <path d="M7 11v4a5 5 0 0010 0v-4" />
         </svg>
       </div>
-      {!collapsed && (
+      {!collapsed && toolName && (
+        <div className="flex flex-col">
+          <span className="text-base font-semibold tracking-tight leading-tight text-sidebar-foreground">
+            {toolName}
+          </span>
+          <span className="text-[11px] leading-tight text-sidebar-foreground/60">
+            by Edufied
+          </span>
+        </div>
+      )}
+      {!collapsed && !toolName && (
         <span className="text-lg font-semibold tracking-tight text-sidebar-foreground">
           Edufied
         </span>

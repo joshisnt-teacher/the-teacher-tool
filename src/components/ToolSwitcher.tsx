@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Home, Activity, FileCheck, BookOpen, Briefcase, GraduationCap, BarChart2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au";
 
@@ -99,48 +100,44 @@ export default function ToolSwitcher({ currentSlug }: ToolSwitcherProps) {
 
   // Always show toolbar — home button + assigned tools
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 h-12 border-t border-border bg-sidebar flex items-center px-4 gap-1">
-      {/* Home button */}
-      <a
-        href={`${HUB_URL}/account/overview`}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        title="Back to Edufied"
-      >
-        <Home className="w-4 h-4" />
-        <span className="text-xs font-medium hidden sm:inline">Home</span>
-      </a>
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-4 pointer-events-none">
+      <nav className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-sidebar-border bg-sidebar px-2 py-2 shadow-2xl shadow-black/70 ring-1 ring-white/10">
+        {/* Home button */}
+        <a
+          href={`${HUB_URL}/account/overview`}
+          title="Back to Edufied"
+          className="flex flex-col items-center gap-1 rounded-xl px-5 py-2 transition-all duration-200 text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <Home className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Home</span>
+        </a>
 
-      {/* Divider */}
-      <div className="w-px h-5 bg-border mx-1" />
+        {/* Tool buttons */}
+        {apps.map((app) => {
+          const isCurrent = app.slug === currentSlug;
+          const Icon = ICON_MAP[app.slug] ?? GraduationCap;
 
-      {/* Tool buttons */}
-      {apps.map((app) => {
-        const isCurrent = app.slug === currentSlug;
-        const Icon = ICON_MAP[app.slug] ?? GraduationCap;
-
-        return (
-          <button
-            key={app.slug}
-            onClick={() => {
-              if (!isCurrent) {
-                mintSsoAndRedirect(app.slug);
-              }
-            }}
-            disabled={isCurrent}
-            className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all
-              ${isCurrent
-                ? "text-sidebar-foreground bg-sidebar-accent border-t-2 border-primary cursor-default"
-                : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 hover:-translate-y-0.5"
-              }
-            `}
-            title={app.name}
-          >
-            <Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{app.name}</span>
-          </button>
-        );
-      })}
+          return (
+            <button
+              key={app.slug}
+              onClick={() => {
+                if (!isCurrent) mintSsoAndRedirect(app.slug);
+              }}
+              disabled={isCurrent}
+              title={app.name}
+              className={cn(
+                "flex flex-col items-center gap-1 rounded-xl px-5 py-2 transition-all duration-200",
+                isCurrent
+                  ? "bg-primary/10 text-primary cursor-default"
+                  : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium leading-none">{app.name}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

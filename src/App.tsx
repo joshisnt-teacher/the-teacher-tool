@@ -57,7 +57,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/auth/sso", title: "Signing in..." },
   { path: "/assessment/:assessmentId", title: "Results" },
   { path: "/spinner", title: "Pulse" },
-  { path: "/", title: "Pulse" },
+  { path: "/", title: "pulse" },
 ];
 
 function PageTitle() {
@@ -65,8 +65,8 @@ function PageTitle() {
 
   useEffect(() => {
     const match = PAGE_TITLES.find(({ path }) => matchPath({ path, end: true }, location.pathname));
-    const label = match?.title ?? "Pulse";
-    document.title = label === "Pulse" ? "Pulse · by Edufied" : `Pulse - ${label}`;
+    const label = match?.title ?? "pulse";
+    document.title = label === "pulse" ? "pulse - by edufied" : `pulse - ${label}`;
   }, [location.pathname]);
 
   return null;
