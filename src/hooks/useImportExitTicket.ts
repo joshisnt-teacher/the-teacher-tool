@@ -207,10 +207,12 @@ export const useImportExitTicket = () => {
       } catch (err) {
         // Clean up orphaned rows on partial failure (cascades handle child rows)
         if (runId) {
-          await supabase.from('tasks').delete().eq('id', runId);
+          const { error: cleanupRunErr } = await supabase.from('tasks').delete().eq('id', runId);
+          if (cleanupRunErr) console.error('Failed to clean up orphaned run:', cleanupRunErr);
         }
         if (template) {
-          await supabase.from('exit_ticket_templates').delete().eq('id', template.id);
+          const { error: cleanupTplErr } = await supabase.from('exit_ticket_templates').delete().eq('id', template.id);
+          if (cleanupTplErr) console.error('Failed to clean up orphaned template:', cleanupTplErr);
         }
         throw err;
       }

@@ -127,14 +127,16 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
     if (!preview || !currentUser?.id || !currentUser?.school_id) return;
     try {
       let resolvedClassId = preview.classId;
+      let resolvedClassName = preview.className;
       if (!resolvedClassId && preview.parsed.exit_ticket.class_code && currentUser.school_id) {
         const { data: cls } = await supabase
           .from('classes')
-          .select('id')
+          .select('id, class_name')
           .eq('class_code', preview.parsed.exit_ticket.class_code)
           .eq('school_id', currentUser.school_id)
           .maybeSingle();
         resolvedClassId = cls?.id ?? null;
+        resolvedClassName = cls?.class_name ?? null;
       }
       const result = await importMutation.mutateAsync({
         parsed: preview.parsed,
@@ -144,7 +146,7 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
       });
       toast({
         title: result.deployed
-          ? `Exit ticket imported and deployed to ${preview.className}`
+          ? `Exit ticket imported and deployed to ${resolvedClassName ?? 'your class'}`
           : 'Exit ticket imported',
         description: result.deployed
           ? 'It\'s in your class as a draft — activate it from the Classroom page.'
