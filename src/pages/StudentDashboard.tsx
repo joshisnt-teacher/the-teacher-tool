@@ -192,13 +192,13 @@ const StudentDashboard = () => {
             {/* Homework Section */}
             <section>
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-600" />
+                <BookOpen className="w-5 h-5 text-rose-600" />
                 Homework
               </h2>
               {homeworkTickets.length > 0 ? (
                 <div className="space-y-3">
                   {homeworkTickets.map((ticket) => (
-                    <Card key={ticket.id} className="hover:border-blue-400 transition-colors border-blue-200 bg-blue-50/30">
+                    <Card key={ticket.id} className="hover:border-rose-400 transition-colors border-rose-200 bg-rose-50/30">
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div>
                           <p className="font-medium">{ticket.name}</p>
@@ -208,7 +208,7 @@ const StudentDashboard = () => {
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-xs text-muted-foreground">{ticket.class_name}</p>
                             {ticket.due_date && (
-                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                              <Badge variant="secondary" className="text-xs bg-rose-100 text-rose-800">
                                 Due {formatDueDate(ticket.due_date)}
                               </Badge>
                             )}

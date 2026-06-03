@@ -368,7 +368,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-purple-500/5 to-blue-500/5 border-purple-200">
+      <Card className="bg-gradient-to-br from-rose-500/5 to-rose-400/5 border-rose-200">
         <Collapsible open={showAIPanel} onOpenChange={setShowAIPanel}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">

@@ -388,7 +388,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
 
   const getStatusPill = (ticket: { status: string; is_homework: boolean; is_completed: boolean }) => {
     if (ticket.is_homework && ticket.status === "active") {
-      return { label: "Homework", className: "bg-blue-100 text-blue-800 border-blue-200" };
+      return { label: "Homework", className: "bg-rose-100 text-rose-800 border-rose-200" };
     }
     if (ticket.status === "active") {
       return { label: "Live", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
@@ -500,7 +500,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                         <p className="text-xs text-muted-foreground">Results saved • View in Assessment Detail</p>
                       )}
                       {ticket.is_homework && ticket.due_date && (
-                        <p className="text-xs text-blue-700 font-medium mb-0.5">
+                        <p className="text-xs text-rose-700 font-medium mb-0.5">
                           Due {new Date(ticket.due_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       )}

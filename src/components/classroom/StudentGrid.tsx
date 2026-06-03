@@ -411,7 +411,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
                       data-toilet-button
                       variant={isAtToilet ? "default" : "outline"}
                       size="sm"
-                      className={`h-7 w-7 p-0 ${isAtToilet ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                      className={`h-7 w-7 p-0 ${isAtToilet ? "bg-rose-600 hover:bg-rose-700" : ""}`}
                       onClick={(e) => handleToiletButtonClick(student, e)}
                       title={isAtToilet ? "Mark as returned" : "Mark as at toilet"}
                     >

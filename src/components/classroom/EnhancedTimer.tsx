@@ -357,14 +357,14 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
   return (
     <Card className={cn("relative overflow-hidden border-0 shadow-xl", className)}>
       {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-teal-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-white to-rose-100" />
       
       {/* Frosted Glass Effect Card */}
       <div className="relative backdrop-blur-sm bg-white/40 p-4 rounded-xl border border-white/50">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-600" />
+            <Clock className="w-4 h-4 text-rose-600" />
             <h3 className="font-semibold text-base text-gray-800">Timer</h3>
           </div>
         </div>
@@ -415,7 +415,7 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
                   className={cn(
                     "rounded-lg font-medium transition-all duration-200 text-xs h-8",
                     "bg-white/60 hover:bg-white/80 shadow-sm",
-                    timerTime === preset.seconds && "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                    timerTime === preset.seconds && "bg-rose-100 text-rose-700 hover:bg-rose-100"
                   )}
                   onClick={() => setPresetTime(preset.seconds)}
                 >

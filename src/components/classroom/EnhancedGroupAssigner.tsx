@@ -269,7 +269,7 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
   };
 
   const groupColors = [
-    "from-blue-100 to-blue-200 border-blue-300",
+    "from-rose-100 to-rose-200 border-rose-300",
     "from-green-100 to-green-200 border-green-300",
     "from-purple-100 to-purple-200 border-purple-300",
     "from-orange-100 to-orange-200 border-orange-300",
@@ -280,14 +280,14 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
   return (
     <Card className={cn("relative overflow-hidden border-0 shadow-xl", className)}>
       {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-50 via-white to-blue-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-white to-rose-100" />
       
       {/* Frosted Glass Effect Card */}
       <div className="relative backdrop-blur-sm bg-white/40 p-6 rounded-xl border border-white/50">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Users2 className="w-5 h-5 text-cyan-600" />
+            <Users2 className="w-5 h-5 text-rose-600" />
             <h3 className="font-semibold text-lg text-gray-800">Group Assigner</h3>
           </div>
           <Button
@@ -328,8 +328,8 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
           size="lg"
           className={cn(
             "w-full mb-4 rounded-xl font-semibold shadow-lg transition-all duration-200",
-            "bg-gradient-to-r from-cyan-500 to-blue-500",
-            "hover:from-cyan-600 hover:to-blue-600",
+            "bg-gradient-to-r from-rose-500 to-rose-400",
+            "hover:from-rose-600 hover:to-rose-500",
             "text-white"
           )}
         >

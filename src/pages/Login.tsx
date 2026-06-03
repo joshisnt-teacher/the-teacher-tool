@@ -63,9 +63,9 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
       {/* Animated background elements */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-950/50 via-background to-cyan-950/30" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute inset-0 bg-gradient-to-br from-rose-950/50 via-background to-rose-900/30" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
 
       {/* Grid pattern overlay */}
@@ -79,7 +79,7 @@ const Login = () => {
 
       <Card className="w-full max-w-md relative z-10 border-white/10 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/10">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/30">
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-400 flex items-center justify-center shadow-lg shadow-primary/30">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <div>

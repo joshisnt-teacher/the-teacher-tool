@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 217 91% 48%;
+    --primary: 346.8 77.2% 49.8%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 214 32% 91%;
@@ -26,7 +26,7 @@ All colors MUST be HSL.
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 195 100% 50%;
+    --accent: 187 95% 48%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -34,18 +34,18 @@ All colors MUST be HSL.
 
     --border: 214.3 31.8% 85%;
     --input: 214.3 31.8% 85%;
-    --ring: 217 91% 48%;
+    --ring: 346.8 77.2% 49.8%;
 
     --radius: 0.625rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 217 91% 48%;
+    --sidebar-primary: 346.8 77.2% 49.8%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 214 32% 91%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
     --sidebar-border: 214 32% 85%;
-    --sidebar-ring: 217 91% 48%;
+    --sidebar-ring: 346.8 77.2% 49.8%;
   }
 
   .dark {
@@ -58,7 +58,7 @@ All colors MUST be HSL.
     --popover: 220 35% 10%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 210 100% 55%;
+    --primary: 346.8 85% 55%;
     --primary-foreground: 220 45% 6%;
 
     --secondary: 220 30% 16%;
@@ -67,7 +67,7 @@ All colors MUST be HSL.
     --muted: 220 25% 14%;
     --muted-foreground: 215 20% 60%;
 
-    --accent: 195 100% 50%;
+    --accent: 187 95% 48%;
     --accent-foreground: 220 45% 6%;
 
     --destructive: 0 72% 51%;
@@ -75,16 +75,16 @@ All colors MUST be HSL.
 
     --border: 220 20% 20%;
     --input: 220 20% 20%;
-    --ring: 210 100% 60%;
+    --ring: 346.8 85% 60%;
 
     --sidebar-background: 220 40% 8%;
     --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 210 100% 55%;
+    --sidebar-primary: 346.8 85% 55%;
     --sidebar-primary-foreground: 220 45% 6%;
     --sidebar-accent: 220 30% 16%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 210 100% 60%;
+    --sidebar-ring: 346.8 85% 60%;
   }
 }
 
@@ -106,11 +106,11 @@ All colors MUST be HSL.
     background: transparent;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: hsl(220 20% 22%);
+    background: hsl(340 20% 22%);
     border-radius: 4px;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: hsl(210 100% 55% / 0.5);
+    background: hsl(346.8 85% 55% / 0.5);
   }
 
   /* Light mode scrollbar */
@@ -126,7 +126,7 @@ All colors MUST be HSL.
     border-radius: 4px;
   }
   html:not(.dark) ::-webkit-scrollbar-thumb:hover {
-    background: hsl(217 91% 48% / 0.5);
+    background: hsl(346.8 77.2% 49.8% / 0.5);
   }
 }
 

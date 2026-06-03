@@ -6,8 +6,8 @@ export interface PrintPdfOptions {
 }
 
 // Edufied brand blue — matches the app's primary HSL(217 91% 48%)
-const BRAND = '#1264be';
-const BRAND_LIGHT = '#e8f0fb';
+const BRAND = '#E11D48';
+const BRAND_LIGHT = '#fce7f0';
 
 /**
  * Opens a new browser window with print-ready HTML and triggers the print

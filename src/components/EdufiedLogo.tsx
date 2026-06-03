@@ -23,8 +23,7 @@ export function EdufiedLogo({ className, collapsed, href = "/dashboard", toolNam
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M3 9l9-5 9 5-9 5-9-5z" />
-          <path d="M7 11v4a5 5 0 0010 0v-4" />
+          <path d="M3 13 H8.5 L10.3 8 L12.6 17 L14.2 13 H21" />
         </svg>
       </div>
       {!collapsed && toolName && (

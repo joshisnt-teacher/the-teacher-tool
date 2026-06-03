@@ -77,7 +77,7 @@ export default function SessionDetails() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'Academic':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-rose-100 text-rose-800';
       case 'Pastoral':
         return 'bg-green-100 text-green-800';
       case 'Other':

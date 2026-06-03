@@ -369,7 +369,7 @@ function ClassroomContent() {
                       "bg-gradient-to-br shadow-sm border-2",
                       theme.preview,
                       selectedTheme === key
-                        ? "ring-2 ring-offset-2 ring-blue-500 scale-105 border-white"
+                        ? "ring-2 ring-offset-2 ring-rose-500 scale-105 border-white"
                         : "border-transparent hover:scale-105 opacity-80 hover:opacity-100"
                     )}
                     title={theme.name}
@@ -377,7 +377,7 @@ function ClassroomContent() {
                     {selectedTheme === key && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          <div className="w-3 h-3 rounded-full bg-rose-500" />
                         </div>
                       </div>
                     )}

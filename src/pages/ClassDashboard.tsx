@@ -111,14 +111,14 @@ const ClassDashboard = () => {
 
       {/* Analytics nudge */}
       <div className="container mx-auto px-4 pt-6">
-        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between gap-4">
+        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <BarChart2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <BarChart2 className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p className="text-sm font-medium text-rose-900 dark:text-rose-100">
                 Want deeper insights?
               </p>
-              <p className="text-xs text-blue-700 dark:text-blue-300">
+              <p className="text-xs text-rose-700 dark:text-rose-300">
                 View assessment trends, student growth, and KPIs in Analytics.
               </p>
             </div>
@@ -132,7 +132,7 @@ const ClassDashboard = () => {
             <Button
               variant="outline"
               size="sm"
-              className="border-blue-300 dark:border-blue-700"
+              className="border-rose-300 dark:border-rose-700"
             >
               Open in Analytics →
             </Button>
