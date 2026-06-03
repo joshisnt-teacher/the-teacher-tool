@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sheet';
 import {
   ArrowLeft, Plus, Ticket, Trash2, Loader2, ChevronDown, ChevronUp,
-  Download, RefreshCw, X,
+  Download, RefreshCw, X, Upload,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -32,6 +32,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import CreateExitTicket from './CreateExitTicket';
+import { ImportExitTicketDialog } from '@/components/exit-tickets/ImportExitTicketDialog';
 
 // ── Sub-component: runs list for a single template ──────────────────────────
 
@@ -206,6 +207,7 @@ const ExitTickets = () => {
   const [deployClassIds, setDeployClassIds] = useState<string[]>([]);
 
   const [openRunsMap, setOpenRunsMap] = useState<Record<string, boolean>>({});
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const openCreateSheet = () => { setSheetTemplateId(null); setSheetOpen(true); };
   const openEditSheet = (templateId: string) => { setSheetTemplateId(templateId); setSheetOpen(true); };
@@ -284,7 +286,14 @@ const ExitTickets = () => {
               <p className="text-sm text-muted-foreground">Create templates and deploy them to your classes</p>
             </div>
           </div>
-          <Button onClick={openCreateSheet}><Plus className="w-4 h-4 mr-2" />Create Exit Ticket</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />Import from Atlas
+            </Button>
+            <Button onClick={openCreateSheet}>
+              <Plus className="w-4 h-4 mr-2" />Create Exit Ticket
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -443,6 +452,12 @@ const ExitTickets = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportExitTicketDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImported={() => refetch()}
+      />
     </div>
   );
 };
