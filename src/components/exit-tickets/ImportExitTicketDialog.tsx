@@ -126,9 +126,19 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
   const handleImport = async () => {
     if (!preview || !currentUser?.id || !currentUser?.school_id) return;
     try {
+      let resolvedClassId = preview.classId;
+      if (!resolvedClassId && preview.parsed.exit_ticket.class_code && currentUser.school_id) {
+        const { data: cls } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('class_code', preview.parsed.exit_ticket.class_code)
+          .eq('school_id', currentUser.school_id)
+          .maybeSingle();
+        resolvedClassId = cls?.id ?? null;
+      }
       const result = await importMutation.mutateAsync({
         parsed: preview.parsed,
-        classId: preview.classId,
+        classId: resolvedClassId,
         teacherId: currentUser.id,
         schoolId: currentUser.school_id,
       });
