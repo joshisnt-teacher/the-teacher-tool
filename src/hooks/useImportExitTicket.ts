@@ -103,6 +103,9 @@ export const useImportExitTicket = () => {
         .select('id')
         .single();
       if (tErr) throw tErr;
+      if (!template) throw new Error('Failed to create template — no data returned');
+
+      let runId: string | null = null;
 
       try {
         // 2. Insert template questions and their options
@@ -142,7 +145,7 @@ export const useImportExitTicket = () => {
 
         // 3. Deploy to class if requested and class was found
         if (et.deploy_to_class && classId) {
-          const totalMaxScore = et.questions.reduce((sum, q) => sum + (q.max_score || 0), 0);
+          const totalMaxScore = et.questions.reduce((sum, q) => sum + (Number(q.max_score) || 0), 0);
 
           const { data: run, error: runErr } = await supabase
             .from('tasks')
@@ -159,6 +162,8 @@ export const useImportExitTicket = () => {
             .select('id')
             .single();
           if (runErr) throw runErr;
+          if (!run) throw new Error('Failed to create task run — no data returned');
+          runId = run.id;
 
           for (const q of et.questions) {
             const { data: question, error: insertQErr } = await supabase
@@ -197,7 +202,10 @@ export const useImportExitTicket = () => {
 
         return { templateId: template.id, deployed: !!(et.deploy_to_class && classId) };
       } catch (err) {
-        // Clean up orphaned template row on partial failure
+        // Clean up orphaned rows on partial failure (cascades handle child rows)
+        if (runId) {
+          await supabase.from('tasks').delete().eq('id', runId);
+        }
         await supabase.from('exit_ticket_templates').delete().eq('id', template.id);
         throw err;
       }
