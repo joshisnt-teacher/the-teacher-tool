@@ -145,8 +145,8 @@ export const useImportExitTicket = () => {
           }
         }
 
-        // 3. Deploy to class if requested and class was found
-        if (et.deploy_to_class && classId) {
+        // 3. Deploy to class if class was found
+        if (classId) {
           const totalMaxScore = et.questions.reduce((sum, q) => sum + (Number(q.max_score) || 0), 0);
 
           const { data: run, error: runErr } = await supabase
@@ -203,7 +203,7 @@ export const useImportExitTicket = () => {
           }
         }
 
-        return { templateId: template.id, deployed: !!(et.deploy_to_class && classId) };
+        return { templateId: template.id, deployed: !!classId };
       } catch (err) {
         // Clean up orphaned rows on partial failure (cascades handle child rows)
         if (runId) {

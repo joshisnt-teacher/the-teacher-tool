@@ -83,12 +83,12 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
       let className: string | null = null;
       let classId: string | null = null;
 
-      if (classCode) {
+      if (classCode && currentUser?.school_id) {
         const { data: cls } = await supabase
           .from('classes')
           .select('id, class_name')
           .eq('class_code', classCode)
-          .eq('school_id', currentUser?.school_id ?? '')
+          .eq('school_id', currentUser.school_id)
           .maybeSingle();
         if (cls) {
           classId = cls.id;
