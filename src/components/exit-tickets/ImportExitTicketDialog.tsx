@@ -63,6 +63,12 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
       return;
     }
 
+    if (file.size > 1 * 1024 * 1024) {
+      setParseError('File is too large. Expected a small Atlas .json export.');
+      setIsProcessing(false);
+      return;
+    }
+
     try {
       const text = await file.text();
       let raw: unknown;
@@ -82,6 +88,7 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
           .from('classes')
           .select('id, class_name')
           .eq('class_code', classCode)
+          .eq('school_id', currentUser?.school_id ?? '')
           .maybeSingle();
         if (cls) {
           classId = cls.id;

@@ -103,11 +103,12 @@ export const useImportExitTicket = () => {
         .select('id')
         .single();
       if (tErr) throw tErr;
-      if (!template) throw new Error('Failed to create template — no data returned');
 
       let runId: string | null = null;
 
       try {
+        if (!template) throw new Error('Failed to create template — no data returned');
+
         // 2. Insert template questions and their options
         for (const q of et.questions) {
           const { data: tq, error: qErr } = await supabase
@@ -208,7 +209,9 @@ export const useImportExitTicket = () => {
         if (runId) {
           await supabase.from('tasks').delete().eq('id', runId);
         }
-        await supabase.from('exit_ticket_templates').delete().eq('id', template.id);
+        if (template) {
+          await supabase.from('exit_ticket_templates').delete().eq('id', template.id);
+        }
         throw err;
       }
     },
