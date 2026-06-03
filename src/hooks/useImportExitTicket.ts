@@ -127,6 +127,7 @@ export const useImportExitTicket = () => {
             .select('id')
             .single();
           if (qErr) throw qErr;
+          if (!tq) throw new Error('Failed to create template question — no data returned');
 
           if (q.question_type === 'multiple_choice' && q.options?.length) {
             const { error: optErr } = await supabase
@@ -183,6 +184,7 @@ export const useImportExitTicket = () => {
               .select('id')
               .single();
             if (insertQErr) throw insertQErr;
+            if (!question) throw new Error('Failed to create run question — no data returned');
 
             if (q.question_type === 'multiple_choice' && q.options?.length) {
               const { error: optErr } = await supabase
