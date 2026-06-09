@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function stripFence(text: string): string {
+  const trimmed = text.trim()
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  return match ? match[1].trim() : trimmed
+}
+
 function harshnessBrief(level: number): string {
   switch (level) {
     case 1: return 'Be very generous. If the student shows any understanding of the core concept, award full marks. Give benefit of the doubt at every step.'
@@ -204,7 +210,7 @@ Deno.serve(async (req) => {
         system: 'Respond with valid JSON only. No markdown, no code blocks.',
         messages: [{ role: 'user', content: promptLines.join('\n') }],
       })
-      const parsed = JSON.parse(msg.content[0].type === 'text' ? msg.content[0].text : '{}')
+      const parsed = JSON.parse(stripFence(msg.content[0].type === 'text' ? msg.content[0].text : '{}'))
       score = Math.max(0, Math.min(maxScore, Math.round(Number(parsed.score ?? 0))))
       feedback = String(parsed.feedback ?? '')
     } catch {

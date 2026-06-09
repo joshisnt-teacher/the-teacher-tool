@@ -18,6 +18,13 @@ function relevanceScore(descriptor: { code: string; description: string }, promp
   return words.filter((w) => haystack.includes(w)).length
 }
 
+/** Strip markdown code fences from AI responses before JSON.parse(). */
+function stripFence(text: string): string {
+  const trimmed = text.trim()
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  return match ? match[1].trim() : trimmed
+}
+
 /** Find a content item code from the AI's output, tolerating case differences. */
 function resolveCode(
   input: string,
@@ -305,7 +312,7 @@ Deno.serve(async (req) => {
       system: 'Respond with valid JSON only. No markdown, no code blocks.',
       messages: [{ role: 'user', content: pass1Lines.join('\n') }],
     })
-    rawPass1 = msg.content[0].type === 'text' ? msg.content[0].text : '{}'
+    rawPass1 = stripFence(msg.content[0].type === 'text' ? msg.content[0].text : '{}')
   } catch (e: any) {
     return new Response(
       JSON.stringify({ error: 'ai_error', message: e?.message || 'AI request failed' }),
@@ -466,7 +473,7 @@ Deno.serve(async (req) => {
         system: 'Respond with valid JSON only. No markdown, no code blocks.',
         messages: [{ role: 'user', content: pass2Lines.join('\n') }],
       })
-      const pass2Raw = pass2Msg.content[0].type === 'text' ? pass2Msg.content[0].text : '{}'
+      const pass2Raw = stripFence(pass2Msg.content[0].type === 'text' ? pass2Msg.content[0].text : '{}')
       const pass2Parsed = JSON.parse(pass2Raw)
       const mapping: { question_index: number; content_item_code: string }[] = Array.isArray(pass2Parsed.mapping)
         ? pass2Parsed.mapping
