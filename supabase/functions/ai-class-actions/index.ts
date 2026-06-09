@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import OpenAI from 'https://esm.sh/openai@4'
+import Anthropic from 'https://esm.sh/@anthropic-ai/sdk'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,6 +26,11 @@ Deno.serve(async (req) => {
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  const centralAdmin = createClient(
+    Deno.env.get('CENTRAL_SUPABASE_URL')!,
+    Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
   let body: { task_id?: string; action_type?: ActionType }
@@ -62,30 +67,49 @@ Deno.serve(async (req) => {
     })
   }
 
+  // Keep marking_harshness for student_feedback prompt calibration
   const { data: userData } = await supabaseAdmin
     .from('users')
-    .select('openai_vault_id, marking_harshness')
+    .select('marking_harshness')
     .eq('id', cls.teacher_id)
     .single()
 
-  if (!userData?.openai_vault_id) {
-    return new Response(JSON.stringify({ skipped: true, reason: 'no_api_key' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+  // Look up central_teacher_id
+  const { data: profile } = await supabaseAdmin
+    .from('teacher_profiles')
+    .select('central_teacher_id')
+    .eq('id', cls.teacher_id)
+    .single()
+
+  if (!profile?.central_teacher_id) {
+    return new Response(
+      JSON.stringify({ error: 'no_central_id', message: 'Teacher has not completed SSO setup.' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
-  const { data: apiKey } = await supabaseAdmin.rpc(
-    'get_decrypted_openai_key',
-    { p_vault_id: userData.openai_vault_id }
-  )
-  if (!apiKey) {
-    return new Response(JSON.stringify({ skipped: true, reason: 'vault_error' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+  // action_type from request body used directly as p_action_type for fine-grained tracking
+  const { data: quota } = await centralAdmin.rpc('check_and_record_ai_action', {
+    p_teacher_id: profile.central_teacher_id,
+    p_app_slug: 'pulse',
+    p_action_type: action_type,
+  })
+
+  if (!quota?.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: 'quota_exceeded',
+        message: `AI limit reached (${quota?.used ?? 0}/${quota?.cap ?? 75} actions this month). Upgrade to Pro for more.`,
+        used: quota?.used,
+        cap: quota?.cap,
+        plan: quota?.plan,
+      }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
-  const openai = new OpenAI({ apiKey })
-  const harshness = userData.marking_harshness ?? 3
+  const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
+  const harshness = userData?.marking_harshness ?? 3
 
   // Fetch text-based questions for the task
   const { data: questions } = await supabaseAdmin
@@ -185,12 +209,13 @@ Deno.serve(async (req) => {
       '- reteach_topics: specific concepts or skills the teacher should revisit next lesson',
     ].join('\n')
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: 'Respond with valid JSON only. No markdown, no code blocks.',
       messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
     })
-    outputJson = JSON.parse(completion.choices[0].message.content ?? '{}')
+    outputJson = JSON.parse(msg.content[0].type === 'text' ? msg.content[0].text : '{}')
 
   // ── STUDENT FEEDBACK ─────────────────────────────────────────────────────────
   } else if (action_type === 'student_feedback') {
@@ -217,12 +242,13 @@ Deno.serve(async (req) => {
       ].join('\n')
 
       try {
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const msg = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          system: 'Respond with valid JSON only. No markdown, no code blocks.',
           messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' },
         })
-        const parsed = JSON.parse(completion.choices[0].message.content ?? '{}')
+        const parsed = JSON.parse(msg.content[0].type === 'text' ? msg.content[0].text : '{}')
         feedbackList.push({
           student_id: s.student_id,
           first_name: s.first_name,
@@ -274,12 +300,13 @@ Deno.serve(async (req) => {
       ].join('\n')
 
       try {
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const msg = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          system: 'Respond with valid JSON only. No markdown, no code blocks.',
           messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' },
         })
-        const parsed = JSON.parse(completion.choices[0].message.content ?? '{}')
+        const parsed = JSON.parse(msg.content[0].type === 'text' ? msg.content[0].text : '{}')
         if (parsed.flag === true) {
           atRisk.push({
             student_id: s.student_id,
