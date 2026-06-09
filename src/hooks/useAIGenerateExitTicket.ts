@@ -51,12 +51,22 @@ export const useAIGenerateExitTicket = () => {
       return data as AIGeneratedExitTicket;
     },
     onError: (error: unknown) => {
-      const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
-      toast({
-        title: 'Generation failed',
-        description: msg || 'Check your OpenAI API key in Settings and try again.',
-        variant: 'destructive',
-      });
+      // FunctionsHttpError from supabase.functions.invoke has the parsed response body at .context
+      const body = (error as any)?.context ?? (error as any);
+      if (body?.error === 'quota_exceeded') {
+        toast({
+          title: 'AI limit reached',
+          description: body?.message ?? 'Upgrade to Pro for more AI actions.',
+          variant: 'destructive',
+        });
+      } else {
+        const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
+        toast({
+          title: 'Generation failed',
+          description: msg || 'Something went wrong. Please try again.',
+          variant: 'destructive',
+        });
+      }
     },
   });
 };
