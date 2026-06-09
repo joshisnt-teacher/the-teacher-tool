@@ -10,9 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Upload, User, School, Plus, Bot,
-  Eye, EyeOff, Lock, Palette, Sun, Moon, Monitor,
+  Lock, Palette, Sun, Moon, Monitor,
 } from 'lucide-react';
-import { useOpenAIKeyStatus, useSaveOpenAIKey, useRemoveOpenAIKey } from '@/hooks/useAISettings';
+import { useAIUsage } from '@/hooks/useAIUsage';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
@@ -39,9 +39,7 @@ const Settings = () => {
   const createSchoolMutation = useCreateSchool();
   const updateUserSchoolMutation = useUpdateUserSchool();
   const queryClient = useQueryClient();
-  const { data: keyStatus } = useOpenAIKeyStatus();
-  const saveKeyMutation = useSaveOpenAIKey();
-  const removeKeyMutation = useRemoveOpenAIKey();
+  const aiUsage = useAIUsage();
 
   // Profile
   const [name, setName] = useState('');
@@ -52,10 +50,6 @@ const Settings = () => {
   const [showCreateSchool, setShowCreateSchool] = useState(false);
   const [schoolName, setSchoolName] = useState('');
   const [schoolDomain, setSchoolDomain] = useState('');
-
-  // AI key
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showKey, setShowKey] = useState(false);
 
   // Harshness
   const [harshness, setHarshness] = useState<number>(3);
@@ -184,13 +178,6 @@ const Settings = () => {
   const handleSelectSchool = (schoolId: string) => {
     if (!currentUser) return;
     updateUserSchoolMutation.mutate({ userId: currentUser.id, schoolId });
-  };
-
-  const handleSaveKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apiKeyInput.trim()) return;
-    await saveKeyMutation.mutateAsync(apiKeyInput.trim());
-    setApiKeyInput('');
   };
 
   const HARSHNESS_LABELS: Record<number, string> = {
@@ -521,63 +508,52 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bot className="w-5 h-5" />
-                AI Marking
+                AI Settings
               </CardTitle>
               <CardDescription>
-                Add your OpenAI API key to enable AI-powered marking of student text responses.
-                Your key is encrypted and never stored in plain text.
+                Your monthly AI action usage and marking preferences.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Status:</span>
-                {keyStatus?.hasKey ? (
-                  <span className="text-sm text-green-600 dark:text-green-400 font-medium">Key saved</span>
-                ) : (
-                  <span className="text-sm text-muted-foreground">No key set</span>
-                )}
-              </div>
-
-              <form onSubmit={handleSaveKey} className="space-y-3">
+              {aiUsage.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading usage...</p>
+              ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="openai-key">OpenAI API Key</Label>
-                  <div className="relative">
-                    <Input
-                      id="openai-key"
-                      type={showKey ? 'text' : 'password'}
-                      value={apiKeyInput}
-                      onChange={(e) => setApiKeyInput(e.target.value)}
-                      placeholder="sk-..."
-                      className="h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowKey(!showKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">
+                      {aiUsage.data?.used ?? 0} / {aiUsage.data?.cap ?? 75} actions used this month
+                    </span>
+                    <span className="text-muted-foreground capitalize">
+                      {aiUsage.data?.plan ?? 'free'} plan
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Uses <strong>gpt-4o-mini</strong> — fractions of a cent per response.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saveKeyMutation.isPending || !apiKeyInput.trim()}>
-                    {saveKeyMutation.isPending ? 'Saving...' : keyStatus?.hasKey ? 'Update Key' : 'Save Key'}
-                  </Button>
-                  {keyStatus?.hasKey && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => removeKeyMutation.mutate()}
-                      disabled={removeKeyMutation.isPending}
-                    >
-                      {removeKeyMutation.isPending ? 'Removing...' : 'Remove Key'}
-                    </Button>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, ((aiUsage.data?.used ?? 0) / (aiUsage.data?.cap ?? 75)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Resets on the 1st of each month.</p>
+                  {aiUsage.data?.plan === 'free' && (
+                    <div className="mt-3 rounded-md bg-muted/50 border p-3 space-y-1">
+                      <p className="text-sm font-medium">Upgrade to Pro for 1,500 actions/month</p>
+                      <p className="text-xs text-muted-foreground">
+                        Free plan includes 75 AI actions per month.
+                      </p>
+                      <a
+                        href="https://edufied.com.au/pricing"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block mt-2"
+                      >
+                        <Button variant="outline" size="sm">View Plans</Button>
+                      </a>
+                    </div>
                   )}
                 </div>
-              </form>
+              )}
 
               <div className="border-t pt-4 space-y-3">
                 <div className="space-y-1">
