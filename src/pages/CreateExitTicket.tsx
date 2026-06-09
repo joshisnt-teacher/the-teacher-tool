@@ -24,7 +24,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useClasses } from '@/hooks/useClasses';
 import { useClassContentItems } from '@/hooks/useClassContentItems';
 import { useBloomsTaxonomy } from '@/hooks/useCreateAssessment';
-import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { useAIGenerateExitTicket } from '@/hooks/useAIGenerateExitTicket';
 import type { AIQuestionType } from '@/hooks/useAIGenerateExitTicket';
 import type { MarkingCriteria } from '@/lib/autoMarkTextAnswer';
@@ -77,7 +76,6 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
   const { data: classes = [], isLoading: isLoadingClasses } = useClasses();
   const bloomsLevels = useBloomsTaxonomy();
-  const { data: openAIStatus } = useOpenAIKeyStatus();
   const generateExitTicket = useAIGenerateExitTicket();
 
   const [searchParams] = useSearchParams();
@@ -298,7 +296,6 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
   const handleGenerate = async () => {
     if (!aiContextClassId) { toast({ title: 'Select a class for curriculum context', variant: 'destructive' }); return; }
     if (!aiPrompt.trim()) { toast({ title: 'Enter a prompt', variant: 'destructive' }); return; }
-    if (!openAIStatus?.hasKey) { toast({ title: 'No OpenAI key', description: 'Add your key in Settings.', variant: 'destructive' }); return; }
     try {
       const data = await generateExitTicket.mutateAsync({
         content: aiPrompt.trim(), questionCount: aiQuestionCount,
@@ -388,11 +385,6 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-4 pt-0">
-              {!openAIStatus?.hasKey && (
-                <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                  No OpenAI API key found. Add your key in Settings to use AI generation.
-                </div>
-              )}
               <div className="space-y-2 rounded-md border border-purple-100 bg-purple-50/50 px-3 py-3">
                 <Label htmlFor="ai-class">Curriculum Context for AI</Label>
                 <Select value={aiContextClassId} onValueChange={setAiContextClassId} disabled={isBusy}>
@@ -454,7 +446,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleGenerate} disabled={isBusy || !openAIStatus?.hasKey || !aiContextClassId || !aiPrompt.trim()}>
+                <Button onClick={handleGenerate} disabled={isBusy || !aiContextClassId || !aiPrompt.trim()}>
                   {generateExitTicket.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                   {generateExitTicket.isPending ? 'Generating...' : 'Generate'}
                 </Button>
