@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import OpenAI from 'https://esm.sh/openai@4'
+import Anthropic from 'https://esm.sh/@anthropic-ai/sdk'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  const centralAdmin = createClient(
+    Deno.env.get('CENTRAL_SUPABASE_URL')!,
+    Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
   let body: Record<string, unknown>
@@ -106,28 +111,37 @@ Deno.serve(async (req) => {
     )
   }
 
-  const { data: userData } = await supabaseAdmin
-    .from('users')
-    .select('openai_vault_id')
+  // Look up central_teacher_id from teacher_profiles
+  const { data: profile } = await supabaseAdmin
+    .from('teacher_profiles')
+    .select('central_teacher_id')
     .eq('id', cls.teacher_id)
     .single()
 
-  if (!userData?.openai_vault_id) {
+  if (!profile?.central_teacher_id) {
     return new Response(
-      JSON.stringify({ error: 'no_api_key', message: 'No OpenAI API key configured for this teacher.' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'no_central_id', message: 'Teacher has not completed SSO setup.' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
-  // Decrypt API key from Vault
-  const { data: apiKey, error: vaultError } = await supabaseAdmin.rpc(
-    'get_decrypted_openai_key',
-    { p_vault_id: userData.openai_vault_id }
-  )
-  if (vaultError || !apiKey) {
+  // Atomic quota check: checks usage AND records the action in one RPC call
+  const { data: quota } = await centralAdmin.rpc('check_and_record_ai_action', {
+    p_teacher_id: profile.central_teacher_id,
+    p_app_slug: 'pulse',
+    p_action_type: 'generate_exit_ticket',
+  })
+
+  if (!quota?.allowed) {
     return new Response(
-      JSON.stringify({ error: 'vault_error', message: 'Could not decrypt OpenAI API key.' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: 'quota_exceeded',
+        message: `AI limit reached (${quota?.used ?? 0}/${quota?.cap ?? 75} actions this month). Upgrade to Pro for more.`,
+        used: quota?.used,
+        cap: quota?.cap,
+        plan: quota?.plan,
+      }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
@@ -186,7 +200,7 @@ Deno.serve(async (req) => {
   // ---------------------------------------------------------------------------
   // PASS 1 — Generate questions
   // ---------------------------------------------------------------------------
-  const openai = new OpenAI({ apiKey })
+  const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
 
   // Human-readable type labels for the prompt
   const typeLabel: Record<string, string> = {
@@ -285,15 +299,16 @@ Deno.serve(async (req) => {
 
   let rawPass1: string
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      system: 'Respond with valid JSON only. No markdown, no code blocks.',
       messages: [{ role: 'user', content: pass1Lines.join('\n') }],
-      response_format: { type: 'json_object' },
     })
-    rawPass1 = completion.choices[0].message.content ?? '{}'
+    rawPass1 = msg.content[0].type === 'text' ? msg.content[0].text : '{}'
   } catch (e: any) {
     return new Response(
-      JSON.stringify({ error: 'openai_error', message: e?.message || 'OpenAI request failed' }),
+      JSON.stringify({ error: 'ai_error', message: e?.message || 'AI request failed' }),
       { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -303,7 +318,7 @@ Deno.serve(async (req) => {
     parsed = JSON.parse(rawPass1)
   } catch {
     return new Response(
-      JSON.stringify({ error: 'parse_error', message: 'OpenAI returned invalid JSON.' }),
+      JSON.stringify({ error: 'parse_error', message: 'AI returned invalid JSON.' }),
       { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -407,7 +422,7 @@ Deno.serve(async (req) => {
 
   if (sanitized.questions.length === 0) {
     return new Response(
-      JSON.stringify({ error: 'generation_failed', message: 'OpenAI did not return any valid questions.' }),
+      JSON.stringify({ error: 'generation_failed', message: 'AI did not return any valid questions.' }),
       { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -445,13 +460,13 @@ Deno.serve(async (req) => {
     ]
 
     try {
-      const pass2Completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const pass2Msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: 'Respond with valid JSON only. No markdown, no code blocks.',
         messages: [{ role: 'user', content: pass2Lines.join('\n') }],
-        response_format: { type: 'json_object' },
       })
-
-      const pass2Raw = pass2Completion.choices[0].message.content ?? '{}'
+      const pass2Raw = pass2Msg.content[0].type === 'text' ? pass2Msg.content[0].text : '{}'
       const pass2Parsed = JSON.parse(pass2Raw)
       const mapping: { question_index: number; content_item_code: string }[] = Array.isArray(pass2Parsed.mapping)
         ? pass2Parsed.mapping
