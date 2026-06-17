@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -125,19 +150,19 @@ export type Database = {
       class_content_item: {
         Row: {
           class_id: string | null
-          content_item_id: string | null
+          content_item_source_id: string
           created_at: string | null
           id: string
         }
         Insert: {
           class_id?: string | null
-          content_item_id?: string | null
+          content_item_source_id: string
           created_at?: string | null
           id?: string
         }
         Update: {
           class_id?: string | null
-          content_item_id?: string | null
+          content_item_source_id?: string
           created_at?: string | null
           id?: string
         }
@@ -147,13 +172,6 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "class_content_item_content_item_id_fkey"
-            columns: ["content_item_id"]
-            isOneToOne: false
-            referencedRelation: "content_item"
             referencedColumns: ["id"]
           },
         ]
@@ -212,33 +230,45 @@ export type Database = {
       }
       class_sessions: {
         Row: {
+          atlas_feedback_sent_at: string | null
           class_id: string
           created_at: string | null
+          current_slide_index: number | null
           description: string | null
           ended_at: string | null
           id: string
+          lesson_template_id: string | null
+          mode: string | null
           started_at: string | null
           teacher_notes: string | null
           title: string | null
           updated_at: string | null
         }
         Insert: {
+          atlas_feedback_sent_at?: string | null
           class_id: string
           created_at?: string | null
+          current_slide_index?: number | null
           description?: string | null
           ended_at?: string | null
           id?: string
+          lesson_template_id?: string | null
+          mode?: string | null
           started_at?: string | null
           teacher_notes?: string | null
           title?: string | null
           updated_at?: string | null
         }
         Update: {
+          atlas_feedback_sent_at?: string | null
           class_id?: string
           created_at?: string | null
+          current_slide_index?: number | null
           description?: string | null
           ended_at?: string | null
           id?: string
+          lesson_template_id?: string | null
+          mode?: string | null
           started_at?: string | null
           teacher_notes?: string | null
           title?: string | null
@@ -250,6 +280,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_sessions_lesson_template_id_fkey"
+            columns: ["lesson_template_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -585,6 +622,95 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lesson_template_slides: {
+        Row: {
+          background_colour: string | null
+          background_image_url: string | null
+          content_blocks: Json
+          created_at: string
+          id: string
+          layout: string
+          lesson_template_id: string
+          order: number
+          title: string | null
+        }
+        Insert: {
+          background_colour?: string | null
+          background_image_url?: string | null
+          content_blocks?: Json
+          created_at?: string
+          id?: string
+          layout?: string
+          lesson_template_id: string
+          order: number
+          title?: string | null
+        }
+        Update: {
+          background_colour?: string | null
+          background_image_url?: string | null
+          content_blocks?: Json
+          created_at?: string
+          id?: string
+          layout?: string
+          lesson_template_id?: string
+          order?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_template_slides_lesson_template_id_fkey"
+            columns: ["lesson_template_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_templates: {
+        Row: {
+          atlas_lesson_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          learning_intentions: Json
+          metadata: Json
+          school_id: string | null
+          source: string
+          success_criteria: Json
+          teacher_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          atlas_lesson_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          learning_intentions?: Json
+          metadata?: Json
+          school_id?: string | null
+          source?: string
+          success_criteria?: Json
+          teacher_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          atlas_lesson_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          learning_intentions?: Json
+          metadata?: Json
+          school_id?: string | null
+          source?: string
+          success_criteria?: Json
+          teacher_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       question_options: {
         Row: {
@@ -1248,6 +1374,33 @@ export type Database = {
           },
         ]
       }
+      teacher_profiles: {
+        Row: {
+          central_teacher_id: string
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+        }
+        Insert: {
+          central_teacher_id: string
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+        }
+        Update: {
+          central_teacher_id?: string
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+        }
+        Relationships: []
+      }
       template_question_options: {
         Row: {
           created_at: string
@@ -1535,6 +1688,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       activity_type: [

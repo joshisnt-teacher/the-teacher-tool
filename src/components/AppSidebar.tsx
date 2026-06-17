@@ -10,6 +10,7 @@ import {
   Monitor,
   Ticket,
   Library,
+  BookOpen,
 } from "lucide-react";
 
 import {
@@ -35,6 +36,7 @@ const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Classroom", url: "/classroom", icon: Monitor },
   { title: "Exit Tickets", url: "/exit-tickets", icon: Ticket },
+  { title: "Lessons", url: "/lessons", icon: BookOpen },
   { title: "Resources", url: "/resources", icon: Library },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

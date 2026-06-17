@@ -35,6 +35,7 @@ import TeacherSSO from "./pages/TeacherSSO";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 import ExitTicketResults from "./pages/ExitTicketResults";
+import Lessons from "./pages/Lessons";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/login", title: "Login" },
   { path: "/auth/teacher/sso", title: "Signing in..." },
   { path: "/auth/sso", title: "Signing in..." },
+  { path: "/lessons", title: "Lessons" },
   { path: "/assessment/:assessmentId", title: "Results" },
   { path: "/spinner", title: "Pulse" },
   { path: "/", title: "pulse" },
@@ -205,13 +207,21 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/resources" 
+              <Route
+                path="/resources"
                 element={
                   <ProtectedRoute>
                     <Resources />
                   </ProtectedRoute>
-                } 
+                }
+              />
+              <Route
+                path="/lessons"
+                element={
+                  <ProtectedRoute>
+                    <Lessons />
+                  </ProtectedRoute>
+                }
               />
               <Route 
                 path="/spinner" 
