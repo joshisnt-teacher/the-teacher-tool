@@ -31,6 +31,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useAuth } from "@/hooks/useAuth";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EdufiedLogo } from "@/components/EdufiedLogo";
+import { AiUsageIndicator } from "@/components/AiUsageIndicator";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -88,7 +89,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className={getNavClassName(item.url)}>
+                  <SidebarMenuButton
+                    asChild
+                    className={getNavClassName(item.url)}
+                    data-tutorial={item.title === 'Exit Tickets' ? 'nav-exit-tickets' : undefined}
+                  >
                     <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
@@ -172,6 +177,11 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border/50 p-4">
+        {!collapsed && (
+          <div className="mb-3">
+            <AiUsageIndicator />
+          </div>
+        )}
         <Button
           variant="ghost"
           size="sm"
