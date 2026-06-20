@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Home, Activity, FileCheck, BookOpen, Briefcase, GraduationCap, BarChart2 } from "lucide-react";
+import { Home, Activity, BookOpen, Briefcase, GraduationCap, BarChart2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useAIUsage } from "@/hooks/useAIUsage";
 
 const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au";
 
@@ -10,7 +11,6 @@ const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au"
 const ICON_MAP: Record<string, React.ElementType> = {
   pulse: Activity,
   analytics: BarChart2,
-  markmaster: FileCheck,
   circuit: BookOpen,
   venture: Briefcase,
 };
@@ -87,6 +87,18 @@ async function mintSsoAndRedirect(appSlug: string) {
   }
 }
 
+function AIUsageMeter() {
+  const { data, isLoading } = useAIUsage();
+  if (isLoading || !data) return null;
+
+  return (
+    <div className="hidden md:flex items-center gap-1.5 px-2 text-xs opacity-70">
+      <span>AI</span>
+      <span className="tabular-nums">{data.used}/{data.cap}</span>
+    </div>
+  );
+}
+
 export default function ToolSwitcher({ currentSlug }: ToolSwitcherProps) {
   const { data: apps } = useQuery({
     queryKey: ["teacher-apps"],
@@ -137,6 +149,9 @@ export default function ToolSwitcher({ currentSlug }: ToolSwitcherProps) {
             </button>
           );
         })}
+
+        {/* AI usage meter — teacher-facing, desktop only */}
+        <AIUsageMeter />
       </nav>
     </div>
   );
