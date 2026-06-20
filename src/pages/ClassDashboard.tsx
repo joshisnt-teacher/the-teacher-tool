@@ -159,7 +159,7 @@ const ClassDashboard = () => {
   const { toast } = useToast();
   const currentClass = classes.find((c) => c.id === classId);
   const { data: exitTicketRuns = [] } = useClassExitTicketRuns(classId);
-  const { data: lessonRefs = [] } = useAtlasLessonRefs(classId!);
+  const { data: lessonRefs = [], isError: lessonRefsError } = useAtlasLessonRefs(classId!);
   const { data: sessions = [], isLoading: isLoadingSessions } = useClassSessionsList(classId!);
   const deleteSessionMutation = useDeleteClassSession();
 
@@ -332,11 +332,25 @@ const ClassDashboard = () => {
           <TabsContent value="lessons">
             <div className="space-y-8">
               {/* Upcoming */}
-              {upcomingRefs.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Upcoming
-                  </h2>
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Upcoming
+                </h2>
+                {lessonRefsError ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-destructive">
+                      Could not load lessons. Check your connection and try refreshing.
+                    </p>
+                  </div>
+                ) : upcomingRefs.length === 0 ? (
+                  <div className="text-center py-6">
+                    <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-1">No upcoming lessons for this class.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Send a lesson from Atlas to see it here.
+                    </p>
+                  </div>
+                ) : (
                   <div className="space-y-3">
                     {upcomingRefs.map((ref) => (
                       <UpcomingLessonCard
@@ -347,8 +361,8 @@ const ClassDashboard = () => {
                       />
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Previous */}
               <div>
