@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Square, Users, Clock, Shuffle, Users2, Settings } from "lucide-react";
+import { Play, Square, Users, Clock, Shuffle, Users2, Settings, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useClassSessions, useCreateClassSession, useUpdateClassSession, useCurrentClassSession } from "@/hooks/useClassSessions";
 import { useStudentNotesForSession } from "@/hooks/useStudentNotes";
+import { useAtlasLessonRef } from "@/hooks/useAtlasLessonRefs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentGrid } from "@/components/classroom/StudentGrid";
@@ -30,6 +31,10 @@ import { cn } from "@/lib/utils";
 function ClassroomContent() {
   const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const lessonId = searchParams.get("lessonId");
+  const { data: lessonRef } = useAtlasLessonRef(lessonId);
+  const [showLessonOverview, setShowLessonOverview] = useState(true);
   const { toast } = useToast();
   
   const { data: classes } = useClasses();
@@ -111,6 +116,7 @@ function ClassroomContent() {
       await createSessionMutation.mutateAsync({
         class_id: classId,
         started_at: new Date().toISOString(),
+        ...(lessonId ? { atlas_lesson_ref_id: lessonId } as any : {}),
       });
       
       // Manually refetch the current session to ensure UI updates
@@ -316,6 +322,66 @@ function ClassroomContent() {
         </div>
       </div>
 
+      {/* Lesson Overview Panel */}
+      {lessonRef && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  {lessonRef.title}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowLessonOverview((v) => !v)}
+                className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline"
+              >
+                {showLessonOverview ? (
+                  <><ChevronUp className="w-3 h-3" /> Hide</>
+                ) : (
+                  <><ChevronDown className="w-3 h-3" /> Show</>
+                )}
+              </button>
+            </div>
+            {showLessonOverview && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {lessonRef.learning_intentions.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
+                      Learning Intentions
+                    </p>
+                    <ul className="space-y-1">
+                      {lessonRef.learning_intentions.map((li, i) => (
+                        <li key={i} className="text-xs text-blue-900 dark:text-blue-100 flex gap-1.5">
+                          <span className="text-blue-400 shrink-0">•</span>
+                          {li}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {lessonRef.success_criteria.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
+                      Success Criteria
+                    </p>
+                    <ul className="space-y-1">
+                      {lessonRef.success_criteria.map((sc, i) => (
+                        <li key={i} className="text-xs text-blue-900 dark:text-blue-100 flex gap-1.5">
+                          <span className="text-blue-400 shrink-0">•</span>
+                          {sc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Student Grid - Takes up 2 columns on large screens */}
@@ -390,7 +456,34 @@ function ClassroomContent() {
             </CardContent>
           </Card>
 
-          <ClassroomModules 
+          {/* Resources from Atlas Lesson */}
+          {lessonRef && lessonRef.slides.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BookOpen className="w-5 h-5" />
+                  Resources
+                </CardTitle>
+                <CardDescription>
+                  Slides from Atlas ({lessonRef.slides.length})
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-1">
+                  {lessonRef.slides.map((slide, i) => (
+                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-xs font-mono text-muted-foreground/60 w-5 shrink-0 text-right">
+                        {i + 1}.
+                      </span>
+                      <span className="truncate">{slide.title || 'Untitled slide'}</span>
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
+          )}
+
+          <ClassroomModules
             students={students || []}
             isLessonActive={isLessonActive}
             selectedStudents={selectedStudents}
