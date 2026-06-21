@@ -1,24 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { centralSupabase } from '@/integrations/supabase/centralClient';
 
 export interface ContentItem {
   id: string;
   strand_id: string;
-  code: string;
+  source_id: string;
+  sub_strand_name: string | null;
+  code: string | null;
   description: string;
-  display_code: string | null;
+  examples: string | null;
+  position: number;
   created_at: string;
-  updated_at: string;
   strand?: {
     id: string;
     name: string;
     curriculum_id: string;
   };
-  tags?: {
-    id: string;
-    name: string;
-    type: 'concept' | 'capability' | 'blooms_taxonomy';
-  }[];
 }
 
 interface UseContentItemsParams {
@@ -34,31 +31,24 @@ export const useContentItems = (params: UseContentItemsParams = {}) => {
   return useQuery({
     queryKey: ['contentItems', strandId, curriculumId, searchCode, searchText],
     queryFn: async (): Promise<ContentItem[]> => {
-      let query = supabase
-        .from('content_item')
+      let query = centralSupabase
+        .from('curriculum_content_item')
         .select(`
           *,
           strand:strand_id (
             id,
             name,
             curriculum_id
-          ),
-          content_item_tag (
-            tag:tag_id (
-              id,
-              name,
-              type
-            )
           )
         `)
-        .order('code', { ascending: true });
+        .order('position', { ascending: true });
 
       if (strandId) {
         query = query.eq('strand_id', strandId);
       }
 
       if (curriculumId) {
-        query = query.eq('strand.curriculum_id', curriculumId);
+        query = query.eq('curriculum_strand.curriculum_id', curriculumId);
       }
 
       if (searchCode) {
@@ -79,9 +69,6 @@ export const useContentItems = (params: UseContentItemsParams = {}) => {
       return data?.map(item => ({
         ...item,
         strand: Array.isArray(item.strand) ? item.strand[0] : item.strand,
-        tags: item.content_item_tag?.map((cit: any) => 
-          Array.isArray(cit.tag) ? cit.tag[0] : cit.tag
-        ).filter(Boolean) || []
       })) || [];
     },
   });
@@ -93,21 +80,14 @@ export const useContentItemById = (contentItemId?: string) => {
     queryFn: async (): Promise<ContentItem | null> => {
       if (!contentItemId) return null;
 
-      const { data, error } = await supabase
-        .from('content_item')
+      const { data, error } = await centralSupabase
+        .from('curriculum_content_item')
         .select(`
           *,
           strand:strand_id (
             id,
             name,
             curriculum_id
-          ),
-          content_item_tag (
-            tag:tag_id (
-              id,
-              name,
-              type
-            )
           )
         `)
         .eq('id', contentItemId)
@@ -121,9 +101,6 @@ export const useContentItemById = (contentItemId?: string) => {
       return {
         ...data,
         strand: Array.isArray(data.strand) ? data.strand[0] : data.strand,
-        tags: data.content_item_tag?.map((cit: any) => 
-          Array.isArray(cit.tag) ? cit.tag[0] : cit.tag
-        ).filter(Boolean) || []
       };
     },
     enabled: !!contentItemId,
@@ -136,25 +113,18 @@ export const useContentItemsByIds = (contentItemIds?: string[]) => {
     queryFn: async (): Promise<ContentItem[]> => {
       if (!contentItemIds || contentItemIds.length === 0) return [];
 
-      const { data, error } = await supabase
-        .from('content_item')
+      const { data, error } = await centralSupabase
+        .from('curriculum_content_item')
         .select(`
           *,
           strand:strand_id (
             id,
             name,
             curriculum_id
-          ),
-          content_item_tag (
-            tag:tag_id (
-              id,
-              name,
-              type
-            )
           )
         `)
         .in('id', contentItemIds)
-        .order('code', { ascending: true });
+        .order('position', { ascending: true });
 
       if (error) {
         console.error('Error fetching content items by ids:', error);
@@ -164,9 +134,6 @@ export const useContentItemsByIds = (contentItemIds?: string[]) => {
       return data?.map(item => ({
         ...item,
         strand: Array.isArray(item.strand) ? item.strand[0] : item.strand,
-        tags: item.content_item_tag?.map((cit: any) => 
-          Array.isArray(cit.tag) ? cit.tag[0] : cit.tag
-        ).filter(Boolean) || []
       })) || [];
     },
     enabled: !!contentItemIds && contentItemIds.length > 0,
@@ -179,28 +146,20 @@ export const useContentItemByCode = (contentItemCode?: string) => {
     queryFn: async (): Promise<ContentItem | null> => {
       if (!contentItemCode) return null;
 
-      const { data, error } = await supabase
-        .from('content_item')
+      const { data, error } = await centralSupabase
+        .from('curriculum_content_item')
         .select(`
           *,
           strand:strand_id (
             id,
             name,
             curriculum_id
-          ),
-          content_item_tag (
-            tag:tag_id (
-              id,
-              name,
-              type
-            )
           )
         `)
         .eq('code', contentItemCode)
         .single();
 
       if (error) {
-        // PGRST116 = no rows found — not a real error, just return null
         if (error.code === 'PGRST116') return null;
         console.error('Error fetching content item by code:', error);
         throw error;
@@ -209,9 +168,6 @@ export const useContentItemByCode = (contentItemCode?: string) => {
       return {
         ...data,
         strand: Array.isArray(data.strand) ? data.strand[0] : data.strand,
-        tags: data.content_item_tag?.map((cit: any) => 
-          Array.isArray(cit.tag) ? cit.tag[0] : cit.tag
-        ).filter(Boolean) || []
       };
     },
     enabled: !!contentItemCode,

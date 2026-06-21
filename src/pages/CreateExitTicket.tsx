@@ -419,7 +419,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                 </div>
                 <div className="space-y-2">
                   <Label>Question types</Label>
-                  <p className="text-xs text-muted-foreground">Choose a type for each question — the AI will generate exactly what you select.</p>
+                  <p className="text-xs text-muted-foreground">Choose a type for each question. The AI will generate exactly what you select.</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {aiQuestionTypesList.map((qType, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -509,7 +509,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                         <SelectContent>
                           {classContentItems.map((item) => (
                             <SelectItem key={item.content_item.id} value={item.content_item.code}>
-                              {item.content_item.code} — {item.content_item.description}
+                              {item.content_item.code}: {item.content_item.description}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -541,7 +541,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                 <CardContent className="space-y-4 border-t bg-muted/20">
                   <div className="flex items-center gap-2">
                     <Label>Marking Criteria</Label>
-                    <span className="text-xs text-muted-foreground">(optional — auto-marks text answers)</span>
+                    <span className="text-xs text-muted-foreground">(optional - auto-marks text answers)</span>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm text-muted-foreground">Expected keywords / phrases</Label>
@@ -593,7 +593,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                     <div className="space-y-2 mt-3">
                       <Label className="text-sm font-medium">Model Answer (for AI marking)</Label>
                       <Textarea value={q.modelAnswer || ''} onChange={(e) => updateQuestion(qIndex, (prev) => ({ ...prev, modelAnswer: e.target.value }))} placeholder="Write what a full-marks answer looks like." rows={3} className="text-sm resize-none" disabled={isBusy} />
-                      <p className="text-xs text-muted-foreground">Optional — AI will still mark without it, just less accurately.</p>
+                      <p className="text-xs text-muted-foreground">Optional. AI will still mark without it, just less accurately.</p>
                     </div>
                   </div>
                 </CardContent>

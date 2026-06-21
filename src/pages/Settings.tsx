@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Upload, User, School, Plus, Bot,
-  Lock, Palette, Sun, Moon, Monitor,
+  Lock, Palette, Sun, Moon, Monitor, Sparkles,
 } from 'lucide-react';
 import { useAIUsage } from '@/hooks/useAIUsage';
 import { Link } from 'react-router-dom';
@@ -344,7 +344,7 @@ const Settings = () => {
               {resetSent ? (
                 <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
                   <span>✓</span>
-                  <span>Reset email sent — check your inbox</span>
+                  <span>Reset email sent. Check your inbox.</span>
                 </div>
               ) : (
                 <Button variant="outline" onClick={handlePasswordReset} disabled={resetSending}>
@@ -624,6 +624,27 @@ const Settings = () => {
                   System follows your device's theme preference automatically.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ONBOARDING */}
+        <div className="scroll-mt-16">
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Onboarding
+              </CardTitle>
+              <CardDescription>Replay the welcome tour any time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link to="/dashboard?welcome=1">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Replay welcome tour
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </div>

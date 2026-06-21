@@ -238,7 +238,7 @@ const ExitTicketResults = () => {
               <BarChart3 className="w-8 h-8 text-primary shrink-0" />
               <div>
                 <p className="text-2xl font-bold">
-                  {classAverage != null ? `${Math.round(classAverage)}%` : '—'}
+                  {classAverage != null ? `${Math.round(classAverage)}%` : '-'}
                 </p>
                 <p className="text-sm text-muted-foreground">Class average</p>
               </div>
@@ -251,8 +251,8 @@ const ExitTicketResults = () => {
               <div>
                 <p className="text-2xl font-bold">
                   {hardestQuestion
-                    ? `Q${hardestQuestion.number} — ${Math.round(hardestQuestion.avg)}%`
-                    : '—'}
+                    ? `Q${hardestQuestion.number}: ${Math.round(hardestQuestion.avg)}%`
+                    : '-'}
                 </p>
                 <p className="text-sm text-muted-foreground">Hardest question</p>
               </div>

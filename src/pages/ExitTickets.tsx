@@ -117,6 +117,7 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
               <Button
                 variant="ghost" size="sm" className="h-7 px-2 text-xs"
                 onClick={() => navigate(`/assessment/${run.id}`)}
+                data-tutorial="exit-tickets-results-link"
               >
                 Results
               </Button>
@@ -260,6 +261,9 @@ const ExitTickets = () => {
         title: plural ? `Imported into ${deployClassIds.length} classes` : 'Imported!',
         description: 'Click "Open in Classroom" below to activate.',
       });
+      window.dispatchEvent(new CustomEvent('pulse:exit-ticket-deployed', {
+        detail: { templateId: deployTemplateId, classIds: deployClassIds },
+      }));
       setOpenRunsMap((prev) => ({ ...prev, [deployTemplateId]: true }));
     } catch (err: unknown) {
       toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
@@ -290,7 +294,7 @@ const ExitTickets = () => {
             <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />Import from Atlas
             </Button>
-            <Button onClick={openCreateSheet}>
+            <Button onClick={openCreateSheet} data-tutorial="exit-tickets-create">
               <Plus className="w-4 h-4 mr-2" />Create Exit Ticket
             </Button>
           </div>
@@ -302,7 +306,7 @@ const ExitTickets = () => {
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" />Exit Ticket Library</CardTitle>
-              <CardDescription>Templates you've built — deploy them to any class when you're ready</CardDescription>
+              <CardDescription>Templates you've built. Deploy them to any class when you're ready</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>Refresh</Button>
           </CardHeader>
@@ -398,7 +402,7 @@ const ExitTickets = () => {
           <DialogHeader>
             <DialogTitle>Import into Class</DialogTitle>
             <DialogDescription>
-              Select one or more classes. Each class gets its own independent copy — results are tracked separately per class.
+              Select one or more classes. Each class gets its own independent copy, and results are tracked separately per class.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1 max-h-52 overflow-y-auto border rounded-md p-2">

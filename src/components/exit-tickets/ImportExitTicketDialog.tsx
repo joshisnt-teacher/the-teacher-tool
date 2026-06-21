@@ -149,7 +149,7 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
           ? `Exit ticket imported and deployed to ${resolvedClassName ?? 'your class'}`
           : 'Exit ticket imported',
         description: result.deployed
-          ? 'It\'s in your class as a draft — activate it from the Classroom page.'
+          ? 'It\'s in your class as a draft. Activate it from the Classroom page.'
           : 'Find it in your Exit Ticket library.',
       });
       onImported();
@@ -245,7 +245,7 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
                 <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    Class not found — will be saved as a template only. You can deploy it manually.
+                    Class not found, so it'll be saved as a template only. You can deploy it manually.
                   </span>
                 </div>
               )}

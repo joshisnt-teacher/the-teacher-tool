@@ -207,7 +207,7 @@ export default function SessionDetails() {
                 Lesson Notes &amp; Action Items
               </CardTitle>
               <CardDescription>
-                Your private notes from this lesson — action items, follow-ups, observations
+                Your private notes from this lesson: action items, follow-ups and observations.
               </CardDescription>
             </CardHeader>
             <CardContent>

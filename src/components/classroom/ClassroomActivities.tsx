@@ -341,7 +341,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       if (!isLessonActive) {
         toast({
           title: "Class not running",
-          description: "A class needs to be running in order to activate an exit ticket. Start a lesson first.",
+          description: "Start a lesson before you can activate an exit ticket.",
           variant: "destructive",
         });
         return;
@@ -614,7 +614,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Start Lesson?</AlertDialogTitle>
             <AlertDialogDescription>
-              A lesson needs to be running in order to activate this exit ticket. Do you want to start a lesson now?
+              You need a running lesson to activate this exit ticket. Start one now?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

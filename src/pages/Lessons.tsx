@@ -198,7 +198,7 @@ const Lessons = () => {
               Lesson Library
             </CardTitle>
             <CardDescription>
-              Lessons imported from Atlas — pick one and choose a class to start a structured session.
+              Lessons imported from Atlas. Pick one and choose a class to start a structured session.
             </CardDescription>
           </CardHeader>
 

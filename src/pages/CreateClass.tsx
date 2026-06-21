@@ -69,7 +69,10 @@ const CreateClass: React.FC = () => {
     };
 
     createClassMutation.mutate(classData, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        window.dispatchEvent(
+          new CustomEvent('pulse:class-created', { detail: { classId: data.id } })
+        );
         navigate('/dashboard');
       },
     });

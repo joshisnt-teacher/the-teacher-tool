@@ -1,27 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { centralSupabase } from '@/integrations/supabase/centralClient';
 
 export interface Curriculum {
   id: string;
   authority: string;
-  learning_area: string;
-  year_band: string;
-  version: string;
-  year_level_description: string;
+  subject: string;
+  year_level: string;
+  year_level_title: string | null;
+  year_level_description: string | null;
+  achievement_standard: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 export const useCurriculum = () => {
   return useQuery({
     queryKey: ['curriculum'],
     queryFn: async (): Promise<Curriculum[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await centralSupabase
         .from('curriculum')
         .select('*')
         .order('authority', { ascending: true })
-        .order('learning_area', { ascending: true })
-        .order('year_band', { ascending: true });
+        .order('subject', { ascending: true })
+        .order('year_level', { ascending: true });
 
       if (error) {
         throw new Error(`Failed to fetch curriculum: ${error.message}`);

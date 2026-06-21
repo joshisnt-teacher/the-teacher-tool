@@ -13,6 +13,7 @@ const TeacherSSO = () => {
   const [error, setError] = useState<string | null>(null);
 
   const token = searchParams.get('token');
+  const welcome = searchParams.get('welcome');
 
   useEffect(() => {
     if (!token) {
@@ -65,7 +66,7 @@ const TeacherSSO = () => {
             window.opener.postMessage({ type: 'sso_success' }, window.location.origin);
             window.close();
           } else {
-            navigate('/dashboard', { replace: true });
+            navigate(`/dashboard${welcome === '1' ? '?welcome=1' : ''}`, { replace: true });
           }
         }
 

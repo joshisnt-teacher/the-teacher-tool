@@ -177,7 +177,7 @@ export function printPdf({ title, subtitle, date, content }: PrintPdfOptions): v
   </div>
 
   <div class="doc-footer">
-    <span><span class="brand">Pulse</span> by Edufied — Teacher Intelligence Platform</span>
+    <span><span class="brand">Pulse</span> by Edufied</span>
     <span>${esc(date)}</span>
   </div>
 

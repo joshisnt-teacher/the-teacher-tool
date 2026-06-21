@@ -143,7 +143,7 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
       .join('');
     printPdf({
       title: taskName,
-      subtitle: `${className} — Class Analysis`,
+      subtitle: `${className}: Class Analysis`,
       date: classResult ? formatTs(classResult.created_at) : new Date().toLocaleString(),
       content: `<p>${classData.summary}</p>${sectionsHtml}`,
     });
@@ -159,7 +159,7 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
       .join('');
     printPdf({
       title: taskName,
-      subtitle: `${className} — Student Feedback`,
+      subtitle: `${className}: Student Feedback`,
       date: feedbackResult ? formatTs(feedbackResult.created_at) : new Date().toLocaleString(),
       content: `<table><thead><tr><th>Student</th><th>Feedback</th></tr></thead><tbody>${rows}</tbody></table>`,
     });
@@ -169,18 +169,18 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
     if (!strugglingData) return;
     const content =
       strugglingData.at_risk.length === 0
-        ? '<p>No students were flagged as struggling — great result!</p>'
+        ? '<p>No students were flagged as struggling. Great result!</p>'
         : `<table><thead><tr><th>Student</th><th>Score</th><th>Reason</th></tr></thead><tbody>${strugglingData.at_risk
             .map(
               (s) =>
                 `<tr><td>${s.first_name} ${s.last_name}</td><td>${
-                  s.score_percent != null ? Math.round(s.score_percent) + '%' : '—'
+                  s.score_percent != null ? Math.round(s.score_percent) + '%' : '-'
                 }</td><td>${s.reason}</td></tr>`
             )
             .join('')}</tbody></table>`;
     printPdf({
       title: taskName,
-      subtitle: `${className} — Struggling Students`,
+      subtitle: `${className}: Struggling Students`,
       date: strugglingResult ? formatTs(strugglingResult.created_at) : new Date().toLocaleString(),
       content,
     });
@@ -356,7 +356,7 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
           <CardContent className="pt-0 border-t">
             {strugglingData.at_risk.length === 0 ? (
               <p className="text-sm text-muted-foreground p-3 pt-4">
-                No students flagged as struggling — great result!
+                No students flagged as struggling. Great result!
               </p>
             ) : (
               <div className="pt-3 space-y-2">

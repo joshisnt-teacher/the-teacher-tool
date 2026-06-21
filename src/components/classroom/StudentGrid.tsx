@@ -484,7 +484,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
       <Dialog open={isNoteDialogOpen} onOpenChange={handleNoteDialogClose}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Add Note — {selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
+            <DialogTitle>Add note for {selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
             <DialogDescription>Add a note and rating for this student during the current lesson.</DialogDescription>
           </DialogHeader>
 
@@ -571,7 +571,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
-              Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3 — {selectedStudent?.first_name} {selectedStudent?.last_name}
+              Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3 for {selectedStudent?.first_name} {selectedStudent?.last_name}
             </DialogTitle>
             <DialogDescription>Provide a reason for this strike.</DialogDescription>
           </DialogHeader>

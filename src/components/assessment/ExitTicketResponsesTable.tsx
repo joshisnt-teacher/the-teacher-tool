@@ -169,7 +169,7 @@ export function ExitTicketResponsesTable({
                       const responseData = qr?.response_data as any;
 
                       let answerDisplay: React.ReactNode = (
-                        <span className="text-muted-foreground text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">-</span>
                       );
 
                       if (isMC && responseData?.selected_option_id) {
@@ -212,7 +212,7 @@ export function ExitTicketResponsesTable({
                                 <Badge variant="secondary" className="text-xs">
                                   {qr?.raw_score != null
                                     ? `${qr.raw_score}/${q.max_score}`
-                                    : `—/${q.max_score}`}
+                                    : `-/${q.max_score}`}
                                 </Badge>
                                 {keyStatus?.hasKey && qr && (
                                   <Button
@@ -243,7 +243,7 @@ export function ExitTicketResponsesTable({
                           {Math.round(overall.percent_score)}%
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">-</span>
                       )}
                     </td>
                   </tr>

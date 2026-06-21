@@ -555,7 +555,7 @@ const Resources = () => {
             <div>
               <h1 className="text-xl font-bold">Resources</h1>
               <p className="text-sm text-muted-foreground">
-                Online resources for your lessons — maps, primary sources, videos, and more
+                Online resources for your lessons: maps, primary sources, videos and more.
               </p>
             </div>
           </div>

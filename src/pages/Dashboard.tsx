@@ -106,7 +106,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {avgScore !== null && avgScore !== undefined ? `${avgScore}%` : '—'}
+                {avgScore !== null && avgScore !== undefined ? `${avgScore}%` : '-'}
               </div>
               <p className="text-xs text-muted-foreground">
                 {avgScore !== null && avgScore !== undefined ? 'Mean across all results' : 'No results yet'}
@@ -132,7 +132,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold">Your Classes</h3>
               <Link to="/create-class">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" data-tutorial="dashboard-create-class">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Class
                 </Button>
@@ -156,7 +156,7 @@ const Dashboard = () => {
                     Get started by creating your first class. You'll be able to manage assessments, run classroom activities, and track student progress.
                   </p>
                   <Link to="/create-class">
-                    <Button>
+                    <Button data-tutorial="dashboard-create-class">
                       <Plus className="w-4 h-4 mr-2" />
                       Create Your First Class
                     </Button>

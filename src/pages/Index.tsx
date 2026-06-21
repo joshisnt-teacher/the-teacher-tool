@@ -31,8 +31,7 @@ const Index = () => {
           </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Streamline your classroom management with powerful analytics, 
-            student progress tracking, and assessment tools.
+            Manage your class, track how students are going, and keep assessments in one place.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -50,11 +49,10 @@ const Index = () => {
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Everything you need to manage your classroom
+            What you can do in Pulse
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Powerful tools designed specifically for educators to track student progress, 
-            manage assessments, and gain insights into learning outcomes.
+            Built for teachers: track progress, run assessments, and see where students need help.
           </p>
         </div>
 
@@ -66,7 +64,7 @@ const Index = () => {
               </div>
               <CardTitle>Student Management</CardTitle>
               <CardDescription>
-                Track individual student progress and manage class rosters with ease
+                See where each student is at and keep your rolls tidy
               </CardDescription>
             </CardHeader>
           </Card>
@@ -78,7 +76,7 @@ const Index = () => {
               </div>
               <CardTitle>Analytics & Insights</CardTitle>
               <CardDescription>
-                Visualize learning trends and identify areas where students need support
+                Spot patterns in your data and work out who needs a hand
               </CardDescription>
             </CardHeader>
           </Card>
@@ -90,7 +88,7 @@ const Index = () => {
               </div>
               <CardTitle>Assessment Tools</CardTitle>
               <CardDescription>
-                Create and manage assessments with automated progress tracking
+                Set up assessments and watch progress update as you go
               </CardDescription>
             </CardHeader>
           </Card>
@@ -103,7 +101,7 @@ const Index = () => {
           <CardHeader>
             <CardTitle className="text-2xl">Ready to get started?</CardTitle>
             <CardDescription className="text-lg">
-              Join thousands of educators already using our platform to enhance their teaching
+              Sign in and get back to teaching.
             </CardDescription>
           </CardHeader>
           <CardContent>
