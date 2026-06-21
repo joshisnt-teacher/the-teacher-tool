@@ -14,6 +14,7 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { useTheme } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ToolSwitcher from "@/components/ToolSwitcher";
+import { PulseWelcomeTour } from "@/components/tour/PulseWelcomeTour";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -112,7 +113,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <main className="flex-1 flex flex-col">
           <header className="h-14 flex items-center border-b border-border px-4 bg-background/80 backdrop-blur-md sticky top-0 z-30">
-            <SidebarTrigger className="mr-2 md:hidden" />
+            <SidebarTrigger className="mr-2" />
             <div className="flex-1 min-w-0">
               <AppBreadcrumb />
             </div>
@@ -126,6 +127,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <ToolSwitcher currentSlug="pulse" />
+      <PulseWelcomeTour />
     </SidebarProvider>
   );
 }

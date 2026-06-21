@@ -30,6 +30,7 @@ export const useAIMarkResponses = () => {
       queryClient.invalidateQueries({ queryKey: ['assessment-results', variables.taskId] });
       queryClient.invalidateQueries({ queryKey: ['assessment-question-results', variables.taskId] });
       queryClient.invalidateQueries({ queryKey: ['results'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-usage'] });
       if (data?.skipped) {
         toast({
           title: 'No API key set',

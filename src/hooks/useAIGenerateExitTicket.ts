@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,6 +25,7 @@ export interface AIGeneratedExitTicket {
 
 export const useAIGenerateExitTicket = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
@@ -49,6 +50,9 @@ export const useAIGenerateExitTicket = () => {
       });
       if (error) throw error;
       return data as AIGeneratedExitTicket;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-usage'] });
     },
     onError: (error: unknown) => {
       // FunctionsHttpError from supabase.functions.invoke has the parsed response body at .context
