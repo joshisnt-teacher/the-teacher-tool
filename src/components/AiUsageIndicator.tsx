@@ -22,6 +22,11 @@ export function AiUsageIndicator() {
 
   return (
     <div className="px-3 py-2 space-y-1.5">
+      {plan === 'demo' && (
+        <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+          Demo Account
+        </span>
+      )}
       <div className="flex items-center justify-between">
         <span className={`text-xs font-medium ${textColor}`}>
           {atLimit ? "AI limit reached" : `${used} / ${cap} AI actions`}
@@ -35,7 +40,9 @@ export function AiUsageIndicator() {
         />
       </div>
       {atLimit && (
-        <p className="text-[10px] text-sidebar-foreground/40">Upgrade to Pro for more</p>
+        <p className="text-[10px] text-sidebar-foreground/40">
+          {plan === 'demo' ? 'Contact Josh to increase your limit' : 'Upgrade to Pro for more'}
+        </p>
       )}
     </div>
   );

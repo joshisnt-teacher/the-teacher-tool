@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import { useAtlasLessonRefs, AtlasLessonRef } from '@/hooks/useAtlasLessonRefs';
 import { useClassSessionsList } from '@/hooks/useClassSessionsList';
 import { useDeleteClassSession } from '@/hooks/useClassSessions';
 import { useToast } from '@/hooks/use-toast';
+import { useDemoTracking } from '@/hooks/useDemoTracking';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const ANALYTICS_URL =
@@ -157,7 +158,14 @@ const ClassDashboard = () => {
   const { data: classes = [], isLoading } = useClasses();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { trackDemoAction } = useDemoTracking();
   const currentClass = classes.find((c) => c.id === classId);
+
+  useEffect(() => {
+    if (currentClass) {
+      trackDemoAction('viewed_class_dashboard', { class_id: classId });
+    }
+  }, [currentClass?.id]);
   const { data: exitTicketRuns = [] } = useClassExitTicketRuns(classId);
   const { data: lessonRefs = [], isError: lessonRefsError } = useAtlasLessonRefs(classId!);
   const { data: sessions = [], isLoading: isLoadingSessions } = useClassSessionsList(classId!);

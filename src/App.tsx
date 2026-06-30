@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, matchPath } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { StudentSessionProvider } from "@/hooks/useStudentSession";
+import { useDemoTracking } from "@/hooks/useDemoTracking";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
@@ -132,6 +133,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function DemoTracker() {
+  useDemoTracking()
+  return null
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -141,6 +147,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <DemoTracker />
             <AppLayout>
               <Routes>
               <Route path="/" element={<Index />} />

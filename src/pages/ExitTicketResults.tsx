@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,11 +10,19 @@ import { ArrowLeft, Users, BarChart3, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStudents } from '@/hooks/useStudents';
 import { useQuestionOptionsForTask } from '@/hooks/useQuestionOptions';
+import { useDemoTracking } from '@/hooks/useDemoTracking';
 import { ActionsTab } from '@/components/assessment/ActionsTab';
 import { ExitTicketResponsesTable } from '@/components/assessment/ExitTicketResponsesTable';
 
 const ExitTicketResults = () => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { trackDemoAction } = useDemoTracking();
+
+  useEffect(() => {
+    if (assessmentId) {
+      trackDemoAction('viewed_exit_ticket_results', { task_id: assessmentId });
+    }
+  }, [assessmentId]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 

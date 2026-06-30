@@ -30,6 +30,7 @@ import { useClearRun } from '@/hooks/useClearRun';
 import { useDeleteRun } from '@/hooks/useDeleteRun';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useDemoTracking } from '@/hooks/useDemoTracking';
 import { supabase } from '@/integrations/supabase/client';
 import CreateExitTicket from './CreateExitTicket';
 import { ImportExitTicketDialog } from '@/components/exit-tickets/ImportExitTicketDialog';
@@ -195,6 +196,7 @@ const ExitTickets = () => {
   const { data: classes = [] } = useClasses();
   const { data: templates = [], isLoading, isError, error, refetch } = useExitTicketTemplates(currentUser?.school_id || undefined);
   const deployTemplate = useDeployTemplate();
+  const { trackDemoAction } = useDemoTracking();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTemplateId, setSheetTemplateId] = useState<string | null>(null);
@@ -256,6 +258,7 @@ const ExitTickets = () => {
     try {
       for (const classId of deployClassIds) {
         await deployTemplate.mutateAsync({ templateId: deployTemplateId, classId });
+        trackDemoAction('ran_exit_ticket', { template_id: deployTemplateId, class_id: classId });
       }
       toast({
         title: plural ? `Imported into ${deployClassIds.length} classes` : 'Imported!',
