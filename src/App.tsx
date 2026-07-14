@@ -15,6 +15,7 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { useTheme } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ToolSwitcher from "@/components/ToolSwitcher";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { PulseWelcomeTour } from "@/components/tour/PulseWelcomeTour";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -34,6 +35,7 @@ import StudentLanding from "./pages/StudentLanding";
 import StudentSSO from "./pages/StudentSSO";
 import StudentDashboard from "./pages/StudentDashboard";
 import TeacherSSO from "./pages/TeacherSSO";
+import AuthSwitch from "./pages/AuthSwitch";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 import ExitTicketResults from "./pages/ExitTicketResults";
@@ -57,6 +59,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/join", title: "Student Sign In" },
   { path: "/login", title: "Login" },
   { path: "/auth/teacher/sso", title: "Signing in..." },
+  { path: "/auth/switch", title: "Opening..." },
   { path: "/auth/sso", title: "Signing in..." },
   { path: "/lessons", title: "Lessons" },
   { path: "/assessment/:assessmentId", title: "Results" },
@@ -93,7 +96,7 @@ function ThemeToggle() {
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const isAuthPage = currentPath === "/" || currentPath === "/login" || currentPath === "/auth/teacher/sso";
+  const isAuthPage = currentPath === "/" || currentPath === "/login" || currentPath === "/auth/teacher/sso" || currentPath === "/auth/switch";
   const isSpinnerPage = currentPath.startsWith("/spinner");
 
   // Public student pages (no sidebar)
@@ -128,6 +131,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <ToolSwitcher currentSlug="pulse" />
+      <FeedbackWidget app="pulse" />
       <PulseWelcomeTour />
     </SidebarProvider>
   );
@@ -250,6 +254,7 @@ const App = () => (
               <Route path="/exit-ticket/:taskId" element={<TakeExitTicket />} />
               <Route path="/auth/sso" element={<StudentSSO />} />
               <Route path="/auth/teacher/sso" element={<TeacherSSO />} />
+              <Route path="/auth/switch" element={<AuthSwitch />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
               <Route
                 path="/assessment/:assessmentId"

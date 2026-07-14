@@ -2,7 +2,6 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Home, Activity, BookOpen, Briefcase, GraduationCap, BarChart2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 
 const HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || "https://edufied.com.au";
 
@@ -53,39 +52,6 @@ async function fetchTeacherApps(): Promise<App[]> {
   return data.apps ?? [];
 }
 
-async function mintSsoAndRedirect(appSlug: string) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const session = sessionData?.session;
-
-  if (!session) {
-    window.location.href = `${HUB_URL}/login`;
-    return;
-  }
-
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mint-teacher-sso`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ app_slug: appSlug }),
-    }
-  );
-
-  if (!res.ok) {
-    console.error("Failed to mint SSO token:", await res.text());
-    return;
-  }
-
-  const data = await res.json();
-  if (data.redirect_url) {
-    window.location.href = data.redirect_url;
-  }
-}
-
 export default function ToolSwitcher({ currentSlug }: ToolSwitcherProps) {
   const { data: apps } = useQuery({
     queryKey: ["teacher-apps"],
@@ -111,29 +77,34 @@ export default function ToolSwitcher({ currentSlug }: ToolSwitcherProps) {
           <span className="text-[10px] font-medium leading-none">Home</span>
         </a>
 
-        {/* Tool buttons */}
+        {/* Tool buttons — plain links to each tool's /auth/switch fast path */}
         {apps.map((app) => {
           const isCurrent = app.slug === currentSlug;
           const Icon = ICON_MAP[app.slug] ?? GraduationCap;
 
+          if (isCurrent) {
+            return (
+              <span
+                key={app.slug}
+                title={app.name}
+                className="flex flex-col items-center gap-1 rounded-xl px-5 py-2 transition-all duration-200 bg-primary/10 text-primary cursor-default"
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium leading-none">{app.name}</span>
+              </span>
+            );
+          }
+
           return (
-            <button
+            <a
               key={app.slug}
-              onClick={() => {
-                if (!isCurrent) mintSsoAndRedirect(app.slug);
-              }}
-              disabled={isCurrent}
+              href={`${app.base_url}/auth/switch`}
               title={app.name}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-xl px-5 py-2 transition-all duration-200",
-                isCurrent
-                  ? "bg-primary/10 text-primary cursor-default"
-                  : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-              )}
+              className="flex flex-col items-center gap-1 rounded-xl px-5 py-2 transition-all duration-200 text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
             >
               <Icon className="h-5 w-5" />
               <span className="text-[10px] font-medium leading-none">{app.name}</span>
-            </button>
+            </a>
           );
         })}
 
