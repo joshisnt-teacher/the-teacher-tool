@@ -73,20 +73,41 @@ Deno.serve(async (req) => {
     }
 
     const central = createClient(centralUrl, centralKey)
-    const { data: hubClasses, error: hubError } = await central
-      .from('classes')
-      .select('id, name, year_level, subject, term, class_code, curriculum_authority')
-      .eq('teacher_id', profile.central_teacher_id)
 
-    if (hubError) {
-      console.error('Hub classes fetch error:', hubError)
-      return json({ error: 'Failed to fetch classes from hub' }, 500)
+    const { data: assignments } = await central
+      .from('app_assignments')
+      .select('class_id')
+      .eq('app_slug', 'pulse')
+      .eq('is_active', true)
+    const activeAssignedIds = (assignments ?? []).map(a => a.class_id as string)
+
+    let hubClasses: {
+      id: string
+      name: string
+      year_level: string | null
+      subject: string | null
+      term: string | null
+      class_code: string
+      curriculum_authority: string
+    }[] = []
+
+    if (activeAssignedIds.length > 0) {
+      const { data, error: hubError } = await central
+        .from('classes')
+        .select('id, name, year_level, subject, term, class_code, curriculum_authority')
+        .eq('teacher_id', profile.central_teacher_id)
+        .in('id', activeAssignedIds)
+      if (hubError) {
+        console.error('Hub classes fetch error:', hubError)
+        return json({ error: 'Failed to fetch classes from hub' }, 500)
+      }
+      hubClasses = data ?? []
     }
 
     const year = new Date().getFullYear()
     let synced = 0
 
-    for (const hubClass of hubClasses ?? []) {
+    for (const hubClass of hubClasses) {
       const { error: upsertErr } = await local
         .from('classes')
         .upsert(
@@ -101,6 +122,7 @@ Deno.serve(async (req) => {
             class_code: hubClass.class_code,
             start_date: `${year}-01-01`,
             end_date: `${year}-12-31`,
+            archived_at: null,
           },
           { onConflict: 'central_class_id' },
         )
@@ -112,7 +134,28 @@ Deno.serve(async (req) => {
       synced++
     }
 
-    return json({ synced })
+    const activeIdSet = new Set(hubClasses.map(c => c.id))
+    const { data: locallySynced } = await local
+      .from('classes')
+      .select('id, central_class_id')
+      .eq('teacher_id', user.id)
+      .not('central_class_id', 'is', null)
+      .is('archived_at', null)
+
+    const staleIds = (locallySynced ?? [])
+      .filter(c => !activeIdSet.has(c.central_class_id as string))
+      .map(c => c.id as string)
+
+    let archived = 0
+    if (staleIds.length > 0) {
+      const { error: archiveErr } = await local
+        .from('classes')
+        .update({ archived_at: new Date().toISOString() })
+        .in('id', staleIds)
+      if (!archiveErr) archived = staleIds.length
+    }
+
+    return json({ synced, archived })
   } catch (err) {
     console.error('Sync classes error:', err)
     return json({ error: 'Internal server error' }, 500)

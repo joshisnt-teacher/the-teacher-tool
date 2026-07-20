@@ -18,6 +18,7 @@ export interface Class {
   class_code: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 }
 
 export const useClasses = () => {
@@ -32,6 +33,7 @@ export const useClasses = () => {
         .from('classes')
         .select('*')
         .eq('teacher_id', user.id)
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
 
       if (error) {

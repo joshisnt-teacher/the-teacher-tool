@@ -150,12 +150,32 @@ async function syncClasses(
   localUserId: string,
   hubTeacherId: string,
 ) {
-  const { data: hubClasses, error: hubError } = await central
-    .from('classes')
-    .select('id, name, year_level, subject, term, class_code, curriculum_authority')
-    .eq('teacher_id', hubTeacherId)
+  const { data: assignments } = await central
+    .from('app_assignments')
+    .select('class_id')
+    .eq('app_slug', 'pulse')
+    .eq('is_active', true)
+  const activeAssignedIds = (assignments ?? []).map(a => a.class_id as string)
 
-  if (hubError || !hubClasses?.length) return
+  let hubClasses: {
+    id: string
+    name: string
+    year_level: string | null
+    subject: string | null
+    term: string | null
+    class_code: string
+    curriculum_authority: string
+  }[] = []
+
+  if (activeAssignedIds.length > 0) {
+    const { data, error } = await central
+      .from('classes')
+      .select('id, name, year_level, subject, term, class_code, curriculum_authority')
+      .eq('teacher_id', hubTeacherId)
+      .in('id', activeAssignedIds)
+    if (error) console.error('hub classes fetch failed', error)
+    hubClasses = data ?? []
+  }
 
   // Pulse requires school_id, start_date, end_date on every class, none of which
   // exist on the hub. handle_new_user() already assigns every SSO'd-in teacher a
@@ -188,6 +208,7 @@ async function syncClasses(
           class_code: hubClass.class_code,
           start_date: `${year}-01-01`,
           end_date: `${year}-12-31`,
+          archived_at: null,
         },
         { onConflict: 'central_class_id' },
       )
@@ -195,5 +216,27 @@ async function syncClasses(
     if (upsertErr) {
       console.error('class upsert failed', hubClass.id, upsertErr)
     }
+  }
+
+  // Archive local classes no longer actively assigned to Pulse. Never delete —
+  // class_sessions, tasks (exit tickets/assessments), and student_notes hang off class_id.
+  const activeIdSet = new Set(hubClasses.map(c => c.id))
+  const { data: locallySynced } = await local
+    .from('classes')
+    .select('id, central_class_id')
+    .eq('teacher_id', localUserId)
+    .not('central_class_id', 'is', null)
+    .is('archived_at', null)
+
+  const staleIds = (locallySynced ?? [])
+    .filter(c => !activeIdSet.has(c.central_class_id as string))
+    .map(c => c.id as string)
+
+  if (staleIds.length > 0) {
+    const { error: archiveErr } = await local
+      .from('classes')
+      .update({ archived_at: new Date().toISOString() })
+      .in('id', staleIds)
+    if (archiveErr) console.error('class archive failed', staleIds, archiveErr)
   }
 }
