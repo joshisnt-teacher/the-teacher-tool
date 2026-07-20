@@ -105,3 +105,28 @@ export function useDeleteClassSession() {
     },
   });
 }
+
+export function useUpdateCurrentSlide() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sessionId,
+      slideIndex,
+    }: {
+      sessionId: string;
+      slideIndex: number;
+      classId: string;
+    }) => {
+      const { error } = await supabase
+        .from("class_sessions")
+        .update({ current_slide_index: slideIndex })
+        .eq("id", sessionId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["current-class-session", vars.classId] });
+    },
+  });
+}
