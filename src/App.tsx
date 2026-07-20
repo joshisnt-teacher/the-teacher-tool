@@ -39,6 +39,7 @@ import AuthSwitch from "./pages/AuthSwitch";
 import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 import ExitTicketResults from "./pages/ExitTicketResults";
+import StudentLesson from "./pages/StudentLesson";
 import Lessons from "./pages/Lessons";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/resources", title: "Resources" },
   { path: "/student/dashboard", title: "Student Dashboard" },
   { path: "/exit-ticket/:taskId", title: "Exit Ticket" },
+  { path: "/lesson/:sessionId", title: "Lesson" },
   { path: "/join", title: "Student Sign In" },
   { path: "/login", title: "Login" },
   { path: "/auth/teacher/sso", title: "Signing in..." },
@@ -104,7 +106,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     currentPath === "/join" ||
     currentPath.startsWith("/exit-ticket/") ||
     currentPath.startsWith("/auth/sso") ||
-    currentPath.startsWith("/student/");
+    currentPath.startsWith("/student/") ||
+    currentPath.startsWith("/lesson/");
 
   if (isAuthPage || isSpinnerPage || isStudentPage) {
     return <><PageTitle />{children}</>;
@@ -256,6 +259,7 @@ const App = () => (
               <Route path="/auth/teacher/sso" element={<TeacherSSO />} />
               <Route path="/auth/switch" element={<AuthSwitch />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/lesson/:sessionId" element={<StudentLesson />} />
               <Route
                 path="/assessment/:assessmentId"
                 element={
