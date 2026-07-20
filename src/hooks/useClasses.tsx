@@ -18,7 +18,10 @@ export interface Class {
   class_code: string | null;
   created_at: string;
   updated_at: string;
-  archived_at: string | null;
+  // Optional because the generated Supabase types won't include this column
+  // until `supabase gen types` is re-run after the archived_at migration
+  // (20260720000000) is applied to the live project.
+  archived_at?: string | null;
 }
 
 export const useClasses = () => {
