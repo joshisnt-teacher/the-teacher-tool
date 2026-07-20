@@ -40,6 +40,7 @@ interface AtlasQuestion {
   question_type: 'multiple_choice' | 'short_answer' | 'extended_answer'
   max_score: number
   blooms_taxonomy?: string
+  content_item_code?: string
   options?: AtlasQuestionOption[]
   marking_criteria?: AtlasMarkingCriteria
   model_answer?: string
@@ -204,12 +205,16 @@ Deno.serve(async (req) => {
   }
 
   let lessonTemplateId: string
+  let preservedRunWarning: string | null = null
 
   if (existing) {
     // Update the existing template and delete old slides before re-inserting
     lessonTemplateId = existing.id
 
-    // Clean up old exit ticket if one was previously created for this lesson
+    // Clean up old exit ticket if one was previously created for this lesson —
+    // but only if it's still a draft. If the teacher already activated it (or
+    // it's closed with real student submissions), leave it alone; a fresh
+    // run is created below instead of clobbering live data.
     const existingMeta = (existing.metadata ?? {}) as Record<string, unknown>
     const oldTaskId = typeof existingMeta.exit_ticket_task_id === 'string'
       ? existingMeta.exit_ticket_task_id
@@ -217,14 +222,17 @@ Deno.serve(async (req) => {
     if (oldTaskId) {
       const { data: oldTask } = await supabase
         .from('tasks')
-        .select('id, exit_ticket_template_id')
+        .select('id, status, exit_ticket_template_id')
         .eq('id', oldTaskId)
         .maybeSingle()
-      if (oldTask) {
+      if (oldTask && oldTask.status === 'draft') {
         await supabase.from('tasks').delete().eq('id', oldTask.id)
         if (oldTask.exit_ticket_template_id) {
           await supabase.from('exit_ticket_templates').delete().eq('id', oldTask.exit_ticket_template_id)
         }
+      } else if (oldTask) {
+        preservedRunWarning =
+          'The previous exit ticket run in this class was already active or closed, so a new run was created rather than overwriting it.'
       }
     }
 
@@ -351,7 +359,7 @@ Deno.serve(async (req) => {
             question_type: q.question_type,
             max_score: q.max_score,
             blooms_taxonomy: q.blooms_taxonomy ?? null,
-            content_item: null,
+            content_item: q.content_item_code ?? null,
             general_capabilities: null,
             marking_criteria: q.question_type !== 'multiple_choice' ? (q.marking_criteria ?? null) : null,
             model_answer: q.question_type !== 'multiple_choice' ? (q.model_answer ?? null) : null,
@@ -415,7 +423,7 @@ Deno.serve(async (req) => {
             question_type: q.question_type,
             max_score: q.max_score,
             blooms_taxonomy: q.blooms_taxonomy ?? null,
-            content_item: null,
+            content_item: q.content_item_code ?? null,
             general_capabilities: null,
             marking_criteria: q.question_type !== 'multiple_choice' ? (q.marking_criteria ?? null) : null,
             model_answer: q.question_type !== 'multiple_choice' ? (q.model_answer ?? null) : null,
@@ -461,11 +469,11 @@ Deno.serve(async (req) => {
         await supabase.from('exit_ticket_templates').delete().eq('id', templateId)
       }
 
+      // The lesson itself (template + slides) already succeeded above — that's
+      // the primary purpose of this call. Don't fail the whole import over an
+      // exit-ticket hiccup; report it as a warning instead.
       const message = err instanceof Error ? err.message : 'Unknown error during exit ticket import'
-      return new Response(
-        JSON.stringify({ error: 'exit_ticket_import_failed', message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      preservedRunWarning = `Exit ticket did not sync to Pulse: ${message}`
     }
   }
 
@@ -475,6 +483,7 @@ Deno.serve(async (req) => {
       lesson_template_id: lessonTemplateId,
       exit_ticket_task_id: exitTicketTaskId,
       class_id: cls.id,
+      ...(preservedRunWarning ? { warning: preservedRunWarning } : {}),
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
