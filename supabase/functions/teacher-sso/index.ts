@@ -115,6 +115,13 @@ Deno.serve(async (req) => {
       console.error('class sync failed (non-fatal):', syncErr)
     }
 
+    // 5b. Sync students from the central hub into Pulse (non-fatal if it fails)
+    try {
+      await syncStudents(central, local, localUserId, teacher.id)
+    } catch (syncErr) {
+      console.error('student sync failed (non-fatal):', syncErr)
+    }
+
     // 6. Generate a one-time magic link token for the client to establish a session
     const { data: linkData, error: linkError } = await local.auth.admin.generateLink({
       type: 'magiclink',
@@ -238,5 +245,134 @@ async function syncClasses(
       .update({ archived_at: new Date().toISOString() })
       .in('id', staleIds)
     if (archiveErr) console.error('class archive failed', staleIds, archiveErr)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// syncStudents — auto-provisions local students from the hub roster for every
+// class currently active for Pulse, and prunes local students who have
+// dropped out of that roster (deleted centrally, or unenrolled from every
+// Pulse-active class).
+// ---------------------------------------------------------------------------
+async function syncStudents(
+  central: ReturnType<typeof createClient>,
+  local: ReturnType<typeof createClient>,
+  localUserId: string,
+  hubTeacherId: string,
+) {
+  const { data: assignments } = await central
+    .from('app_assignments')
+    .select('class_id')
+    .eq('app_slug', 'pulse')
+    .eq('is_active', true)
+  const activeAssignedIds = (assignments ?? []).map(a => a.class_id as string)
+
+  let teacherActiveClassIds: string[] = []
+  if (activeAssignedIds.length > 0) {
+    const { data: hubClasses } = await central
+      .from('classes')
+      .select('id')
+      .eq('teacher_id', hubTeacherId)
+      .in('id', activeAssignedIds)
+    teacherActiveClassIds = (hubClasses ?? []).map(c => c.id as string)
+  }
+
+  let enrolments: { student_id: string; class_id: string }[] = []
+  if (teacherActiveClassIds.length > 0) {
+    const { data } = await central
+      .from('student_classes')
+      .select('student_id, class_id')
+      .in('class_id', teacherActiveClassIds)
+    enrolments = data ?? []
+  }
+
+  const centralStudentIds = [...new Set(enrolments.map(e => e.student_id))]
+
+  if (centralStudentIds.length > 0) {
+    const { data: centralStudents } = await central
+      .from('students')
+      .select('id, first_name, last_name, username, year_level')
+      .in('id', centralStudentIds)
+
+    const { data: localClasses } = await local
+      .from('classes')
+      .select('id, central_class_id')
+      .eq('teacher_id', localUserId)
+      .in('central_class_id', teacherActiveClassIds)
+    const localClassIdByCentral = new Map(
+      (localClasses ?? []).map(c => [c.central_class_id as string, c.id as string])
+    )
+
+    for (const cs of centralStudents ?? []) {
+      const { data: existing } = await local
+        .from('students')
+        .select('id')
+        .eq('central_id', cs.id)
+        .maybeSingle()
+
+      let localStudentId: string
+      if (existing) {
+        localStudentId = existing.id
+        await local.from('students').update({
+          first_name: cs.first_name,
+          last_name: cs.last_name,
+          year_level: cs.year_level,
+        }).eq('id', localStudentId)
+      } else {
+        const { data: inserted, error: insertErr } = await local
+          .from('students')
+          .insert({
+            central_id: cs.id,
+            teacher_id: localUserId,
+            first_name: cs.first_name,
+            last_name: cs.last_name,
+            year_level: cs.year_level,
+            // Pulse's `student_id` column is a free-text school-provided ID unrelated
+            // to hub identity; the hub doesn't have one to give us, so the hub
+            // username (already unique) is the closest stable placeholder.
+            student_id: cs.username,
+          })
+          .select('id')
+          .single()
+        if (insertErr || !inserted) {
+          console.error('student insert failed', cs.id, insertErr)
+          continue
+        }
+        localStudentId = inserted.id
+      }
+
+      const classIdsForStudent = enrolments
+        .filter(e => e.student_id === cs.id)
+        .map(e => localClassIdByCentral.get(e.class_id))
+        .filter((id): id is string => !!id)
+
+      for (const classId of classIdsForStudent) {
+        await local.from('student_classes')
+          .upsert({ student_id: localStudentId, class_id: classId }, { onConflict: 'student_id,class_id' })
+      }
+    }
+  }
+
+  // Prune: any locally-linked student no longer in the current Pulse-active
+  // roster gets fully removed — shadow auth account, then the local row
+  // (results/question_results/student_responses cascade per
+  // 20250926091613_remote_schema.sql).
+  const stillValidCentralIds = new Set(centralStudentIds)
+  const { data: localLinked } = await local
+    .from('students')
+    .select('id, central_id')
+    .eq('teacher_id', localUserId)
+    .not('central_id', 'is', null)
+
+  for (const ls of localLinked ?? []) {
+    if (ls.central_id && stillValidCentralIds.has(ls.central_id as string)) continue
+
+    const studentEmail = `student-${ls.id}@pulse.internal`
+    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
+    const authUser = listResult.data?.users?.find(u => u.email === studentEmail)
+    if (authUser) {
+      await local.auth.admin.deleteUser(authUser.id)
+    }
+    await local.from('students').delete().eq('id', ls.id)
   }
 }
