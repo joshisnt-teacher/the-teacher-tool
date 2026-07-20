@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentGrid } from "@/components/classroom/StudentGrid";
 import { ClassroomModules } from "@/components/classroom/ClassroomModules";
 import { ClassroomActivities } from "@/components/classroom/ClassroomActivities";
+import { LessonPresenter } from "@/components/classroom/LessonPresenter";
 import { ClassroomThemeProvider, useClassroomTheme, colorThemes } from "@/contexts/ClassroomThemeContext";
 import { cn } from "@/lib/utils";
 
@@ -381,6 +382,21 @@ function ClassroomContent() {
           </CardContent>
         </Card>
       )}
+
+      {/* Structured Lesson Presenter (real slides + resources) */}
+      {currentSession &&
+        !currentSession.ended_at &&
+        currentSession.mode === "structured" &&
+        currentSession.lesson_template_id && (
+          <LessonPresenter
+            session={{
+              id: currentSession.id,
+              class_id: currentSession.class_id,
+              lesson_template_id: currentSession.lesson_template_id,
+              current_slide_index: currentSession.current_slide_index,
+            }}
+          />
+        )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
