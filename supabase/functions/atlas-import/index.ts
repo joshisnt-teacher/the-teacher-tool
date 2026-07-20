@@ -56,6 +56,17 @@ interface AtlasExitTicketPayload {
   }
 }
 
+interface AtlasResourceRef {
+  id: string
+  title: string
+  resource_type: string
+  role: string
+  kind: 'link' | 'text' | 'file'
+  url?: string
+  text?: string
+  file_format?: string
+}
+
 interface AtlasLessonPayload {
   central_teacher_id: string
   class_code: string
@@ -68,7 +79,7 @@ interface AtlasLessonPayload {
   year_level?: string
   estimated_minutes?: number
   slides: SlidePayload[]
-  resources: unknown[]
+  resources: AtlasResourceRef[]
   exit_ticket?: AtlasExitTicketPayload
 }
 
@@ -245,6 +256,7 @@ Deno.serve(async (req) => {
         success_criteria: payload.success_criteria,
         source: 'atlas',
         metadata: baseMetadata,
+        resources: payload.resources,
         updated_at: new Date().toISOString(),
       })
       .eq('id', lessonTemplateId)
@@ -281,6 +293,7 @@ Deno.serve(async (req) => {
         source: 'atlas',
         atlas_lesson_id: payload.atlas_lesson_id,
         metadata: baseMetadata,
+        resources: payload.resources,
       })
       .select('id')
       .single()
