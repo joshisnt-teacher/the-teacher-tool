@@ -5,9 +5,9 @@ export function AiUsageIndicator() {
 
   if (isLoading || !data) {
     return (
-      <div className="px-3 py-2 space-y-1.5">
+      <div className="px-3 py-2 space-y-2">
         <div className="h-3 w-3/4 rounded bg-sidebar-foreground/10 animate-pulse" />
-        <div className="h-1.5 w-full rounded-full bg-sidebar-foreground/10 animate-pulse" />
+        <div className="h-2.5 w-full rounded-full bg-sidebar-foreground/10 animate-pulse" />
       </div>
     );
   }
@@ -21,7 +21,7 @@ export function AiUsageIndicator() {
   const textColor = atLimit ? "text-red-400" : nearLimit ? "text-amber-400" : "text-green-500";
 
   return (
-    <div className="px-3 py-2 space-y-1.5">
+    <div className="px-3 py-2 space-y-2">
       {plan === 'demo' && (
         <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
           Demo Account
@@ -33,7 +33,7 @@ export function AiUsageIndicator() {
         </span>
         <span className="text-xs text-sidebar-foreground/40 capitalize">{plan}</span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-sidebar-foreground/10 overflow-hidden">
+      <div className="h-2.5 w-full rounded-full bg-sidebar-foreground/10 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-300 ${barColor}`}
           style={{ width: `${pct}%` }}
