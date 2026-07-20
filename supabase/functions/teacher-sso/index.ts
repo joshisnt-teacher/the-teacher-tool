@@ -108,7 +108,14 @@ Deno.serve(async (req) => {
       console.warn('teacher_profiles upsert skipped:', profileErr)
     }
 
-    // 5. Generate a one-time magic link token for the client to establish a session
+    // 5. Sync classes from the central hub into Pulse (non-fatal if it fails)
+    try {
+      await syncClasses(central, local, localUserId, teacher.id)
+    } catch (syncErr) {
+      console.error('class sync failed (non-fatal):', syncErr)
+    }
+
+    // 6. Generate a one-time magic link token for the client to establish a session
     const { data: linkData, error: linkError } = await local.auth.admin.generateLink({
       type: 'magiclink',
       email: teacher.email,
@@ -132,4 +139,61 @@ function json(body: object, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+// ---------------------------------------------------------------------------
+// syncClasses — mirrors hub classes into Pulse's local classes table
+// ---------------------------------------------------------------------------
+async function syncClasses(
+  central: ReturnType<typeof createClient>,
+  local: ReturnType<typeof createClient>,
+  localUserId: string,
+  hubTeacherId: string,
+) {
+  const { data: hubClasses, error: hubError } = await central
+    .from('classes')
+    .select('id, name, year_level, subject, term, class_code, curriculum_authority')
+    .eq('teacher_id', hubTeacherId)
+
+  if (hubError || !hubClasses?.length) return
+
+  // Pulse requires school_id, start_date, end_date on every class, none of which
+  // exist on the hub. handle_new_user() already assigns every SSO'd-in teacher a
+  // Demo College school_id, so this should always resolve.
+  const { data: localUser, error: userError } = await local
+    .from('users')
+    .select('school_id')
+    .eq('id', localUserId)
+    .single()
+
+  if (userError || !localUser?.school_id) {
+    console.warn('class sync skipped: no local school_id for', localUserId)
+    return
+  }
+
+  const year = new Date().getFullYear()
+
+  for (const hubClass of hubClasses) {
+    const { error: upsertErr } = await local
+      .from('classes')
+      .upsert(
+        {
+          central_class_id: hubClass.id,
+          teacher_id: localUserId,
+          school_id: localUser.school_id,
+          class_name: hubClass.name,
+          year_level: hubClass.year_level,
+          subject: hubClass.subject ?? '',
+          term: hubClass.term ?? '',
+          class_code: hubClass.class_code,
+          start_date: `${year}-01-01`,
+          end_date: `${year}-12-31`,
+        },
+        { onConflict: 'central_class_id' },
+      )
+
+    if (upsertErr) {
+      console.error('class upsert failed', hubClass.id, upsertErr)
+    }
+  }
 }
