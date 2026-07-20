@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ClipboardList, Link2, LogOut, BookOpen } from 'lucide-react';
+import { Loader2, ClipboardList, Link2, LogOut, BookOpen, Radio } from 'lucide-react';
 import { useStudentSession } from '@/hooks/useStudentSession';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -117,7 +117,29 @@ const StudentDashboard = () => {
     enabled: classIds.length > 0,
   });
 
-  const isLoading = sessionLoading || isLoadingEnrolments || isLoadingTickets || isLoadingHomework || isLoadingResources;
+  // Fetch active structured lesson sessions for those classes
+  const { data: liveLessons = [], isLoading: isLoadingLiveLessons } = useQuery({
+    queryKey: ['student-live-lessons', classIds],
+    queryFn: async () => {
+      if (classIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('class_sessions')
+        .select('id, class_id, classes(class_name)')
+        .eq('mode', 'structured')
+        .is('ended_at', null)
+        .in('class_id', classIds);
+      if (error) throw error;
+      return (data ?? []).map((s: any) => ({
+        id: s.id,
+        class_id: s.class_id,
+        class_name: s.classes?.class_name ?? '',
+      }));
+    },
+    enabled: classIds.length > 0,
+  });
+
+  const isLoading =
+    sessionLoading || isLoadingEnrolments || isLoadingTickets || isLoadingHomework || isLoadingResources || isLoadingLiveLessons;
 
   const formatDueDate = (dateStr: string) =>
     new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -155,6 +177,31 @@ const StudentDashboard = () => {
           </div>
         ) : (
           <>
+            {/* Live Lesson Section */}
+            {liveLessons.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-emerald-600" />
+                  Live Lesson
+                </h2>
+                <div className="space-y-3">
+                  {liveLessons.map((lesson) => (
+                    <Card key={lesson.id} className="border-emerald-300 bg-emerald-50/40 hover:border-emerald-400 transition-colors">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{lesson.class_name}</p>
+                          <p className="text-sm text-muted-foreground">Your teacher has started a lesson</p>
+                        </div>
+                        <Button onClick={() => navigate(`/lesson/${lesson.id}`)} className="bg-emerald-600 hover:bg-emerald-700">
+                          Join
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Exit Tickets Section */}
             <section>
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
