@@ -364,9 +364,9 @@ const ClassDashboard = () => {
           <TabsList className="mb-6">
             <TabsTrigger value="lessons">
               Lessons
-              {upcomingRefs.length > 0 && (
+              {upcomingTemplates.length > 0 && (
                 <Badge variant="secondary" className="ml-2 text-xs">
-                  {upcomingRefs.length}
+                  {upcomingTemplates.length}
                 </Badge>
               )}
             </TabsTrigger>
