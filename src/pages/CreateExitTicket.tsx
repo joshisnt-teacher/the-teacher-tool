@@ -508,11 +508,13 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                       <Select value={q.contentItemCode || ''} onValueChange={(v) => updateQuestion(qIndex, (prev) => ({ ...prev, contentItemCode: v || undefined }))} disabled={isBusy || classContentItems.length === 0}>
                         <SelectTrigger><SelectValue placeholder={classContentItems.length === 0 ? 'Select AI context class first' : 'Content descriptor'} /></SelectTrigger>
                         <SelectContent>
-                          {classContentItems.map((item) => (
-                            <SelectItem key={item.content_item.id} value={item.content_item.code}>
-                              {item.content_item.code}: {item.content_item.description}
-                            </SelectItem>
-                          ))}
+                          {classContentItems
+                            .filter((item) => item.content_item.code)
+                            .map((item) => (
+                              <SelectItem key={item.content_item.id} value={item.content_item.code!}>
+                                {item.content_item.code}: {item.content_item.description}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
