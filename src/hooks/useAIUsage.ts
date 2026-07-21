@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type AIUsage = {
   used: number;
   cap: number;
-  plan: "free" | "pro" | "school";
+  plan: "free" | "pro" | "school" | "demo";
   reset_at: string;
 };
 

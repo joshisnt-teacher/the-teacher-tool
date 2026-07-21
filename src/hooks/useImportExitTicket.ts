@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 
 // ── Atlas JSON types ──────────────────────────────────────────────────────────
 
@@ -122,7 +123,7 @@ export const useImportExitTicket = () => {
               blooms_taxonomy: q.blooms_taxonomy || null,
               content_item: q.content_item || null,
               general_capabilities: null,
-              marking_criteria: q.question_type !== 'multiple_choice' ? (q.marking_criteria || null) : null,
+              marking_criteria: (q.question_type !== 'multiple_choice' ? (q.marking_criteria || null) : null) as unknown as Json,
               model_answer: q.question_type !== 'multiple_choice' ? (q.model_answer || null) : null,
             })
             .select('id')
@@ -179,7 +180,7 @@ export const useImportExitTicket = () => {
                 blooms_taxonomy: q.blooms_taxonomy || null,
                 content_item: q.content_item || null,
                 general_capabilities: null,
-                marking_criteria: q.question_type !== 'multiple_choice' ? (q.marking_criteria || null) : null,
+                marking_criteria: (q.question_type !== 'multiple_choice' ? (q.marking_criteria || null) : null) as unknown as Json,
                 model_answer: q.question_type !== 'multiple_choice' ? (q.model_answer || null) : null,
               })
               .select('id')

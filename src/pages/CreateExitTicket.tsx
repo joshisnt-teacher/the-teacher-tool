@@ -27,6 +27,7 @@ import { useBloomsTaxonomy } from '@/hooks/useCreateAssessment';
 import { useAIGenerateExitTicket } from '@/hooks/useAIGenerateExitTicket';
 import type { AIQuestionType } from '@/hooks/useAIGenerateExitTicket';
 import type { MarkingCriteria } from '@/lib/autoMarkTextAnswer';
+import type { Json } from '@/integrations/supabase/types';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -243,7 +244,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
             max_score: q.maxScore, question_type: q.type,
             blooms_taxonomy: q.bloomsTaxonomy || null, content_item: q.contentItemCode || null,
             general_capabilities: null,
-            marking_criteria: q.type !== 'multiple_choice' ? (q.markingCriteria || null) : null,
+            marking_criteria: (q.type !== 'multiple_choice' ? (q.markingCriteria || null) : null) as Json,
             model_answer: q.type !== 'multiple_choice' ? (q.modelAnswer || null) : null,
           })
           .select('id').single();

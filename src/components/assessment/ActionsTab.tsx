@@ -122,9 +122,9 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
   const feedbackResult = savedResults.student_feedback;
   const strugglingResult = savedResults.struggling_students;
 
-  const classData = classResult?.output_json as ClassAnalysisOutput | undefined;
-  const feedbackData = feedbackResult?.output_json as StudentFeedbackOutput | undefined;
-  const strugglingData = strugglingResult?.output_json as StrugglingOutput | undefined;
+  const classData = classResult?.output_json as unknown as ClassAnalysisOutput | undefined;
+  const feedbackData = feedbackResult?.output_json as unknown as StudentFeedbackOutput | undefined;
+  const strugglingData = strugglingResult?.output_json as unknown as StrugglingOutput | undefined;
 
   // ── PDF handlers ────────────────────────────────────────────────────────────
 

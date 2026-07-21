@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { autoMarkTextAnswer, type MarkingCriteria } from '@/lib/autoMarkTextAnswer';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface ExitTicketAnswer {
   questionId: string;
@@ -37,12 +38,12 @@ export const useSubmitExitTicket = () => {
         student_id: string;
         raw_score: number | null;
         percent_score: number | null;
-        response_data: unknown;
+        response_data: Json;
       }[] = [];
 
       for (const answer of answers) {
         let score: number | null = null;
-        let responseData: unknown = null;
+        let responseData: Json = null;
 
         if (answer.questionType === 'multiple_choice') {
           const options = optionsMap[answer.questionId] || [];
@@ -132,7 +133,7 @@ export const useSubmitExitTicket = () => {
       console.error('Submit exit ticket error:', error);
       toast({
         title: 'Submission failed',
-        description: error?.message || 'An unexpected error occurred.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
         variant: 'destructive',
       });
     },
