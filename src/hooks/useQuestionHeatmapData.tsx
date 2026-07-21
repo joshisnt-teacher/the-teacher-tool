@@ -153,7 +153,7 @@ export const useQuestionHeatmapData = (taskId?: string) => {
             studentName: student.name,
             questionId: question.id,
             questionNumber: question.number,
-            questionText: question.question,
+            questionText: question.text,
             maxScore: question.maxScore,
             rawScore: result?.raw_score || null,
             percentScore: result?.percent_score || null,
