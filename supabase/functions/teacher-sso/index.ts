@@ -194,6 +194,7 @@ async function syncClasses(
       .select('id, name, year_level, subject, term, class_code, curriculum_authority')
       .eq('teacher_id', hubTeacherId)
       .in('id', activeAssignedIds)
+      .is('archived_at', null)
     if (error) {
       // Bail out rather than treating a fetch failure as "no active classes" —
       // that would archive every synced class below.

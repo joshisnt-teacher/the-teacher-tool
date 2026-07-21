@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
         .select('id, name, year_level, subject, term, class_code, curriculum_authority')
         .eq('teacher_id', profile.central_teacher_id)
         .in('id', activeAssignedIds)
+        .is('archived_at', null)
       if (hubError) {
         console.error('Hub classes fetch error:', hubError)
         return json({ error: 'Failed to fetch classes from hub' }, 500)
