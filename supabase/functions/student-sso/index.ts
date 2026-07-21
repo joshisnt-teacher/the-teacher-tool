@@ -95,10 +95,15 @@ Deno.serve(async (req) => {
 
     if (existingUser) {
       localUserId = existingUser.id
+      // Backfill app_metadata.role for accounts created before this was tracked
+      // there — ProtectedRoute checks app_metadata (server-set), not the
+      // client-editable user_metadata, so student routing depends on this.
+      await local.auth.admin.updateUserById(localUserId, { app_metadata: { role: 'student' } })
     } else {
       const { data: newUser, error: createError } = await local.auth.admin.createUser({
         email: studentEmail,
         email_confirm: true,
+        app_metadata: { role: 'student' },
         user_metadata: {
           student_id: localStudent.id,
           first_name: localStudent.first_name,
