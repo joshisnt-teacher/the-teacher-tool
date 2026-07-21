@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuth } from '@/hooks/useAuth';
 import { useSchools, useCreateSchool, useUpdateUserSchool } from '@/hooks/useSchools';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, Upload, User, School, Plus, Bot,
   Lock, Palette, Sun, Moon, Monitor, Sparkles,
@@ -39,6 +39,7 @@ const Settings = () => {
   const createSchoolMutation = useCreateSchool();
   const updateUserSchoolMutation = useUpdateUserSchool();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const aiUsage = useAIUsage();
 
   // Profile
@@ -121,9 +122,9 @@ const Settings = () => {
     if (!currentUser || !name.trim()) return;
     setUpdating(true);
     const { error } = await supabase.from('users').update({ name: name.trim() }).eq('id', currentUser.id);
-    if (error) toast.error('Failed to update profile');
+    if (error) toast({ title: 'Failed to update profile', variant: 'destructive' });
     else {
-      toast.success('Profile updated');
+      toast({ title: 'Profile updated' });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     }
     setUpdating(false);
@@ -135,7 +136,7 @@ const Settings = () => {
     const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
       redirectTo: window.location.origin,
     });
-    if (error) toast.error('Failed to send reset email');
+    if (error) toast({ title: 'Failed to send reset email', variant: 'destructive' });
     else setResetSent(true);
     setResetSending(false);
   };
@@ -144,7 +145,7 @@ const Settings = () => {
     const file = e.target.files?.[0];
     if (!file || !currentUser?.school_id) return;
     if (!['ADMIN', 'HOLA'].includes(currentUser.role)) {
-      toast.error('Only administrators can update the school logo');
+      toast({ title: 'Only administrators can update the school logo', variant: 'destructive' });
       return;
     }
     setUploading(true);
@@ -156,10 +157,10 @@ const Settings = () => {
       const { data: { publicUrl } } = supabase.storage.from('school-logos').getPublicUrl(fileName);
       const { error: updateError } = await supabase.from('schools').update({ logo_url: publicUrl }).eq('id', currentUser.school_id);
       if (updateError) throw updateError;
-      toast.success('School logo updated');
+      toast({ title: 'School logo updated' });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to upload logo');
+      toast({ title: 'Error', description: error.message || 'Failed to upload logo', variant: 'destructive' });
     }
     setUploading(false);
   };
@@ -199,7 +200,7 @@ const Settings = () => {
         .update({ marking_harshness: level })
         .eq('id', currentUser.id);
       if (!error) {
-        toast.success('Marking harshness updated');
+        toast({ title: 'Marking harshness updated' });
         queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       }
     }, 600);

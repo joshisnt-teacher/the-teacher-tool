@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 export type ActionType = 'class_analysis' | 'student_feedback' | 'struggling_students';
 
@@ -21,6 +21,7 @@ const EMPTY_RESULTS: SavedResults = {
 
 export const useClassActions = (taskId: string | undefined) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [runningAction, setRunningAction] = useState<ActionType | null>(null);
 
   const { data: savedResults = EMPTY_RESULTS } = useQuery<SavedResults>({
@@ -51,14 +52,18 @@ export const useClassActions = (taskId: string | undefined) => {
       });
       if (error) throw error;
       if (data?.skipped) {
-        toast.error('No OpenAI key found. Add your key in Settings → AI Marking.');
+        toast({
+          title: 'No OpenAI key found',
+          description: 'Add your key in Settings → AI Marking.',
+          variant: 'destructive',
+        });
         return;
       }
       await queryClient.invalidateQueries({ queryKey: ['ai-action-results', taskId] });
       return data;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'AI action failed';
-      toast.error(message);
+      toast({ title: 'Error', description: message, variant: 'destructive' });
       throw err;
     } finally {
       setRunningAction(null);

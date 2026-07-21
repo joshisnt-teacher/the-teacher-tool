@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { LogIn, Lock, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 
 const CENTRAL_HUB_URL = import.meta.env.VITE_CENTRAL_HUB_URL || 'https://edufied.com.au';
@@ -18,6 +18,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (user) navigate('/dashboard');
@@ -40,7 +41,7 @@ const Login = () => {
       if (session) {
         navigate('/dashboard');
       } else {
-        toast.error('Sign in failed. Please try again.');
+        toast({ title: 'Sign in failed', description: 'Please try again.', variant: 'destructive' });
       }
     };
 
@@ -53,9 +54,9 @@ const Login = () => {
     setLoading(true);
     const { error } = await signIn(email, password);
     if (error) {
-      toast.error('Invalid email or password');
+      toast({ title: 'Invalid email or password', variant: 'destructive' });
     } else {
-      toast.success('Welcome back!');
+      toast({ title: 'Welcome back!' });
     }
     setLoading(false);
   };

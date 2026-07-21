@@ -25,8 +25,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Students have role='student' in user_metadata — they must not access teacher routes
-  if (user.user_metadata?.role === 'student') {
+  // Students have role='student' in app_metadata (server-set, not client-editable
+  // like user_metadata — a student calling supabase.auth.updateUser() can't spoof this)
+  if (user.app_metadata?.role === 'student') {
     return <Navigate to="/student/dashboard" replace />;
   }
 

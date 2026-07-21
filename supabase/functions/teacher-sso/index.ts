@@ -49,13 +49,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Invalid or expired token' }, 401)
     }
 
-    // 2. Mark token as used immediately to prevent replay
-    await central
-      .from('sso_tokens')
-      .update({ used: true })
-      .eq('id', tokenRow.id)
-
-    // 3. Fetch teacher details from central DB
+    // 2. Fetch teacher details from central DB
     const { data: teacher, error: teacherError } = await central
       .from('teachers')
       .select('id, email, first_name, last_name')
@@ -66,16 +60,27 @@ Deno.serve(async (req) => {
       return json({ error: 'Teacher not found' }, 401)
     }
 
-    // 4. Find or create local auth account for this teacher
+    // 3. Mark token as used now that we know the token resolves to a real
+    // teacher — burning it any earlier meant a mid-flight failure below
+    // forced the teacher back through the hub for a fresh SSO link.
+    await central
+      .from('sso_tokens')
+      .update({ used: true })
+      .eq('id', tokenRow.id)
+
+    // 4. Find or create local auth account for this teacher.
+    // Fast path: we've synced this central teacher before, so teacher_profiles
+    // already has the local auth user id — skip scanning every auth user.
     let localUserId: string
 
-    // Look for an existing auth user by email (handles previous direct logins)
-    // perPage:1000 avoids pagination — default 50 would miss users past page 1
-    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
-    const existingAuthUser = listResult.data?.users?.find(u => u.email === teacher.email) ?? null
+    const { data: existingProfile } = await local
+      .from('teacher_profiles')
+      .select('id')
+      .eq('central_teacher_id', teacher.id)
+      .maybeSingle()
 
-    if (existingAuthUser) {
-      localUserId = existingAuthUser.id
+    if (existingProfile?.id) {
+      localUserId = existingProfile.id
     } else {
       const { data: newUser, error: createError } = await local.auth.admin.createUser({
         email: teacher.email,
@@ -87,12 +92,21 @@ Deno.serve(async (req) => {
         },
       })
 
-      if (createError || !newUser?.user) {
-        console.error('Create user error:', JSON.stringify(createError))
-        return json({ error: 'Failed to create account' }, 500)
+      if (newUser?.user) {
+        localUserId = newUser.user.id
+      } else {
+        // First time seeing this central teacher locally, and createUser failed —
+        // almost certainly a legacy direct-login account with the same email that
+        // predates SSO. Only now fall back to a full scan to find it.
+        // perPage:1000 avoids pagination — default 50 would miss users past page 1.
+        const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
+        const existingAuthUser = listResult.data?.users?.find(u => u.email === teacher.email) ?? null
+        if (!existingAuthUser) {
+          console.error('Create user error:', JSON.stringify(createError))
+          return json({ error: 'Failed to create account' }, 500)
+        }
+        localUserId = existingAuthUser.id
       }
-
-      localUserId = newUser.user.id
     }
 
     // Upsert teacher_profiles bridge record (non-fatal — don't block SSO if table is missing)
@@ -180,7 +194,12 @@ async function syncClasses(
       .select('id, name, year_level, subject, term, class_code, curriculum_authority')
       .eq('teacher_id', hubTeacherId)
       .in('id', activeAssignedIds)
-    if (error) console.error('hub classes fetch failed', error)
+    if (error) {
+      // Bail out rather than treating a fetch failure as "no active classes" —
+      // that would archive every synced class below.
+      console.error('hub classes fetch failed, skipping class sync this run', error)
+      return
+    }
     hubClasses = data ?? []
   }
 
@@ -260,39 +279,58 @@ async function syncStudents(
   localUserId: string,
   hubTeacherId: string,
 ) {
-  const { data: assignments } = await central
+  // Any failure below is treated as "roster unknown" rather than "roster empty" —
+  // bailing out avoids the pruning step at the bottom mistaking a transient
+  // fetch failure for every student having left the class and hard-deleting them.
+  const { data: assignments, error: assignmentsErr } = await central
     .from('app_assignments')
     .select('class_id')
     .eq('app_slug', 'pulse')
     .eq('is_active', true)
+  if (assignmentsErr) {
+    console.error('app_assignments fetch failed, skipping student sync this run', assignmentsErr)
+    return
+  }
   const activeAssignedIds = (assignments ?? []).map(a => a.class_id as string)
 
   let teacherActiveClassIds: string[] = []
   if (activeAssignedIds.length > 0) {
-    const { data: hubClasses } = await central
+    const { data: hubClasses, error: hubClassesErr } = await central
       .from('classes')
       .select('id')
       .eq('teacher_id', hubTeacherId)
       .in('id', activeAssignedIds)
+    if (hubClassesErr) {
+      console.error('hub classes fetch failed, skipping student sync this run', hubClassesErr)
+      return
+    }
     teacherActiveClassIds = (hubClasses ?? []).map(c => c.id as string)
   }
 
   let enrolments: { student_id: string; class_id: string }[] = []
   if (teacherActiveClassIds.length > 0) {
-    const { data } = await central
+    const { data, error: enrolErr } = await central
       .from('student_classes')
       .select('student_id, class_id')
       .in('class_id', teacherActiveClassIds)
+    if (enrolErr) {
+      console.error('student_classes fetch failed, skipping student sync this run', enrolErr)
+      return
+    }
     enrolments = data ?? []
   }
 
   const centralStudentIds = [...new Set(enrolments.map(e => e.student_id))]
 
   if (centralStudentIds.length > 0) {
-    const { data: centralStudents } = await central
+    const { data: centralStudents, error: centralStudentsErr } = await central
       .from('students')
       .select('id, first_name, last_name, username, year_level')
       .in('id', centralStudentIds)
+    if (centralStudentsErr) {
+      console.error('central students fetch failed, skipping student sync this run', centralStudentsErr)
+      return
+    }
 
     const { data: localClasses } = await local
       .from('classes')
@@ -317,6 +355,7 @@ async function syncStudents(
           first_name: cs.first_name,
           last_name: cs.last_name,
           year_level: cs.year_level,
+          archived_at: null,
         }).eq('id', localStudentId)
       } else {
         const { data: inserted, error: insertErr } = await local
@@ -353,26 +392,20 @@ async function syncStudents(
     }
   }
 
-  // Prune: any locally-linked student no longer in the current Pulse-active
-  // roster gets fully removed — shadow auth account, then the local row
-  // (results/question_results/student_responses cascade per
-  // 20250926091613_remote_schema.sql).
+  // Archive rather than delete — a hard delete cascades to results/responses
+  // (ON DELETE CASCADE), permanently destroying a student's academic history
+  // whenever the hub roster looks smaller than it should for any reason.
   const stillValidCentralIds = new Set(centralStudentIds)
   const { data: localLinked } = await local
     .from('students')
     .select('id, central_id')
     .eq('teacher_id', localUserId)
     .not('central_id', 'is', null)
+    .is('archived_at', null)
 
   for (const ls of localLinked ?? []) {
     if (ls.central_id && stillValidCentralIds.has(ls.central_id as string)) continue
 
-    const studentEmail = `student-${ls.id}@pulse.internal`
-    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
-    const authUser = listResult.data?.users?.find(u => u.email === studentEmail)
-    if (authUser) {
-      await local.auth.admin.deleteUser(authUser.id)
-    }
-    await local.from('students').delete().eq('id', ls.id)
+    await local.from('students').update({ archived_at: new Date().toISOString() }).eq('id', ls.id)
   }
 }

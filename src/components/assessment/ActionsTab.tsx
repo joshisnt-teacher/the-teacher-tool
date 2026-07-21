@@ -10,7 +10,7 @@ import {
 import { useClassActions, ActionType } from '@/hooks/useClassActions';
 import { useOpenAIKeyStatus } from '@/hooks/useAISettings';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { printPdf } from '@/utils/printPdf';
 
@@ -46,6 +46,7 @@ const formatTs = (iso: string) => format(new Date(iso), 'dd MMM yyyy, h:mm a');
 export const ActionsTab = ({ taskId, taskName, className }: Props) => {
   const { savedResults, runAction, runningAction } = useClassActions(taskId);
   const { data: keyStatus } = useOpenAIKeyStatus();
+  const { toast } = useToast();
 
   if (!keyStatus?.hasKey) {
     return (
@@ -293,7 +294,7 @@ export const ActionsTab = ({ taskId, taskName, className }: Props) => {
                     className="flex-shrink-0 h-7 w-7"
                     onClick={() => {
                       navigator.clipboard.writeText(s.feedback);
-                      toast.success('Copied');
+                      toast({ title: 'Copied' });
                     }}
                   >
                     <Copy className="w-3.5 h-3.5" />

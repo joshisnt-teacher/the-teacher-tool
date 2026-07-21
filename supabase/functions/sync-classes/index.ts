@@ -180,39 +180,58 @@ async function syncStudents(
   localUserId: string,
   hubTeacherId: string,
 ) {
-  const { data: assignments } = await central
+  // Any failure below is treated as "roster unknown" rather than "roster empty" —
+  // bailing out avoids the pruning step at the bottom mistaking a transient
+  // fetch failure for every student having left the class and hard-deleting them.
+  const { data: assignments, error: assignmentsErr } = await central
     .from('app_assignments')
     .select('class_id')
     .eq('app_slug', 'pulse')
     .eq('is_active', true)
+  if (assignmentsErr) {
+    console.error('app_assignments fetch failed, skipping student sync this run', assignmentsErr)
+    return
+  }
   const activeAssignedIds = (assignments ?? []).map(a => a.class_id as string)
 
   let teacherActiveClassIds: string[] = []
   if (activeAssignedIds.length > 0) {
-    const { data: hubClasses } = await central
+    const { data: hubClasses, error: hubClassesErr } = await central
       .from('classes')
       .select('id')
       .eq('teacher_id', hubTeacherId)
       .in('id', activeAssignedIds)
+    if (hubClassesErr) {
+      console.error('hub classes fetch failed, skipping student sync this run', hubClassesErr)
+      return
+    }
     teacherActiveClassIds = (hubClasses ?? []).map(c => c.id as string)
   }
 
   let enrolments: { student_id: string; class_id: string }[] = []
   if (teacherActiveClassIds.length > 0) {
-    const { data } = await central
+    const { data, error: enrolErr } = await central
       .from('student_classes')
       .select('student_id, class_id')
       .in('class_id', teacherActiveClassIds)
+    if (enrolErr) {
+      console.error('student_classes fetch failed, skipping student sync this run', enrolErr)
+      return
+    }
     enrolments = data ?? []
   }
 
   const centralStudentIds = [...new Set(enrolments.map(e => e.student_id))]
 
   if (centralStudentIds.length > 0) {
-    const { data: centralStudents } = await central
+    const { data: centralStudents, error: centralStudentsErr } = await central
       .from('students')
       .select('id, first_name, last_name, username, year_level')
       .in('id', centralStudentIds)
+    if (centralStudentsErr) {
+      console.error('central students fetch failed, skipping student sync this run', centralStudentsErr)
+      return
+    }
 
     const { data: localClasses } = await local
       .from('classes')
@@ -237,6 +256,7 @@ async function syncStudents(
           first_name: cs.first_name,
           last_name: cs.last_name,
           year_level: cs.year_level,
+          archived_at: null,
         }).eq('id', localStudentId)
       } else {
         const { data: inserted, error: insertErr } = await local
@@ -270,22 +290,20 @@ async function syncStudents(
     }
   }
 
+  // Archive rather than delete — a hard delete cascades to results/responses
+  // (ON DELETE CASCADE), permanently destroying a student's academic history
+  // whenever the hub roster looks smaller than it should for any reason.
   const stillValidCentralIds = new Set(centralStudentIds)
   const { data: localLinked } = await local
     .from('students')
     .select('id, central_id')
     .eq('teacher_id', localUserId)
     .not('central_id', 'is', null)
+    .is('archived_at', null)
 
   for (const ls of localLinked ?? []) {
     if (ls.central_id && stillValidCentralIds.has(ls.central_id as string)) continue
 
-    const studentEmail = `student-${ls.id}@pulse.internal`
-    const listResult = await local.auth.admin.listUsers({ perPage: 1000 })
-    const authUser = listResult.data?.users?.find(u => u.email === studentEmail)
-    if (authUser) {
-      await local.auth.admin.deleteUser(authUser.id)
-    }
-    await local.from('students').delete().eq('id', ls.id)
+    await local.from('students').update({ archived_at: new Date().toISOString() }).eq('id', ls.id)
   }
 }

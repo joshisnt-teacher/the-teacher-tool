@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, matchPath } from "react-router-dom";
@@ -152,7 +151,6 @@ const App = () => (
       <StudentSessionProvider>
         <TooltipProvider delayDuration={300}>
           <Toaster />
-          <Sonner />
           <BrowserRouter>
             <DemoTracker />
             <AppLayout>
