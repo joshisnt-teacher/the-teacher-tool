@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { BookOpen, Play, Loader2, Layers, ArrowLeft } from 'lucide-react';
@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useClasses } from '@/hooks/useClasses';
 import { useToast } from '@/hooks/use-toast';
+import { useStartStructuredLesson } from '@/hooks/useClassSessions';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ interface LessonTemplate {
   source: string;
   atlas_lesson_id: string | null;
   teacher_id: string;
+  class_id: string | null;
   metadata: LessonTemplateMetadata | null;
   updated_at: string;
   created_at: string;
@@ -83,71 +85,37 @@ const Lessons = () => {
   });
 
   // ── Mutation: start or update a class session ───────────────────────────────
-  const startSession = useMutation({
-    mutationFn: async ({
-      templateId,
-      classId,
-    }: {
-      templateId: string;
-      classId: string;
-    }) => {
-      // Check for an existing active session for this class
-      const { data: activeSession, error: checkError } = await supabase
-        .from('class_sessions')
-        .select('id')
-        .eq('class_id', classId)
-        .is('ended_at', null)
-        .maybeSingle();
+  const startSession = useStartStructuredLesson();
 
-      if (checkError) throw checkError;
+  const handleStartSuccess = (classId: string) => {
+    setStartDialogOpen(false);
+    setSelectedTemplateId(null);
+    setSelectedClassId('');
+    navigate(`/classroom/${classId}`);
+  };
 
-      if (activeSession) {
-        // Update the existing session with this lesson template
-        const { error: updateError } = await supabase
-          .from('class_sessions')
-          .update({
-            lesson_template_id: templateId,
-            mode: 'structured',
-            current_slide_index: 0,
-          })
-          .eq('id', activeSession.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert a new session
-        const { error: insertError } = await supabase
-          .from('class_sessions')
-          .insert({
-            class_id: classId,
-            lesson_template_id: templateId,
-            mode: 'structured',
-            current_slide_index: 0,
-            is_active: true,
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      return classId;
-    },
-    onSuccess: (classId) => {
-      setStartDialogOpen(false);
-      setSelectedTemplateId(null);
-      setSelectedClassId('');
-      navigate(`/classroom/${classId}`);
-    },
-    onError: (err: unknown) => {
-      toast({
-        title: 'Failed to start lesson',
-        description: err instanceof Error ? err.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    },
-  });
+  const handleStartError = (err: unknown) => {
+    toast({
+      title: 'Failed to start lesson',
+      description: err instanceof Error ? err.message : 'Unknown error',
+      variant: 'destructive',
+    });
+  };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
+  // Every Atlas lesson already belongs to exactly one class (set at import
+  // time). If we know it, skip asking again — only fall back to the class
+  // picker for older/manual templates that predate that link.
   const handleStartClick = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (template?.class_id) {
+      startSession.mutate(
+        { templateId, classId: template.class_id },
+        { onSuccess: handleStartSuccess, onError: handleStartError }
+      );
+      return;
+    }
     setSelectedTemplateId(templateId);
     setSelectedClassId('');
     setStartDialogOpen(true);
@@ -155,7 +123,10 @@ const Lessons = () => {
 
   const handleConfirmStart = () => {
     if (!selectedTemplateId || !selectedClassId) return;
-    startSession.mutate({ templateId: selectedTemplateId, classId: selectedClassId });
+    startSession.mutate(
+      { templateId: selectedTemplateId, classId: selectedClassId },
+      { onSuccess: handleStartSuccess, onError: handleStartError }
+    );
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

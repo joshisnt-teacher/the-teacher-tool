@@ -21,14 +21,49 @@ import {
   Users,
   Trash2,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useClasses } from '@/hooks/useClasses';
 import { useClassExitTicketRuns } from '@/hooks/useClassExitTicketRuns';
-import { useAtlasLessonRefs, AtlasLessonRef } from '@/hooks/useAtlasLessonRefs';
 import { useClassSessionsList } from '@/hooks/useClassSessionsList';
-import { useDeleteClassSession } from '@/hooks/useClassSessions';
+import { useDeleteClassSession, useStartStructuredLesson } from '@/hooks/useClassSessions';
 import { useToast } from '@/hooks/use-toast';
 import { useDemoTracking } from '@/hooks/useDemoTracking';
 import { format, formatDistanceToNow } from 'date-fns';
+
+interface LessonTemplateSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  learning_intentions: string[];
+  success_criteria: string[];
+  slideCount: number;
+}
+
+function useAtlasLessonTemplates(classId: string) {
+  return useQuery({
+    queryKey: ['atlas-lesson-templates', classId],
+    queryFn: async (): Promise<LessonTemplateSummary[]> => {
+      const { data, error } = await supabase
+        .from('lesson_templates')
+        .select('id, title, description, learning_intentions, success_criteria, lesson_template_slides(count)')
+        .eq('class_id', classId)
+        .eq('source', 'atlas')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        learning_intentions: (row.learning_intentions ?? []) as string[],
+        success_criteria: (row.success_criteria ?? []) as string[],
+        slideCount: row.lesson_template_slides?.[0]?.count ?? 0,
+      }));
+    },
+    enabled: !!classId,
+  });
+}
 
 const ANALYTICS_URL =
   import.meta.env.VITE_ANALYTICS_URL || 'https://analytics.edufied.com.au';
@@ -40,12 +75,29 @@ function UpcomingLessonCard({
   classId,
   isActive,
 }: {
-  lesson: AtlasLessonRef;
+  lesson: LessonTemplateSummary;
   classId: string;
   isActive: boolean;
 }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const startSession = useStartStructuredLesson();
+
+  const handleStart = () => {
+    startSession.mutate(
+      { templateId: lesson.id, classId },
+      {
+        onSuccess: () => navigate(`/classroom/${classId}`),
+        onError: (err) =>
+          toast({
+            title: 'Failed to start lesson',
+            description: err instanceof Error ? err.message : 'Unknown error',
+            variant: 'destructive',
+          }),
+      }
+    );
+  };
 
   return (
     <Card className="border-border/50">
@@ -97,19 +149,10 @@ function UpcomingLessonCard({
                     </ul>
                   </div>
                 )}
-                {lesson.slides.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                      Slides ({lesson.slides.length})
-                    </p>
-                    <ol className="space-y-0.5">
-                      {lesson.slides.map((slide, i) => (
-                        <li key={i} className="text-xs text-muted-foreground">
-                          {i + 1}. {slide.title || 'Untitled slide'}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
+                {lesson.slideCount > 0 && (
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {lesson.slideCount} {lesson.slideCount === 1 ? 'slide' : 'slides'}
+                  </p>
                 )}
               </div>
             )}
@@ -138,10 +181,11 @@ function UpcomingLessonCard({
               <Button
                 size="sm"
                 className="bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => navigate(`/classroom/${classId}?lessonId=${lesson.id}`)}
+                onClick={handleStart}
+                disabled={startSession.isPending}
               >
                 <Play className="w-3.5 h-3.5 mr-1.5" />
-                Start Lesson
+                {startSession.isPending ? 'Starting...' : 'Start Lesson'}
               </Button>
             )}
           </div>
@@ -167,7 +211,7 @@ const ClassDashboard = () => {
     }
   }, [currentClass?.id]);
   const { data: exitTicketRuns = [] } = useClassExitTicketRuns(classId);
-  const { data: lessonRefs = [], isError: lessonRefsError } = useAtlasLessonRefs(classId!);
+  const { data: lessonTemplates = [], isError: lessonTemplatesError } = useAtlasLessonTemplates(classId!);
   const { data: sessions = [], isLoading: isLoadingSessions } = useClassSessionsList(classId!);
   const deleteSessionMutation = useDeleteClassSession();
 
@@ -202,23 +246,23 @@ const ClassDashboard = () => {
     );
   }
 
-  // Determine which lesson refs are linked to sessions in this class
-  const activeRefIds = new Set(
+  // Determine which lesson templates are linked to sessions in this class
+  const activeTemplateIds = new Set(
     sessions
       .filter((s) => !s.ended_at)
-      .map((s) => (s as any).atlas_lesson_ref_id as string | null)
+      .map((s) => s.lesson_template_id)
       .filter(Boolean) as string[]
   );
 
-  const doneRefIds = new Set(
+  const doneTemplateIds = new Set(
     sessions
       .filter((s) => !!s.ended_at)
-      .map((s) => (s as any).atlas_lesson_ref_id as string | null)
+      .map((s) => s.lesson_template_id)
       .filter(Boolean) as string[]
   );
 
-  // Upcoming = not done (active refs still show as upcoming with Active badge)
-  const upcomingRefs = lessonRefs.filter((r) => !doneRefIds.has(r.id));
+  // Upcoming = not done (active templates still show as upcoming with Active badge)
+  const upcomingTemplates = lessonTemplates.filter((t) => !doneTemplateIds.has(t.id));
   const completedSessions = sessions.filter((s) => !!s.ended_at);
 
   const formatDuration = (startedAt: string, endedAt: string) => {
@@ -344,13 +388,13 @@ const ClassDashboard = () => {
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Upcoming
                 </h2>
-                {lessonRefsError ? (
+                {lessonTemplatesError ? (
                   <div className="text-center py-6">
                     <p className="text-sm text-destructive">
                       Could not load lessons. Check your connection and try refreshing.
                     </p>
                   </div>
-                ) : upcomingRefs.length === 0 ? (
+                ) : upcomingTemplates.length === 0 ? (
                   <div className="text-center py-6">
                     <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground mb-1">No upcoming lessons for this class.</p>
@@ -360,12 +404,12 @@ const ClassDashboard = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {upcomingRefs.map((ref) => (
+                    {upcomingTemplates.map((template) => (
                       <UpcomingLessonCard
-                        key={ref.id}
-                        lesson={ref}
+                        key={template.id}
+                        lesson={template}
                         classId={classId!}
-                        isActive={activeRefIds.has(ref.id)}
+                        isActive={activeTemplateIds.has(template.id)}
                       />
                     ))}
                   </div>

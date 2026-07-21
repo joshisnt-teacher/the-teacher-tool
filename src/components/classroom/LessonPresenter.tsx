@@ -1,4 +1,4 @@
-import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Monitor, MonitorOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SlideViewer } from "@/components/lesson/SlideViewer";
@@ -6,6 +6,8 @@ import { LessonResourcesList } from "@/components/lesson/LessonResourcesList";
 import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
 import { useUpdateCurrentSlide } from "@/hooks/useClassSessions";
 import { useClassSessionRealtime } from "@/hooks/useClassSessionRealtime";
+import { PresentationWindow } from "@/components/classroom/PresentationWindow";
+import { useState } from "react";
 
 interface Props {
   session: {
@@ -20,6 +22,7 @@ export function LessonPresenter({ session }: Props) {
   const { data, isLoading } = useLessonTemplateContent(session.lesson_template_id);
   const updateSlide = useUpdateCurrentSlide();
   const realtime = useClassSessionRealtime(session.id);
+  const [isPresenting, setIsPresenting] = useState(false);
 
   const slides = data?.slides ?? [];
   const resources = data?.resources ?? [];
@@ -51,6 +54,7 @@ export function LessonPresenter({ session }: Props) {
             </CardTitle>
             <CardDescription>
               {currentIndex + 1} of {slides.length}
+              {isPresenting && " • Presenting on external display"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -72,24 +76,44 @@ export function LessonPresenter({ session }: Props) {
 
             {currentSlide && <SlideViewer slide={currentSlide} />}
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentIndex === 0}
+                  onClick={() => goToSlide(currentIndex - 1)}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentIndex === slides.length - 1}
+                  onClick={() => goToSlide(currentIndex + 1)}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+
               <Button
-                variant="outline"
+                variant={isPresenting ? "secondary" : "default"}
                 size="sm"
-                disabled={currentIndex === 0}
-                onClick={() => goToSlide(currentIndex - 1)}
+                onClick={() => setIsPresenting((v) => !v)}
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentIndex === slides.length - 1}
-                onClick={() => goToSlide(currentIndex + 1)}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
+                {isPresenting ? (
+                  <>
+                    <MonitorOff className="w-4 h-4 mr-1.5" />
+                    End Presentation
+                  </>
+                ) : (
+                  <>
+                    <Monitor className="w-4 h-4 mr-1.5" />
+                    Launch Presentation
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
@@ -97,6 +121,18 @@ export function LessonPresenter({ session }: Props) {
       )}
 
       {resources.length > 0 && <LessonResourcesList resources={resources} />}
+
+      <PresentationWindow isOpen={isPresenting} onClose={() => setIsPresenting(false)} title="Lesson Presentation">
+        <div className="min-h-screen w-full flex items-center justify-center bg-background p-8">
+          {currentSlide ? (
+            <div className="w-full max-w-5xl">
+              <SlideViewer slide={currentSlide} />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No slide selected</p>
+          )}
+        </div>
+      </PresentationWindow>
     </div>
   );
 }

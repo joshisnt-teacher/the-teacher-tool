@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useClassSessions, useCreateClassSession, useUpdateClassSession, useCurrentClassSession } from "@/hooks/useClassSessions";
 import { useStudentNotesForSession } from "@/hooks/useStudentNotes";
-import { useAtlasLessonRef } from "@/hooks/useAtlasLessonRefs";
+import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentGrid } from "@/components/classroom/StudentGrid";
@@ -32,16 +32,17 @@ import { cn } from "@/lib/utils";
 function ClassroomContent() {
   const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const lessonId = searchParams.get("lessonId");
-  const { data: lessonRef } = useAtlasLessonRef(lessonId);
   const [showLessonOverview, setShowLessonOverview] = useState(true);
   const { toast } = useToast();
-  
+
   const { data: classes } = useClasses();
   const { data: students } = useStudents(classId || "");
   const { data: currentSession, refetch: refetchCurrentSession } = useCurrentClassSession(classId || "");
   const { data: sessionNotes } = useStudentNotesForSession(currentSession?.id || "");
+  const isStructuredLesson = currentSession?.mode === "structured" && !!currentSession.lesson_template_id;
+  const { data: lessonTemplateContent } = useLessonTemplateContent(
+    isStructuredLesson ? currentSession!.lesson_template_id : null
+  );
   
   const createSessionMutation = useCreateClassSession();
   const updateSessionMutation = useUpdateClassSession();
@@ -117,7 +118,6 @@ function ClassroomContent() {
       await createSessionMutation.mutateAsync({
         class_id: classId,
         started_at: new Date().toISOString(),
-        ...(lessonId ? { atlas_lesson_ref_id: lessonId } as any : {}),
       });
       
       // Manually refetch the current session to ensure UI updates
@@ -223,7 +223,18 @@ function ClassroomContent() {
     }
   };
 
-  const handleEndLessonClick = () => {
+  const handleEndLessonClick = async () => {
+    if (currentSession?.mode === "structured" && currentSession.lesson_template_id) {
+      const { data: template } = await supabase
+        .from("lesson_templates")
+        .select("title, description")
+        .eq("id", currentSession.lesson_template_id)
+        .single();
+      if (template) {
+        setLessonTitle(template.title ?? "");
+        setLessonDescription(template.description ?? "");
+      }
+    }
     setShowEndLessonDialog(true);
   };
 
@@ -323,15 +334,15 @@ function ClassroomContent() {
         </div>
       </div>
 
-      {/* Lesson Overview Panel */}
-      {lessonRef && (
+      {/* Lesson Overview Panel — shown for the active Atlas-sourced structured lesson */}
+      {isStructuredLesson && lessonTemplateContent && (
         <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                  {lessonRef.title}
+                  {lessonTemplateContent.title}
                 </span>
               </div>
               <button
@@ -347,13 +358,13 @@ function ClassroomContent() {
             </div>
             {showLessonOverview && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                {lessonRef.learning_intentions.length > 0 && (
+                {lessonTemplateContent.learningIntentions.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
                       Learning Intentions
                     </p>
                     <ul className="space-y-1">
-                      {lessonRef.learning_intentions.map((li, i) => (
+                      {lessonTemplateContent.learningIntentions.map((li, i) => (
                         <li key={i} className="text-xs text-blue-900 dark:text-blue-100 flex gap-1.5">
                           <span className="text-blue-400 shrink-0">•</span>
                           {li}
@@ -362,13 +373,13 @@ function ClassroomContent() {
                     </ul>
                   </div>
                 )}
-                {lessonRef.success_criteria.length > 0 && (
+                {lessonTemplateContent.successCriteria.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
                       Success Criteria
                     </p>
                     <ul className="space-y-1">
-                      {lessonRef.success_criteria.map((sc, i) => (
+                      {lessonTemplateContent.successCriteria.map((sc, i) => (
                         <li key={i} className="text-xs text-blue-900 dark:text-blue-100 flex gap-1.5">
                           <span className="text-blue-400 shrink-0">•</span>
                           {sc}

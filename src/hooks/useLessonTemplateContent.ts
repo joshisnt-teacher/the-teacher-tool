@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ContentBlock, LessonResource, LessonSlide } from "@/types/lesson";
 
 export interface LessonTemplateContent {
+  title: string;
+  description: string | null;
+  learningIntentions: string[];
+  successCriteria: string[];
   slides: LessonSlide[];
   resources: LessonResource[];
 }
@@ -15,7 +19,7 @@ export function useLessonTemplateContent(lessonTemplateId: string | null | undef
         // `resources` isn't in the generated types yet (added via raw migration
         // in Task 1) — cast this one query rather than regenerating types.
         (supabase.from("lesson_templates") as any)
-          .select("resources")
+          .select("title, description, learning_intentions, success_criteria, resources")
           .eq("id", lessonTemplateId)
           .maybeSingle(),
         supabase
@@ -40,7 +44,14 @@ export function useLessonTemplateContent(lessonTemplateId: string | null | undef
 
       const resources = ((templateResult.data?.resources as unknown) as LessonResource[]) ?? [];
 
-      return { slides, resources };
+      return {
+        title: templateResult.data?.title ?? "",
+        description: templateResult.data?.description ?? null,
+        learningIntentions: ((templateResult.data?.learning_intentions as unknown) as string[]) ?? [],
+        successCriteria: ((templateResult.data?.success_criteria as unknown) as string[]) ?? [],
+        slides,
+        resources,
+      };
     },
     enabled: !!lessonTemplateId,
   });

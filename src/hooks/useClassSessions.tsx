@@ -86,6 +86,54 @@ export function useCurrentClassSession(classId: string) {
   });
 }
 
+// Starts (or upgrades an already-active session into) a structured, slide-driven
+// lesson for a given Atlas lesson template. Shared by every "Start Lesson" entry
+// point so they can't drift into inconsistent, half-wired sessions again.
+export function useStartStructuredLesson() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ templateId, classId }: { templateId: string; classId: string }) => {
+      const { data: activeSession, error: checkError } = await supabase
+        .from("class_sessions")
+        .select("id")
+        .eq("class_id", classId)
+        .is("ended_at", null)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (activeSession) {
+        const { error: updateError } = await supabase
+          .from("class_sessions")
+          .update({
+            lesson_template_id: templateId,
+            mode: "structured",
+            current_slide_index: 0,
+          })
+          .eq("id", activeSession.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("class_sessions").insert({
+          class_id: classId,
+          lesson_template_id: templateId,
+          mode: "structured",
+          current_slide_index: 0,
+        });
+
+        if (insertError) throw insertError;
+      }
+
+      return classId;
+    },
+    onSuccess: (classId) => {
+      queryClient.invalidateQueries({ queryKey: ["class-sessions", classId] });
+      queryClient.invalidateQueries({ queryKey: ["current-class-session", classId] });
+    },
+  });
+}
+
 export function useDeleteClassSession() {
   const queryClient = useQueryClient();
 

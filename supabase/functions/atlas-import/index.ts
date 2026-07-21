@@ -96,7 +96,7 @@ function isValidPayload(body: unknown): body is AtlasLessonPayload {
   if (typeof b.title !== 'string' || !b.title) return false
   if (!Array.isArray(b.learning_intentions)) return false
   if (!Array.isArray(b.success_criteria)) return false
-  if (!Array.isArray(b.slides) || b.slides.length === 0) return false
+  if (!Array.isArray(b.slides)) return false
   return true
 }
 
@@ -255,6 +255,7 @@ Deno.serve(async (req) => {
         learning_intentions: payload.learning_intentions,
         success_criteria: payload.success_criteria,
         source: 'atlas',
+        class_id: cls.id,
         metadata: baseMetadata,
         resources: payload.resources,
         updated_at: new Date().toISOString(),
@@ -292,6 +293,7 @@ Deno.serve(async (req) => {
         teacher_id: teacher.id,
         source: 'atlas',
         atlas_lesson_id: payload.atlas_lesson_id,
+        class_id: cls.id,
         metadata: baseMetadata,
         resources: payload.resources,
       })

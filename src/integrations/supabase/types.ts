@@ -670,6 +670,7 @@ export type Database = {
       lesson_templates: {
         Row: {
           atlas_lesson_id: string | null
+          class_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -684,6 +685,7 @@ export type Database = {
         }
         Insert: {
           atlas_lesson_id?: string | null
+          class_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -698,6 +700,7 @@ export type Database = {
         }
         Update: {
           atlas_lesson_id?: string | null
+          class_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -710,7 +713,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lesson_templates_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_options: {
         Row: {
