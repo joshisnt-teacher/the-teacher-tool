@@ -5,12 +5,16 @@ type Channel = ReturnType<typeof supabase.channel>;
 
 export function useClassSessionRealtime(classSessionId: string) {
   const channelRef = useRef<Channel | null>(null);
+  const slideChangeHandlerRef = useRef<((index: number) => void) | null>(null);
 
   useEffect(() => {
     if (!classSessionId) return;
 
     const channel = supabase.channel(`classroom:${classSessionId}`, {
       config: { broadcast: { ack: true } },
+    });
+    channel.on("broadcast", { event: "slide_change" }, (message: { payload: { slide_index: number } }) => {
+      slideChangeHandlerRef.current?.(message.payload.slide_index);
     });
     channel.subscribe();
     channelRef.current = channel;
@@ -30,12 +34,9 @@ export function useClassSessionRealtime(classSessionId: string) {
   }, []);
 
   const onSlideChange = useCallback((handler: (index: number) => void) => {
-    const fn = (message: { payload: { slide_index: number } }) => {
-      handler(message.payload.slide_index);
-    };
-    channelRef.current?.on("broadcast", { event: "slide_change" }, fn);
+    slideChangeHandlerRef.current = handler;
     return () => {
-      channelRef.current?.off("broadcast", { event: "slide_change" }, fn);
+      slideChangeHandlerRef.current = null;
     };
   }, []);
 
