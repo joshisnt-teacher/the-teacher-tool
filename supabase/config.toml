@@ -340,6 +340,12 @@ verify_jwt = false
 [functions.sync-classes]
 verify_jwt = false
 
+[functions.atlas-import]
+verify_jwt = false
+
+[functions.pulse-list-classes]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
