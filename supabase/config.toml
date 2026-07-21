@@ -320,16 +320,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-mark-response]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-exit-ticket]
-verify_jwt = false
+verify_jwt = true
 
 [functions.save-openai-key]
 verify_jwt = false
 
 [functions.ai-class-actions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.mark-tool-welcome-seen]
 verify_jwt = false

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk'
+import { requireTeacher, forbiddenResponse } from '../_shared/requireTeacher.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,6 +40,9 @@ Deno.serve(async (req) => {
     Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
+  const auth = await requireTeacher(req, supabaseAdmin, corsHeaders)
+  if (auth instanceof Response) return auth
+
   let body: { task_id?: string; action_type?: ActionType }
   try {
     body = await req.json()
@@ -71,6 +75,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Class not found' }), {
       status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+  }
+
+  if (cls.teacher_id !== auth.userId) {
+    return forbiddenResponse(corsHeaders)
   }
 
   // Keep marking_harshness for student_feedback prompt calibration

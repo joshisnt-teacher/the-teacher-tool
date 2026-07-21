@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk'
+import { requireTeacher, forbiddenResponse } from '../_shared/requireTeacher.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +58,9 @@ Deno.serve(async (req) => {
     Deno.env.get('CENTRAL_SUPABASE_URL')!,
     Deno.env.get('CENTRAL_SUPABASE_SERVICE_ROLE_KEY')!,
   )
+
+  const auth = await requireTeacher(req, supabaseAdmin, corsHeaders)
+  if (auth instanceof Response) return auth
 
   let body: Record<string, unknown>
   try {
@@ -118,6 +122,10 @@ Deno.serve(async (req) => {
     )
   }
 
+  if (cls.teacher_id !== auth.userId) {
+    return forbiddenResponse(corsHeaders)
+  }
+
   // Look up central_teacher_id from teacher_profiles
   const { data: profile } = await supabaseAdmin
     .from('teacher_profiles')
@@ -152,43 +160,33 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Fetch curriculum context for the class
-  const { data: curriculumRows } = await supabaseAdmin
+  // Fetch curriculum context for the class: local link rows, then resolve
+  // full descriptor details from the central DB by source_id (the local
+  // content_item table + content_item_id FK no longer exist — see
+  // migration 20260606000000_class_content_item_use_source_id.sql).
+  const { data: linkRows } = await supabaseAdmin
     .from('class_content_item')
-    .select(`
-      content_item:content_item_id (
-        id,
-        code,
-        description,
-        content_item_tag (
-          tag:tag_id (name, type)
-        )
-      )
-    `)
+    .select('content_item_source_id')
     .eq('class_id', class_id)
 
-  const allContentItems: {
-    id: string
-    code: string
-    description: string
-    tags: { name: string; type: string }[]
-  }[] = []
+  const sourceIds = (linkRows ?? []).map((r) => r.content_item_source_id)
 
-  for (const row of curriculumRows || []) {
-    const ci = (row as any).content_item
-    if (!ci) continue
-    const item = Array.isArray(ci) ? ci[0] : ci
-    const tags: { name: string; type: string }[] = []
-    for (const cit of item.content_item_tag || []) {
-      const t = Array.isArray(cit.tag) ? cit.tag[0] : cit.tag
-      if (t) tags.push(t)
+  const allContentItems: { id: string; code: string; description: string }[] = []
+
+  if (sourceIds.length > 0) {
+    const { data: centralItems } = await centralAdmin
+      .from('curriculum_content_item')
+      .select('id, code, description')
+      .in('source_id', sourceIds)
+
+    for (const item of centralItems ?? []) {
+      if (!item.code) continue
+      allContentItems.push({
+        id: item.id,
+        code: item.code,
+        description: item.description,
+      })
     }
-    allContentItems.push({
-      id: item.id,
-      code: item.code,
-      description: item.description,
-      tags,
-    })
   }
 
   // Pre-filter: pick the top 15 most topic-relevant descriptors to keep the
