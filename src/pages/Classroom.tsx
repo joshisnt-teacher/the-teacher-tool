@@ -484,7 +484,7 @@ function ClassroomContent() {
           </Card>
 
           {/* Resources from Atlas Lesson */}
-          {lessonRef && lessonRef.slides.length > 0 && (
+          {lessonTemplateContent && lessonTemplateContent.slides.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -492,12 +492,12 @@ function ClassroomContent() {
                   Resources
                 </CardTitle>
                 <CardDescription>
-                  Slides from Atlas ({lessonRef.slides.length})
+                  Slides from Atlas ({lessonTemplateContent.slides.length})
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ol className="space-y-1">
-                  {lessonRef.slides.map((slide, i) => (
+                  {lessonTemplateContent.slides.map((slide, i) => (
                     <li key={i} className="text-sm text-muted-foreground flex gap-2">
                       <span className="text-xs font-mono text-muted-foreground/60 w-5 shrink-0 text-right">
                         {i + 1}.
