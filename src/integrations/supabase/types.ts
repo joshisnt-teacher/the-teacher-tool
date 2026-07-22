@@ -633,8 +633,6 @@ export type Database = {
           layout: string
           lesson_template_id: string
           order: number
-          slide_props: Json | null
-          slide_type: string | null
           title: string | null
         }
         Insert: {
@@ -646,8 +644,6 @@ export type Database = {
           layout?: string
           lesson_template_id: string
           order: number
-          slide_props?: Json | null
-          slide_type?: string | null
           title?: string | null
         }
         Update: {
@@ -659,8 +655,6 @@ export type Database = {
           layout?: string
           lesson_template_id?: string
           order?: number
-          slide_props?: Json | null
-          slide_type?: string | null
           title?: string | null
         }
         Relationships: [
@@ -682,12 +676,10 @@ export type Database = {
           id: string
           learning_intentions: Json
           metadata: Json
-          palette_id: string | null
           school_id: string | null
           source: string
           success_criteria: Json
           teacher_id: string
-          template_id: string | null
           title: string
           updated_at: string
         }
@@ -699,12 +691,10 @@ export type Database = {
           id?: string
           learning_intentions?: Json
           metadata?: Json
-          palette_id?: string | null
           school_id?: string | null
           source?: string
           success_criteria?: Json
           teacher_id: string
-          template_id?: string | null
           title: string
           updated_at?: string
         }
@@ -716,12 +706,10 @@ export type Database = {
           id?: string
           learning_intentions?: Json
           metadata?: Json
-          palette_id?: string | null
           school_id?: string | null
           source?: string
           success_criteria?: Json
           teacher_id?: string
-          template_id?: string | null
           title?: string
           updated_at?: string
         }

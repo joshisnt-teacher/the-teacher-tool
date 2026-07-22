@@ -22,12 +22,6 @@ interface SlidePayload {
   background_colour?: string
 }
 
-interface AtlasDeckSlidePayload {
-  id: string
-  type: string
-  props: Record<string, unknown>
-}
-
 interface AtlasQuestionOption {
   option_text: string
   is_correct: boolean
@@ -85,9 +79,6 @@ interface AtlasLessonPayload {
   year_level?: string
   estimated_minutes?: number
   slides: SlidePayload[]
-  deck_template_id?: string
-  deck_palette_id?: string
-  deck_slides?: AtlasDeckSlidePayload[]
   resources: AtlasResourceRef[]
   exit_ticket?: AtlasExitTicketPayload
 }
@@ -106,9 +97,6 @@ function isValidPayload(body: unknown): body is AtlasLessonPayload {
   if (!Array.isArray(b.learning_intentions)) return false
   if (!Array.isArray(b.success_criteria)) return false
   if (!Array.isArray(b.slides)) return false
-  if (b.deck_template_id !== undefined && typeof b.deck_template_id !== 'string') return false
-  if (b.deck_palette_id !== undefined && typeof b.deck_palette_id !== 'string') return false
-  if (b.deck_slides !== undefined && !Array.isArray(b.deck_slides)) return false
   return true
 }
 
@@ -270,8 +258,6 @@ Deno.serve(async (req) => {
         class_id: cls.id,
         metadata: baseMetadata,
         resources: payload.resources,
-        template_id: payload.deck_template_id ?? null,
-        palette_id: payload.deck_palette_id ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', lessonTemplateId)
@@ -310,8 +296,6 @@ Deno.serve(async (req) => {
         class_id: cls.id,
         metadata: baseMetadata,
         resources: payload.resources,
-        template_id: payload.deck_template_id ?? null,
-        palette_id: payload.deck_palette_id ?? null,
       })
       .select('id')
       .single()
@@ -328,7 +312,7 @@ Deno.serve(async (req) => {
 
   // ── 6. Insert slides ─────────────────────────────────────────────────────
   if (payload.slides.length > 0) {
-    const slideRows = payload.slides.map((slide, i) => ({
+    const slideRows = payload.slides.map((slide) => ({
       lesson_template_id: lessonTemplateId,
       order: slide.order,
       title: slide.title ?? null,
@@ -336,13 +320,6 @@ Deno.serve(async (req) => {
       content_blocks: slide.content_blocks ?? [],
       background_image_url: slide.background_image_url ?? null,
       background_colour: slide.background_colour ?? null,
-      // deck_slides[i] lines up with slides[i] by construction: Atlas
-      // builds both arrays from the same source tree.slides in the same
-      // .map() pass (see pulse-send-lesson.ts), so index-matching is safe.
-      // Optional chaining means a payload with no deck_slides (no deck
-      // attached, or an older Atlas build) degrades to null, no error.
-      slide_type: payload.deck_slides?.[i]?.type ?? null,
-      slide_props: payload.deck_slides?.[i]?.props ?? null,
     }))
 
     const { error: slidesErr } = await supabase
