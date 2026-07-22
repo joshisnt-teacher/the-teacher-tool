@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Square, Users, Clock, Shuffle, Users2, Settings, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Play, Square, Users, Clock, Shuffle, Users2, BookOpen, ChevronDown, ChevronUp, Palette } from "lucide-react";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useClassSessions, useCreateClassSession, useUpdateClassSession, useCurrentClassSession } from "@/hooks/useClassSessions";
@@ -296,9 +297,47 @@ function ClassroomContent() {
           <h1 className="text-3xl font-bold text-gray-900">Classroom</h1>
           <p className="text-gray-600">{currentClass.class_name} • {currentClass.subject}</p>
         </div>
-        
-        {/* Lesson Control */}
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-3">
+          {/* Theme Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" title="Classroom theme">
+                <Palette className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              <p className="text-sm font-medium mb-3">Theme</p>
+              <div className="grid grid-cols-5 gap-2">
+                {Object.entries(colorThemes).map(([key, theme]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedTheme(key)}
+                    className={cn(
+                      "relative h-10 rounded-lg transition-all duration-200",
+                      "bg-gradient-to-br shadow-sm border-2",
+                      theme.preview,
+                      selectedTheme === key
+                        ? "ring-2 ring-offset-2 ring-rose-500 scale-105 border-white"
+                        : "border-transparent hover:scale-105 opacity-80 hover:opacity-100"
+                    )}
+                    title={theme.name}
+                  >
+                    {selectedTheme === key && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center">
+                          <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">{colorThemes[selectedTheme]?.name}</p>
+            </PopoverContent>
+          </Popover>
+
+          {/* Lesson Control */}
           {isLessonActive ? (
             <div className="flex items-center gap-4">
               <div className="text-center">
@@ -440,76 +479,6 @@ function ClassroomContent() {
 
         {/* Modules Section */}
         <div className="space-y-6">
-          {/* Global Theme Picker */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Settings className="w-5 h-5" />
-                Theme Settings
-              </CardTitle>
-              <CardDescription>
-                Choose a color theme for all classroom tools
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-5 gap-3">
-                {Object.entries(colorThemes).map(([key, theme]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedTheme(key)}
-                    className={cn(
-                      "relative h-12 rounded-lg transition-all duration-200",
-                      "bg-gradient-to-br shadow-sm border-2",
-                      theme.preview,
-                      selectedTheme === key
-                        ? "ring-2 ring-offset-2 ring-rose-500 scale-105 border-white"
-                        : "border-transparent hover:scale-105 opacity-80 hover:opacity-100"
-                    )}
-                    title={theme.name}
-                  >
-                    {selectedTheme === key && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-rose-500" />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 mt-3 text-center">
-                {colorThemes[selectedTheme]?.name} theme selected
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Resources from Atlas Lesson */}
-          {lessonTemplateContent && lessonTemplateContent.slides.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BookOpen className="w-5 h-5" />
-                  Resources
-                </CardTitle>
-                <CardDescription>
-                  Slides from Atlas ({lessonTemplateContent.slides.length})
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ol className="space-y-1">
-                  {lessonTemplateContent.slides.map((slide, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
-                      <span className="text-xs font-mono text-muted-foreground/60 w-5 shrink-0 text-right">
-                        {i + 1}.
-                      </span>
-                      <span className="truncate">{slide.title || 'Untitled slide'}</span>
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-          )}
-
           <ClassroomModules
             students={students || []}
             isLessonActive={isLessonActive}
@@ -518,44 +487,9 @@ function ClassroomContent() {
         </div>
       </div>
 
-      {/* Session Notes Summary */}
-      {isLessonActive && sessionNotes && sessionNotes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Notes ({sessionNotes.length})</CardTitle>
-            <CardDescription>
-              Notes taken during this lesson
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sessionNotes.map((note) => (
-                <div key={note.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">
-                      {note.students.first_name} {note.students.last_name}
-                    </span>
-                    <Badge 
-                      variant={note.rating >= 0 ? "default" : "destructive"}
-                      className="text-xs"
-                    >
-                      {note.rating > 0 ? "+" : ""}{note.rating}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">{note.note}</p>
-                  <Badge variant="outline" className="text-xs">
-                    {note.category}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* End Lesson Dialog */}
       <Dialog open={showEndLessonDialog} onOpenChange={setShowEndLessonDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>End Lesson</DialogTitle>
             <DialogDescription>
@@ -567,7 +501,25 @@ function ClassroomContent() {
               <strong>Notes Taken:</strong> {sessionNotes?.length || 0}
             </DialogDescription>
           </DialogHeader>
-          
+
+          {sessionNotes && sessionNotes.length > 0 && (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 border rounded-lg p-3 bg-muted/30">
+              {sessionNotes.map((note) => (
+                <div key={note.id} className="text-sm border-b last:border-b-0 pb-2 last:pb-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium">
+                      {note.students.first_name} {note.students.last_name}
+                    </span>
+                    <Badge variant={note.rating >= 0 ? "default" : "destructive"} className="text-xs">
+                      {note.rating > 0 ? "+" : ""}{note.rating}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground">{note.note}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="lesson-title">Lesson Title *</Label>
