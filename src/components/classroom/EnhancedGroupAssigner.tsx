@@ -281,19 +281,19 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
     <Card className={cn("relative overflow-hidden border-0 shadow-xl", className)}>
       {/* Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-white to-rose-100" />
-      
+
       {/* Frosted Glass Effect Card */}
-      <div className="relative backdrop-blur-sm bg-white/40 p-6 rounded-xl border border-white/50">
+      <div className="relative backdrop-blur-sm bg-white/40 p-3 rounded-xl border border-white/50">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Users2 className="w-5 h-5 text-rose-600" />
-            <h3 className="font-semibold text-lg text-gray-800">Group Assigner</h3>
+            <Users2 className="w-4 h-4 text-rose-600" />
+            <h3 className="font-semibold text-sm text-gray-800">Group Assigner</h3>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full hover:bg-white/50"
+            className="h-7 w-7 rounded-full hover:bg-white/50"
             onClick={openFullscreen}
           >
             <Maximize2 className="w-4 h-4 text-gray-600" />
@@ -301,12 +301,12 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
         </div>
 
         {/* Settings */}
-        <div className="mb-4">
-          <Label htmlFor="numberOfGroups" className="text-gray-700 font-medium mb-2 block text-sm">
+        <div className="mb-3">
+          <Label htmlFor="numberOfGroups" className="text-gray-700 font-medium mb-1.5 block text-xs">
             Number of Groups
           </Label>
           <Select value={numberOfGroups.toString()} onValueChange={(value) => setNumberOfGroups(parseInt(value))}>
-            <SelectTrigger className="bg-white/60 border-white/50 rounded-xl">
+            <SelectTrigger className="bg-white/60 border-white/50 rounded-xl h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -325,20 +325,19 @@ export function EnhancedGroupAssigner({ students, className }: EnhancedGroupAssi
         <Button
           onClick={createRandomGroups}
           disabled={students.length === 0}
-          size="lg"
           className={cn(
-            "w-full mb-4 rounded-xl font-semibold shadow-lg transition-all duration-200",
+            "w-full mb-3 rounded-xl font-semibold shadow-lg transition-all duration-200 h-9",
             "bg-gradient-to-r from-rose-500 to-rose-400",
             "hover:from-rose-600 hover:to-rose-500",
             "text-white"
           )}
         >
-          <Users2 className="w-5 h-5 mr-2" />
+          <Users2 className="w-4 h-4 mr-2" />
           Create Random Groups
         </Button>
 
         {/* Student Count */}
-        <div className="mb-3 text-center">
+        <div className="mb-2 text-center">
           <p className="text-xs font-medium text-gray-600">
             {students.length} students selected
           </p>

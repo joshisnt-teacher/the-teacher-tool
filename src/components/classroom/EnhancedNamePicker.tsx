@@ -194,20 +194,20 @@ export function EnhancedNamePicker({ students, className }: EnhancedNamePickerPr
     <Card className={cn("relative overflow-hidden border-0 shadow-xl", className)}>
       {/* Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-pink-50 via-white to-purple-50" />
-      
+
       {/* Frosted Glass Effect Card */}
-      <div className="relative backdrop-blur-sm bg-white/40 p-6 rounded-xl border border-white/50">
+      <div className="relative backdrop-blur-sm bg-white/40 p-3 rounded-xl border border-white/50">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Shuffle className="w-5 h-5 text-pink-600" />
-            <h3 className="font-semibold text-lg text-gray-800">Name Picker</h3>
+            <Shuffle className="w-4 h-4 text-pink-600" />
+            <h3 className="font-semibold text-sm text-gray-800">Name Picker</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full hover:bg-white/50"
+              className="h-7 w-7 rounded-full hover:bg-white/50"
               onClick={openWheelPicker}
               disabled={students.length === 0}
               title="Open Spinning Wheel"
@@ -217,7 +217,7 @@ export function EnhancedNamePicker({ students, className }: EnhancedNamePickerPr
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full hover:bg-white/50"
+              className="h-7 w-7 rounded-full hover:bg-white/50"
               onClick={openFullscreen}
               title="Open Fullscreen"
             >
@@ -227,29 +227,29 @@ export function EnhancedNamePicker({ students, className }: EnhancedNamePickerPr
         </div>
 
         {/* Student Display */}
-        <div className="mb-6">
-          <div className="relative flex items-center justify-center py-12 px-4 bg-white/60 rounded-2xl min-h-[160px]">
+        <div className="mb-3">
+          <div className="relative flex items-center justify-center py-6 px-4 bg-white/60 rounded-2xl min-h-[110px]">
             {selectedStudent ? (
               <div className={cn(
                 "text-center transition-all duration-300",
                 isSpinning && "blur-sm"
               )}>
-                <div className="flex items-center justify-center mb-3">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                    <User className="w-8 h-8 text-white" />
+                <div className="flex items-center justify-center mb-2">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-gray-800">
+                <div className="text-xl font-bold text-gray-800">
                   {selectedStudent.first_name} {selectedStudent.last_name}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">
+                <div className="text-xs text-gray-500 mt-1">
                   ID: {selectedStudent.student_id}
                 </div>
               </div>
             ) : (
               <div className="text-center text-gray-400">
-                <Shuffle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <div className="text-lg font-medium">Click to pick a student</div>
+                <Shuffle className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <div className="text-sm font-medium">Click to pick a student</div>
               </div>
             )}
           </div>
@@ -259,20 +259,19 @@ export function EnhancedNamePicker({ students, className }: EnhancedNamePickerPr
         <Button
           onClick={pickRandomStudent}
           disabled={students.length === 0 || isSpinning}
-          size="lg"
           className={cn(
-            "w-full rounded-xl font-semibold shadow-lg transition-all duration-200",
+            "w-full rounded-xl font-semibold shadow-lg transition-all duration-200 h-9",
             "bg-gradient-to-r from-pink-500 to-purple-500",
             "hover:from-pink-600 hover:to-purple-600",
             "text-white"
           )}
         >
-          <Shuffle className="w-5 h-5 mr-2" />
+          <Shuffle className="w-4 h-4 mr-2" />
           {isSpinning ? "Picking..." : "Pick Random Student"}
         </Button>
 
         {/* Student Count */}
-        <div className="mt-3 text-center">
+        <div className="mt-2 text-center">
           <p className="text-xs font-medium text-gray-600">
             {students.length} {students.length === 1 ? "student" : "students"} selected
           </p>

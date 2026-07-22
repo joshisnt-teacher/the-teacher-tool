@@ -358,35 +358,34 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
     <Card className={cn("relative overflow-hidden border-0 shadow-xl", className)}>
       {/* Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-white to-rose-100" />
-      
+
       {/* Frosted Glass Effect Card */}
-      <div className="relative backdrop-blur-sm bg-white/40 p-4 rounded-xl border border-white/50">
+      <div className="relative backdrop-blur-sm bg-white/40 p-3 rounded-xl border border-white/50">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-rose-600" />
-            <h3 className="font-semibold text-base text-gray-800">Timer</h3>
+            <h3 className="font-semibold text-sm text-gray-800">Timer</h3>
           </div>
         </div>
 
         {!isWindowOpen ? (
           <>
-
             {/* Timer Display */}
-            <div className="relative mb-3">
-              <div className="relative flex items-center justify-center py-8">
-                <div className="text-5xl font-bold tracking-tight text-gray-800">
+            <div className="relative mb-2">
+              <div className="relative flex items-center justify-center py-4">
+                <div className="text-4xl font-bold tracking-tight text-gray-800">
                   {formatTime(timerTime)}
                 </div>
               </div>
             </div>
 
             {/* Quick Time Adjustments */}
-            <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="flex items-center justify-center gap-2 mb-2">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full bg-white/60 hover:bg-white/80 shadow-sm"
+                className="h-7 w-7 rounded-full bg-white/60 hover:bg-white/80 shadow-sm"
                 onClick={() => adjustTime(-60)}
                 disabled={timerTime === 0}
               >
@@ -398,7 +397,7 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full bg-white/60 hover:bg-white/80 shadow-sm"
+                className="h-7 w-7 rounded-full bg-white/60 hover:bg-white/80 shadow-sm"
                 onClick={() => adjustTime(60)}
               >
                 <Plus className="w-3 h-3" />
@@ -406,14 +405,14 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
             </div>
 
             {/* Preset Buttons */}
-            <div className="grid grid-cols-3 gap-1.5 mb-4">
+            <div className="grid grid-cols-3 gap-1 mb-3">
               {presets.map((preset) => (
                 <Button
                   key={preset.seconds}
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "rounded-lg font-medium transition-all duration-200 text-xs h-8",
+                    "rounded-lg font-medium transition-all duration-200 text-xs h-7",
                     "bg-white/60 hover:bg-white/80 shadow-sm",
                     timerTime === preset.seconds && "bg-rose-100 text-rose-700 hover:bg-rose-100"
                   )}
@@ -429,7 +428,7 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
               onClick={startTimerInWindow}
               disabled={timerTime === 0}
               className={cn(
-                "w-full rounded-lg font-semibold shadow-lg transition-all duration-200 h-9",
+                "w-full rounded-lg font-semibold shadow-lg transition-all duration-200 h-8",
                 "bg-gradient-to-r from-green-500 to-emerald-500",
                 "hover:from-green-600 hover:to-emerald-600",
                 "text-white text-sm"
@@ -440,7 +439,7 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
             </Button>
 
             {/* Status Text */}
-            <div className="mt-2 text-center">
+            <div className="mt-1.5 text-center">
               <p className="text-xs font-medium text-gray-600">
                 {timerTime === 0 ? "Set a time to begin" : "Ready to start"}
               </p>
@@ -449,17 +448,17 @@ export function EnhancedTimer({ className }: EnhancedTimerProps) {
         ) : (
           <>
             {/* Timer is running in window */}
-            <div className="py-8 text-center">
-              <div className="mb-3">
-                <ExternalLink className="w-12 h-12 mx-auto text-green-500 mb-2" />
+            <div className="py-4 text-center">
+              <div className="mb-2">
+                <ExternalLink className="w-10 h-10 mx-auto text-green-500 mb-2" />
               </div>
-              <h4 className="text-lg font-bold text-gray-800 mb-1">
+              <h4 className="text-base font-bold text-gray-800 mb-1">
                 Timer Running
               </h4>
-              <p className="text-xs text-gray-600 mb-3">
+              <p className="text-xs text-gray-600 mb-2">
                 Running in separate window
               </p>
-              <div className="text-2xl font-bold text-green-600 mb-4">
+              <div className="text-xl font-bold text-green-600 mb-3">
                 {formatTime(timerTime)}
               </div>
               <Button
