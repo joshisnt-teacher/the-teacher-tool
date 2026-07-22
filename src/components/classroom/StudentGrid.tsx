@@ -465,7 +465,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
                     Manage
                   </Button>
                 </div>
-                <div className="space-y-2 max-h-28 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
                   {quickNoteOptions.map((qn, i) => (
                     <Button
                       key={i}
