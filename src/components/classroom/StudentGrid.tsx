@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Plus, Star, Toilet, ThumbsUp, AlertTriangle, Settings, Trash2 } from "lucide-react";
+import { User, Plus, Star, DoorOpen, ThumbsUp, AlertTriangle, Settings, Trash2 } from "lucide-react";
 import { useCreateStudentNote } from "@/hooks/useStudentNotes";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,6 +38,11 @@ function loadQuickNotes(): QuickNote[] {
   return DEFAULT_QUICK_NOTES;
 }
 
+function formatElapsed(startedAt: number): string {
+  const minutes = Math.floor((Date.now() - startedAt) / 60000);
+  return minutes < 1 ? "just now" : `${minutes} min`;
+}
+
 // --- Types ---
 interface Student {
   id: string;
@@ -45,6 +51,8 @@ interface Student {
   student_id: string;
   email?: string | null;
 }
+
+type ActionTab = "note" | "strike" | "commend" | "leave-room";
 
 interface StudentGridProps {
   students: Student[];
@@ -57,8 +65,11 @@ interface StudentGridProps {
 export function StudentGrid({ students, classSessionId, isLessonActive, selectedStudents, onSelectionChange }: StudentGridProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  // Note dialog
-  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  // Unified action dialog
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActionTab>("note");
+
+  // Note tab
   const [note, setNote] = useState("");
   const [rating, setRating] = useState(0);
   const [category, setCategory] = useState<"Academic" | "Pastoral" | "Other">("Academic");
@@ -70,20 +81,18 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
   const [newQuickNoteRating, setNewQuickNoteRating] = useState(0);
   const [newQuickNoteCategory, setNewQuickNoteCategory] = useState<"Academic" | "Pastoral" | "Other">("Academic");
 
-  // Strike system (per session, resets on page reload)
+  // Strike tab (per session, resets on page reload)
   const [studentStrikes, setStudentStrikes] = useState<Map<string, number>>(new Map());
-  const [isStrikeDialogOpen, setIsStrikeDialogOpen] = useState(false);
   const [strikeReason, setStrikeReason] = useState("");
 
-  // Commendation system
+  // Commend tab
   const [studentCommendations, setStudentCommendations] = useState<Map<string, number>>(new Map());
-  const [isCommendationDialogOpen, setIsCommendationDialogOpen] = useState(false);
   const [commendationReason, setCommendationReason] = useState("");
 
-  // Toilet tracking
-  const [studentsAtToilet, setStudentsAtToilet] = useState<Map<string, number>>(new Map());
+  // Leave Room tab
+  const [studentsAway, setStudentsAway] = useState<Map<string, number>>(new Map());
   const [shownWarnings, setShownWarnings] = useState<Map<string, Set<string>>>(new Map());
-  const [isToiletReturnDialogOpen, setIsToiletReturnDialogOpen] = useState(false);
+  const [, forceTick] = useState(0);
 
   const createNoteMutation = useCreateStudentNote();
   const { toast } = useToast();
@@ -94,7 +103,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
     localStorage.setItem(QUICK_NOTES_KEY, JSON.stringify(quickNoteOptions));
   }, [quickNoteOptions]);
 
-  // Toilet warning interval
+  // Leave-room warning interval — also forces a re-render so elapsed-time
+  // badges/labels stay roughly current without a separate ticking timer.
   useEffect(() => {
     if (!isLessonActive) {
       if (intervalRef.current) {
@@ -105,11 +115,12 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
     }
 
     intervalRef.current = setInterval(() => {
+      forceTick((t) => t + 1);
       const now = Date.now();
       const twoMinutes = 2 * 60 * 1000;
       const fiveMinutes = 5 * 60 * 1000;
 
-      studentsAtToilet.forEach((timestamp, studentId) => {
+      studentsAway.forEach((timestamp, studentId) => {
         const elapsed = now - timestamp;
         const student = students.find(s => s.id === studentId);
         if (!student) return;
@@ -118,8 +129,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
           const warnings = shownWarnings.get(studentId) || new Set();
           if (!warnings.has('2min')) {
             toast({
-              title: "Toilet Reminder",
-              description: `${student.first_name} ${student.last_name} has been at the toilet for 2 minutes.`,
+              title: "Left Room Reminder",
+              description: `${student.first_name} ${student.last_name} has been out of the room for 2 minutes.`,
               duration: 5000,
             });
             setShownWarnings(prev => {
@@ -136,8 +147,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
           const warnings = shownWarnings.get(studentId) || new Set();
           if (!warnings.has('5min')) {
             toast({
-              title: "Toilet Reminder",
-              description: `${student.first_name} ${student.last_name} has been at the toilet for 5 minutes.`,
+              title: "Left Room Reminder",
+              description: `${student.first_name} ${student.last_name} has been out of the room for 5 minutes.`,
               duration: 5000,
             });
             setShownWarnings(prev => {
@@ -158,59 +169,60 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
         intervalRef.current = null;
       }
     };
-  }, [isLessonActive, studentsAtToilet, shownWarnings, students, toast]);
+  }, [isLessonActive, studentsAway, shownWarnings, students, toast]);
 
   // --- Handlers ---
 
-  const handleStudentClick = (student: Student, event: React.MouseEvent) => {
-    if (
-      (event.target as HTMLElement).closest('[role="checkbox"]') ||
-      (event.target as HTMLElement).closest('[data-toilet-button]') ||
-      (event.target as HTMLElement).closest('[data-strike-button]') ||
-      (event.target as HTMLElement).closest('[data-commendation-button]')
-    ) return;
-
-    if (studentsAtToilet.has(student.id)) {
-      setSelectedStudent(student);
-      setIsToiletReturnDialogOpen(true);
-      return;
-    }
+  const handleTileClick = (student: Student, event: React.MouseEvent) => {
+    if ((event.target as HTMLElement).closest('[role="checkbox"]')) return;
 
     if (!isLessonActive || !classSessionId) {
-      toast({ title: "No Active Lesson", description: "Please start a lesson before adding notes.", variant: "destructive" });
+      toast({ title: "No Active Lesson", description: "Please start a lesson before logging anything for a student.", variant: "destructive" });
       return;
     }
 
     setSelectedStudent(student);
-    setIsNoteDialogOpen(true);
+    setActiveTab(studentsAway.has(student.id) ? "leave-room" : "note");
+    setNote("");
+    setRating(0);
+    setCategory("Academic");
+    setStrikeReason("");
+    setCommendationReason("");
+    setIsActionDialogOpen(true);
   };
 
-  const handleToiletButtonClick = (student: Student, event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    if (!isLessonActive) {
-      toast({ title: "No Active Lesson", description: "Please start a lesson before marking toilet status.", variant: "destructive" });
-      return;
+  const handleActionDialogClose = (open: boolean) => {
+    if (!open) {
+      setSelectedStudent(null);
+      setNote("");
+      setRating(0);
+      setCategory("Academic");
+      setStrikeReason("");
+      setCommendationReason("");
     }
-
-    if (studentsAtToilet.has(student.id)) {
-      setSelectedStudent(student);
-      setIsToiletReturnDialogOpen(true);
-    } else {
-      const newMap = new Map(studentsAtToilet);
-      newMap.set(student.id, Date.now());
-      setStudentsAtToilet(newMap);
-      setShownWarnings(prev => { const m = new Map(prev); m.delete(student.id); return m; });
-      toast({ title: "Student at Toilet", description: `${student.first_name} ${student.last_name} has been marked as at the toilet.` });
-    }
+    setIsActionDialogOpen(open);
   };
 
-  const handleConfirmToiletReturn = async () => {
+  const handleMarkLeftRoom = () => {
+    if (!selectedStudent) return;
+    const newMap = new Map(studentsAway);
+    newMap.set(selectedStudent.id, Date.now());
+    setStudentsAway(newMap);
+    setShownWarnings(prev => { const m = new Map(prev); m.delete(selectedStudent.id); return m; });
+    toast({ title: "Student Left Room", description: `${selectedStudent.first_name} ${selectedStudent.last_name} has been marked as out of the room.` });
+    setIsActionDialogOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleConfirmReturn = async () => {
     if (!selectedStudent || !classSessionId) return;
+    const startedAt = studentsAway.get(selectedStudent.id);
+    if (!startedAt) return;
 
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const noteText = `${selectedStudent.first_name} ${selectedStudent.last_name} went to the toilet at ${timeString}.`;
+    const duration = formatElapsed(startedAt);
+    const noteText = `${selectedStudent.first_name} ${selectedStudent.last_name} left the room at ${timeString}, returned after ${duration}.`;
 
     try {
       await createNoteMutation.mutateAsync({
@@ -218,32 +230,20 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
         class_session_id: classSessionId,
         note: noteText,
         rating: 0,
-        category: "Toilet",
+        category: "Left Room",
       });
 
-      const newMap = new Map(studentsAtToilet);
+      const newMap = new Map(studentsAway);
       newMap.delete(selectedStudent.id);
-      setStudentsAtToilet(newMap);
+      setStudentsAway(newMap);
       setShownWarnings(prev => { const m = new Map(prev); m.delete(selectedStudent.id); return m; });
 
       toast({ title: "Student Returned", description: `${selectedStudent.first_name} ${selectedStudent.last_name} has returned.` });
-      setIsToiletReturnDialogOpen(false);
+      setIsActionDialogOpen(false);
       setSelectedStudent(null);
     } catch {
-      toast({ title: "Error", description: "Failed to save toilet note.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save leave-room note.", variant: "destructive" });
     }
-  };
-
-  const handleStrikeButtonClick = (student: Student, event: React.MouseEvent) => {
-    event.stopPropagation();
-    const current = studentStrikes.get(student.id) || 0;
-    if (current >= 3) {
-      toast({ title: "Maximum Strikes", description: `${student.first_name} already has 3 strikes this lesson.` });
-      return;
-    }
-    setSelectedStudent(student);
-    setStrikeReason("");
-    setIsStrikeDialogOpen(true);
   };
 
   const handleConfirmStrike = async () => {
@@ -261,19 +261,12 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
 
       setStudentStrikes(prev => { const m = new Map(prev); m.set(selectedStudent.id, newCount); return m; });
       toast({ title: `Strike ${newCount}/3 Added`, description: `${selectedStudent.first_name} ${selectedStudent.last_name}` });
-      setIsStrikeDialogOpen(false);
+      setIsActionDialogOpen(false);
       setSelectedStudent(null);
       setStrikeReason("");
     } catch {
       toast({ title: "Error", description: "Failed to save strike.", variant: "destructive" });
     }
-  };
-
-  const handleCommendationButtonClick = (student: Student, event: React.MouseEvent) => {
-    event.stopPropagation();
-    setSelectedStudent(student);
-    setCommendationReason("");
-    setIsCommendationDialogOpen(true);
   };
 
   const handleConfirmCommendation = async () => {
@@ -290,7 +283,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
 
       setStudentCommendations(prev => { const m = new Map(prev); m.set(selectedStudent.id, (prev.get(selectedStudent.id) || 0) + 1); return m; });
       toast({ title: "Commendation Given", description: `${selectedStudent.first_name} ${selectedStudent.last_name} has been commended.` });
-      setIsCommendationDialogOpen(false);
+      setIsActionDialogOpen(false);
       setSelectedStudent(null);
       setCommendationReason("");
     } catch {
@@ -338,24 +331,14 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
       });
 
       toast({ title: "Note Saved", description: `Note saved for ${selectedStudent.first_name} ${selectedStudent.last_name}.` });
+      setIsActionDialogOpen(false);
+      setSelectedStudent(null);
       setNote("");
       setRating(0);
       setCategory("Academic");
-      setIsNoteDialogOpen(false);
-      setSelectedStudent(null);
     } catch {
       toast({ title: "Error", description: "Failed to save note.", variant: "destructive" });
     }
-  };
-
-  const handleNoteDialogClose = (open: boolean) => {
-    if (!open) {
-      setNote("");
-      setRating(0);
-      setCategory("Academic");
-      setSelectedStudent(null);
-    }
-    setIsNoteDialogOpen(open);
   };
 
   const getRatingColor = (r: number) => r > 0 ? "text-green-600" : r < 0 ? "text-red-600" : "text-gray-600";
@@ -380,19 +363,20 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {students.map((student) => {
-          const isAtToilet = studentsAtToilet.has(student.id);
+          const isAway = studentsAway.has(student.id);
           const strikes = studentStrikes.get(student.id) || 0;
           const commendations = studentCommendations.get(student.id) || 0;
           const atMaxStrikes = strikes >= 3;
+          const awaySince = studentsAway.get(student.id);
 
           return (
             <Card
               key={student.id}
               className={`cursor-pointer hover:shadow-md transition-all relative ${
-                isAtToilet ? "opacity-50 bg-gray-200" :
+                isAway ? "opacity-50 bg-gray-200" :
                 atMaxStrikes ? "border-red-400 bg-red-50" : ""
               }`}
-              onClick={(e) => handleStudentClick(student, e)}
+              onClick={(e) => handleTileClick(student, e)}
             >
               <CardContent className="p-4 text-center">
                 {/* Checkbox */}
@@ -404,75 +388,45 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
                   />
                 </div>
 
-                {/* Toilet button */}
-                {isLessonActive && (
-                  <div className="absolute top-2 right-2">
-                    <Button
-                      data-toilet-button
-                      variant={isAtToilet ? "default" : "outline"}
-                      size="sm"
-                      className={`h-7 w-7 p-0 ${isAtToilet ? "bg-rose-600 hover:bg-rose-700" : ""}`}
-                      onClick={(e) => handleToiletButtonClick(student, e)}
-                      title={isAtToilet ? "Mark as returned" : "Mark as at toilet"}
-                    >
-                      <Toilet className={`w-4 h-4 ${isAtToilet ? "text-white" : ""}`} />
-                    </Button>
+                {/* Strike / commendation badges */}
+                {isLessonActive && !isAway && (strikes > 0 || commendations > 0) && (
+                  <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                    {strikes > 0 && (
+                      <Badge variant="destructive" className="text-xs h-5 px-1.5 gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {strikes}/3
+                      </Badge>
+                    )}
+                    {commendations > 0 && (
+                      <Badge className="text-xs h-5 px-1.5 gap-1 bg-yellow-500 hover:bg-yellow-500">
+                        <ThumbsUp className="w-3 h-3" />
+                        {commendations}
+                      </Badge>
+                    )}
                   </div>
                 )}
 
                 {/* Avatar */}
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 mt-2 ${
-                  isAtToilet ? "bg-gray-300" : atMaxStrikes ? "bg-red-100" : "bg-gray-100"
+                  isAway ? "bg-gray-300" : atMaxStrikes ? "bg-red-100" : "bg-gray-100"
                 }`}>
-                  <User className={`w-6 h-6 ${isAtToilet ? "text-gray-500" : atMaxStrikes ? "text-red-600" : "text-gray-600"}`} />
+                  <User className={`w-6 h-6 ${isAway ? "text-gray-500" : atMaxStrikes ? "text-red-600" : "text-gray-600"}`} />
                 </div>
 
-                <h3 className={`font-medium text-sm truncate ${isAtToilet ? "text-gray-500" : ""}`}>
+                <h3 className={`font-medium text-sm truncate ${isAway ? "text-gray-500" : ""}`}>
                   {student.first_name} {student.last_name}
                 </h3>
-                <p className={`text-xs truncate ${isAtToilet ? "text-gray-400" : "text-gray-500"}`}>
+                <p className={`text-xs truncate ${isAway ? "text-gray-400" : "text-gray-500"}`}>
                   {student.student_id}
                 </p>
 
-                {/* Strike + Commendation buttons */}
-                {isLessonActive && !isAtToilet && (
-                  <div className="mt-2 flex items-center justify-center gap-1">
-                    <Button
-                      data-strike-button
-                      variant="ghost"
-                      size="sm"
-                      className={`h-7 px-2 gap-1 text-xs ${strikes > 0 ? "text-red-600 hover:text-red-700 hover:bg-red-50" : "text-gray-400 hover:text-red-500"}`}
-                      onClick={(e) => handleStrikeButtonClick(student, e)}
-                      disabled={atMaxStrikes}
-                      title={atMaxStrikes ? "Maximum 3 strikes reached" : "Add a strike"}
-                    >
-                      <AlertTriangle className="w-3 h-3" />
-                      <span>{strikes}/3</span>
-                    </Button>
-
-                    <Button
-                      data-commendation-button
-                      variant="ghost"
-                      size="sm"
-                      className={`h-7 px-2 gap-1 text-xs ${commendations > 0 ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50" : "text-gray-400 hover:text-yellow-500"}`}
-                      onClick={(e) => handleCommendationButtonClick(student, e)}
-                      title="Give commendation"
-                    >
-                      <ThumbsUp className="w-3 h-3" />
-                      {commendations > 0 && <span>{commendations}</span>}
-                    </Button>
-                  </div>
-                )}
-
-                {isAtToilet && (
+                {isAway && awaySince && (
                   <div className="mt-2">
-                    <Badge variant="outline" className="text-xs">At Toilet</Badge>
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <DoorOpen className="w-3 h-3" />
+                      Left Room · {formatElapsed(awaySince)}
+                    </Badge>
                   </div>
-                )}
-
-                {/* Plus icon when no indicators */}
-                {isLessonActive && !isAtToilet && strikes === 0 && commendations === 0 && (
-                  <></>
                 )}
               </CardContent>
             </Card>
@@ -480,156 +434,185 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
         })}
       </div>
 
-      {/* ── Note Dialog (bigger) ── */}
-      <Dialog open={isNoteDialogOpen} onOpenChange={handleNoteDialogClose}>
+      {/* ── Unified Action Dialog ── */}
+      <Dialog open={isActionDialogOpen} onOpenChange={handleActionDialogClose}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Add note for {selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
-            <DialogDescription>Add a note and rating for this student during the current lesson.</DialogDescription>
+            <DialogTitle>{selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
+            <DialogDescription>Log a note, strike, commendation, or leave-room event for this student.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Quick notes */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label>Quick Notes</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 gap-1 text-xs text-gray-500"
-                  onClick={() => setIsManagingQuickNotes(true)}
-                >
-                  <Settings className="w-3 h-3" />
-                  Manage
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {quickNoteOptions.map((qn, i) => (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ActionTab)}>
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="note">Note</TabsTrigger>
+              <TabsTrigger value="strike" disabled={(studentStrikes.get(selectedStudent?.id || "") || 0) >= 3}>Strike</TabsTrigger>
+              <TabsTrigger value="commend">Commend</TabsTrigger>
+              <TabsTrigger value="leave-room">Leave Room</TabsTrigger>
+            </TabsList>
+
+            {/* Note tab */}
+            <TabsContent value="note" className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Quick Notes</Label>
                   <Button
-                    key={i}
-                    type="button"
-                    variant="outline"
-                    className="w-full text-left justify-start h-auto py-2 px-3 text-sm whitespace-normal"
-                    onClick={() => handleQuickNoteClick(qn)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 gap-1 text-xs text-gray-500"
+                    onClick={() => setIsManagingQuickNotes(true)}
                   >
-                    {qn.text}
+                    <Settings className="w-3 h-3" />
+                    Manage
                   </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Note textarea */}
-            <div>
-              <Label htmlFor="note">Note</Label>
-              <Textarea
-                id="note"
-                placeholder="Enter your note about this student..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="mt-1"
-                rows={6}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Rating (-5 to +5)</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.max(-5, rating - 1))} disabled={rating <= -5}>-</Button>
-                  <div className="flex items-center gap-1 min-w-[100px] justify-center">{getRatingStars(rating)}</div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.min(5, rating + 1))} disabled={rating >= 5}>+</Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{rating > 0 ? "Positive" : rating < 0 ? "Negative" : "Neutral"}</p>
+                <div className="space-y-2">
+                  {quickNoteOptions.map((qn, i) => (
+                    <Button
+                      key={i}
+                      type="button"
+                      variant="outline"
+                      className="w-full text-left justify-start h-auto py-2 px-3 text-sm whitespace-normal"
+                      onClick={() => handleQuickNoteClick(qn)}
+                    >
+                      {qn.text}
+                    </Button>
+                  ))}
+                </div>
               </div>
 
               <div>
-                <Label>Category</Label>
-                <Select value={category} onValueChange={(v: "Academic" | "Pastoral" | "Other") => setCategory(v)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Academic">Academic</SelectItem>
-                    <SelectItem value="Pastoral">Pastoral</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="note">Note</Label>
+                <Textarea
+                  id="note"
+                  placeholder="Enter your note about this student..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="mt-1"
+                  rows={6}
+                />
               </div>
-            </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNoteDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveNote} disabled={!note.trim() || createNoteMutation.isPending}>
-              {createNoteMutation.isPending ? "Saving..." : "Save Note"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Rating (-5 to +5)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.max(-5, rating - 1))} disabled={rating <= -5}>-</Button>
+                    <div className="flex items-center gap-1 min-w-[100px] justify-center">{getRatingStars(rating)}</div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.min(5, rating + 1))} disabled={rating >= 5}>+</Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{rating > 0 ? "Positive" : rating < 0 ? "Negative" : "Neutral"}</p>
+                </div>
 
-      {/* ── Strike Dialog ── */}
-      <Dialog open={isStrikeDialogOpen} onOpenChange={(open) => { if (!open) { setIsStrikeDialogOpen(false); setSelectedStudent(null); setStrikeReason(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3 for {selectedStudent?.first_name} {selectedStudent?.last_name}
-            </DialogTitle>
-            <DialogDescription>Provide a reason for this strike.</DialogDescription>
-          </DialogHeader>
+                <div>
+                  <Label>Category</Label>
+                  <Select value={category} onValueChange={(v: "Academic" | "Pastoral" | "Other") => setCategory(v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Academic">Academic</SelectItem>
+                      <SelectItem value="Pastoral">Pastoral</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="strikeReason">Reason</Label>
-            <Textarea
-              id="strikeReason"
-              placeholder="e.g. Repeatedly talking while teacher was explaining..."
-              value={strikeReason}
-              onChange={(e) => setStrikeReason(e.target.value)}
-              className="mt-1"
-              rows={3}
-            />
-          </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveNote} disabled={!note.trim() || createNoteMutation.isPending}>
+                  {createNoteMutation.isPending ? "Saving..." : "Save Note"}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsStrikeDialogOpen(false); setSelectedStudent(null); setStrikeReason(""); }}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmStrike} disabled={!strikeReason.trim() || createNoteMutation.isPending}>
-              Add Strike
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            {/* Strike tab */}
+            <TabsContent value="strike" className="space-y-4">
+              <div className="flex items-center gap-2 text-red-600 font-medium">
+                <AlertTriangle className="w-5 h-5" />
+                Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3
+              </div>
+              <div>
+                <Label htmlFor="strikeReason">Reason</Label>
+                <Textarea
+                  id="strikeReason"
+                  placeholder="e.g. Repeatedly talking while teacher was explaining..."
+                  value={strikeReason}
+                  onChange={(e) => setStrikeReason(e.target.value)}
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleConfirmStrike} disabled={!strikeReason.trim() || createNoteMutation.isPending}>
+                  Add Strike
+                </Button>
+              </DialogFooter>
+            </TabsContent>
 
-      {/* ── Commendation Dialog ── */}
-      <Dialog open={isCommendationDialogOpen} onOpenChange={(open) => { if (!open) { setIsCommendationDialogOpen(false); setSelectedStudent(null); setCommendationReason(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-yellow-600">
-              <ThumbsUp className="w-5 h-5" />
-              Commend {selectedStudent?.first_name} {selectedStudent?.last_name}
-            </DialogTitle>
-            <DialogDescription>Provide a reason for this commendation.</DialogDescription>
-          </DialogHeader>
+            {/* Commend tab */}
+            <TabsContent value="commend" className="space-y-4">
+              <div className="flex items-center gap-2 text-yellow-600 font-medium">
+                <ThumbsUp className="w-5 h-5" />
+                Give a commendation
+              </div>
+              <div>
+                <Label htmlFor="commendationReason">Reason</Label>
+                <Textarea
+                  id="commendationReason"
+                  placeholder="e.g. Showed excellent initiative and helped a classmate..."
+                  value={commendationReason}
+                  onChange={(e) => setCommendationReason(e.target.value)}
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
+                <Button
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  onClick={handleConfirmCommendation}
+                  disabled={!commendationReason.trim() || createNoteMutation.isPending}
+                >
+                  Give Commendation
+                </Button>
+              </DialogFooter>
+            </TabsContent>
 
-          <div>
-            <Label htmlFor="commendationReason">Reason</Label>
-            <Textarea
-              id="commendationReason"
-              placeholder="e.g. Showed excellent initiative and helped a classmate..."
-              value={commendationReason}
-              onChange={(e) => setCommendationReason(e.target.value)}
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCommendationDialogOpen(false); setSelectedStudent(null); setCommendationReason(""); }}>Cancel</Button>
-            <Button
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-              onClick={handleConfirmCommendation}
-              disabled={!commendationReason.trim() || createNoteMutation.isPending}
-            >
-              Give Commendation
-            </Button>
-          </DialogFooter>
+            {/* Leave Room tab */}
+            <TabsContent value="leave-room" className="space-y-4">
+              {selectedStudent && studentsAway.has(selectedStudent.id) ? (
+                <>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <DoorOpen className="w-5 h-5" />
+                    Out of the room for {formatElapsed(studentsAway.get(selectedStudent.id)!)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Confirm that {selectedStudent.first_name} {selectedStudent.last_name} has returned.
+                  </p>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleConfirmReturn} disabled={createNoteMutation.isPending}>
+                      Confirm Return
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Mark {selectedStudent?.first_name} {selectedStudent?.last_name} as having left the room (toilet, office, locker, etc).
+                    You'll get a reminder toast at 2 and 5 minutes.
+                  </p>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleMarkLeftRoom}>
+                      <DoorOpen className="w-4 h-4 mr-1.5" />
+                      Mark as Left Room
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
@@ -641,7 +624,6 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             <DialogDescription>Add or remove quick note templates that appear in the note dialog.</DialogDescription>
           </DialogHeader>
 
-          {/* Existing quick notes */}
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {quickNoteOptions.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-4">No quick notes. Add one below.</p>
@@ -665,7 +647,6 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             ))}
           </div>
 
-          {/* Add new quick note */}
           <div className="border-t pt-4 space-y-3">
             <Label className="font-semibold text-sm">Add New Quick Note</Label>
             <Textarea
@@ -705,22 +686,6 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
 
           <DialogFooter>
             <Button onClick={() => setIsManagingQuickNotes(false)}>Done</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Toilet Return Dialog ── */}
-      <Dialog open={isToiletReturnDialogOpen} onOpenChange={setIsToiletReturnDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Student Returned from Toilet</DialogTitle>
-            <DialogDescription>
-              Confirm that {selectedStudent?.first_name} {selectedStudent?.last_name} has returned from the toilet.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsToiletReturnDialogOpen(false); setSelectedStudent(null); }}>Cancel</Button>
-            <Button onClick={handleConfirmToiletReturn}>Confirm Return</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
