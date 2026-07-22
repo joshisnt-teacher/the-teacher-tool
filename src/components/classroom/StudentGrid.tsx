@@ -436,7 +436,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
 
       {/* ── Unified Action Dialog ── */}
       <Dialog open={isActionDialogOpen} onOpenChange={handleActionDialogClose}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl top-[10vh] translate-y-0 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
             <DialogDescription>Log a note, strike, commendation, or leave-room event for this student.</DialogDescription>
@@ -451,74 +451,72 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsList>
 
             {/* Note tab */}
-            <TabsContent value="note" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
-              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <Label>Quick Notes</Label>
+            <TabsContent value="note" className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Quick Notes</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 gap-1 text-xs text-gray-500"
+                    onClick={() => setIsManagingQuickNotes(true)}
+                  >
+                    <Settings className="w-3 h-3" />
+                    Manage
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-28 overflow-y-auto pr-1">
+                  {quickNoteOptions.map((qn, i) => (
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 gap-1 text-xs text-gray-500"
-                      onClick={() => setIsManagingQuickNotes(true)}
+                      key={i}
+                      type="button"
+                      variant="outline"
+                      className="w-full text-left justify-start h-auto py-2 px-3 text-sm whitespace-normal"
+                      onClick={() => handleQuickNoteClick(qn)}
                     >
-                      <Settings className="w-3 h-3" />
-                      Manage
+                      {qn.text}
                     </Button>
-                  </div>
-                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
-                    {quickNoteOptions.map((qn, i) => (
-                      <Button
-                        key={i}
-                        type="button"
-                        variant="outline"
-                        className="w-full text-left justify-start h-auto py-2 px-3 text-sm whitespace-normal"
-                        onClick={() => handleQuickNoteClick(qn)}
-                      >
-                        {qn.text}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="note">Note</Label>
-                  <Textarea
-                    id="note"
-                    placeholder="Enter your note about this student..."
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="mt-1"
-                    rows={6}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Rating (-5 to +5)</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.max(-5, rating - 1))} disabled={rating <= -5}>-</Button>
-                      <div className="flex items-center gap-1 min-w-[100px] justify-center">{getRatingStars(rating)}</div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.min(5, rating + 1))} disabled={rating >= 5}>+</Button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{rating > 0 ? "Positive" : rating < 0 ? "Negative" : "Neutral"}</p>
-                  </div>
-
-                  <div>
-                    <Label>Category</Label>
-                    <Select value={category} onValueChange={(v: "Academic" | "Pastoral" | "Other") => setCategory(v)}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Academic">Academic</SelectItem>
-                        <SelectItem value="Pastoral">Pastoral</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  ))}
                 </div>
               </div>
 
-              <DialogFooter className="pt-4">
+              <div>
+                <Label htmlFor="note">Note</Label>
+                <Textarea
+                  id="note"
+                  placeholder="Enter your note about this student..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="mt-1"
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Rating (-5 to +5)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.max(-5, rating - 1))} disabled={rating <= -5}>-</Button>
+                    <div className="flex items-center gap-1 min-w-[100px] justify-center">{getRatingStars(rating)}</div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRating(Math.min(5, rating + 1))} disabled={rating >= 5}>+</Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{rating > 0 ? "Positive" : rating < 0 ? "Negative" : "Neutral"}</p>
+                </div>
+
+                <div>
+                  <Label>Category</Label>
+                  <Select value={category} onValueChange={(v: "Academic" | "Pastoral" | "Other") => setCategory(v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Academic">Academic</SelectItem>
+                      <SelectItem value="Pastoral">Pastoral</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveNote} disabled={!note.trim() || createNoteMutation.isPending}>
                   {createNoteMutation.isPending ? "Saving..." : "Save Note"}
@@ -527,25 +525,23 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Strike tab */}
-            <TabsContent value="strike" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
-              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                <div className="flex items-center gap-2 text-red-600 font-medium">
-                  <AlertTriangle className="w-5 h-5" />
-                  Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3
-                </div>
-                <div>
-                  <Label htmlFor="strikeReason">Reason</Label>
-                  <Textarea
-                    id="strikeReason"
-                    placeholder="e.g. Repeatedly talking while teacher was explaining..."
-                    value={strikeReason}
-                    onChange={(e) => setStrikeReason(e.target.value)}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
+            <TabsContent value="strike" className="space-y-4">
+              <div className="flex items-center gap-2 text-red-600 font-medium">
+                <AlertTriangle className="w-5 h-5" />
+                Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3
               </div>
-              <DialogFooter className="pt-4">
+              <div>
+                <Label htmlFor="strikeReason">Reason</Label>
+                <Textarea
+                  id="strikeReason"
+                  placeholder="e.g. Repeatedly talking while teacher was explaining..."
+                  value={strikeReason}
+                  onChange={(e) => setStrikeReason(e.target.value)}
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
                 <Button variant="destructive" onClick={handleConfirmStrike} disabled={!strikeReason.trim() || createNoteMutation.isPending}>
                   Add Strike
@@ -554,25 +550,23 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Commend tab */}
-            <TabsContent value="commend" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
-              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                <div className="flex items-center gap-2 text-yellow-600 font-medium">
-                  <ThumbsUp className="w-5 h-5" />
-                  Give a commendation
-                </div>
-                <div>
-                  <Label htmlFor="commendationReason">Reason</Label>
-                  <Textarea
-                    id="commendationReason"
-                    placeholder="e.g. Showed excellent initiative and helped a classmate..."
-                    value={commendationReason}
-                    onChange={(e) => setCommendationReason(e.target.value)}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
+            <TabsContent value="commend" className="space-y-4">
+              <div className="flex items-center gap-2 text-yellow-600 font-medium">
+                <ThumbsUp className="w-5 h-5" />
+                Give a commendation
               </div>
-              <DialogFooter className="pt-4">
+              <div>
+                <Label htmlFor="commendationReason">Reason</Label>
+                <Textarea
+                  id="commendationReason"
+                  placeholder="e.g. Showed excellent initiative and helped a classmate..."
+                  value={commendationReason}
+                  onChange={(e) => setCommendationReason(e.target.value)}
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
                 <Button
                   className="bg-yellow-500 hover:bg-yellow-600 text-white"
@@ -585,19 +579,17 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Leave Room tab */}
-            <TabsContent value="leave-room" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
+            <TabsContent value="leave-room" className="space-y-4">
               {selectedStudent && studentsAway.has(selectedStudent.id) ? (
                 <>
-                  <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <DoorOpen className="w-5 h-5" />
-                      Out of the room for {formatElapsed(studentsAway.get(selectedStudent.id)!)}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Confirm that {selectedStudent.first_name} {selectedStudent.last_name} has returned.
-                    </p>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <DoorOpen className="w-5 h-5" />
+                    Out of the room for {formatElapsed(studentsAway.get(selectedStudent.id)!)}
                   </div>
-                  <DialogFooter className="pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Confirm that {selectedStudent.first_name} {selectedStudent.last_name} has returned.
+                  </p>
+                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleConfirmReturn} disabled={createNoteMutation.isPending}>
                       Confirm Return
@@ -606,13 +598,11 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
                 </>
               ) : (
                 <>
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    <p className="text-sm text-muted-foreground">
-                      Mark {selectedStudent?.first_name} {selectedStudent?.last_name} as having left the room (toilet, office, locker, etc).
-                      You'll get a reminder toast at 2 and 5 minutes.
-                    </p>
-                  </div>
-                  <DialogFooter className="pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Mark {selectedStudent?.first_name} {selectedStudent?.last_name} as having left the room (toilet, office, locker, etc).
+                    You'll get a reminder toast at 2 and 5 minutes.
+                  </p>
+                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleMarkLeftRoom}>
                       <DoorOpen className="w-4 h-4 mr-1.5" />
