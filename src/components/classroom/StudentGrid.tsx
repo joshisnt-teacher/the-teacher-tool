@@ -436,7 +436,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
 
       {/* ── Unified Action Dialog ── */}
       <Dialog open={isActionDialogOpen} onOpenChange={handleActionDialogClose}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedStudent?.first_name} {selectedStudent?.last_name}</DialogTitle>
             <DialogDescription>Log a note, strike, commendation, or leave-room event for this student.</DialogDescription>
@@ -451,8 +451,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsList>
 
             {/* Note tab */}
-            <TabsContent value="note" className="flex flex-col min-h-[440px]">
-              <div className="flex-1 space-y-4">
+            <TabsContent value="note" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <Label>Quick Notes</Label>
@@ -527,8 +527,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Strike tab */}
-            <TabsContent value="strike" className="flex flex-col min-h-[440px]">
-              <div className="flex-1 space-y-4">
+            <TabsContent value="strike" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                 <div className="flex items-center gap-2 text-red-600 font-medium">
                   <AlertTriangle className="w-5 h-5" />
                   Strike {(studentStrikes.get(selectedStudent?.id || "") || 0) + 1}/3
@@ -554,8 +554,8 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Commend tab */}
-            <TabsContent value="commend" className="flex flex-col min-h-[440px]">
-              <div className="flex-1 space-y-4">
+            <TabsContent value="commend" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                 <div className="flex items-center gap-2 text-yellow-600 font-medium">
                   <ThumbsUp className="w-5 h-5" />
                   Give a commendation
@@ -585,10 +585,10 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
             </TabsContent>
 
             {/* Leave Room tab */}
-            <TabsContent value="leave-room" className="flex flex-col min-h-[440px]">
+            <TabsContent value="leave-room" className="flex flex-col h-[50vh] min-h-[280px] max-h-[400px]">
               {selectedStudent && studentsAway.has(selectedStudent.id) ? (
                 <>
-                  <div className="flex-1 space-y-4">
+                  <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                     <div className="flex items-center gap-2 text-gray-700">
                       <DoorOpen className="w-5 h-5" />
                       Out of the room for {formatElapsed(studentsAway.get(selectedStudent.id)!)}
@@ -606,7 +606,7 @@ export function StudentGrid({ students, classSessionId, isLessonActive, selected
                 </>
               ) : (
                 <>
-                  <div className="flex-1">
+                  <div className="flex-1 overflow-y-auto pr-1">
                     <p className="text-sm text-muted-foreground">
                       Mark {selectedStudent?.first_name} {selectedStudent?.last_name} as having left the room (toilet, office, locker, etc).
                       You'll get a reminder toast at 2 and 5 minutes.
