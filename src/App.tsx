@@ -39,6 +39,7 @@ import NotFound from "./pages/NotFound";
 import Spinner from "./pages/Spinner";
 import ExitTicketResults from "./pages/ExitTicketResults";
 import StudentLesson from "./pages/StudentLesson";
+import ClassroomPresenter from "./pages/ClassroomPresenter";
 import Lessons from "./pages/Lessons";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/class/:classId/session/:sessionId", title: "Session" },
   { path: "/class/:classId", title: "Class" },
   { path: "/classroom/:classId", title: "Classroom" },
+  { path: "/classroom/:classId/present/:sessionId", title: "Presenting" },
   { path: "/classroom", title: "Classroom" },
   { path: "/exit-tickets/create", title: "Create Exit Ticket" },
   { path: "/exit-tickets", title: "Exit Tickets" },
@@ -108,7 +110,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     currentPath.startsWith("/student/") ||
     currentPath.startsWith("/lesson/");
 
-  if (isAuthPage || isSpinnerPage || isStudentPage) {
+  // Presenter page pops out into its own window — full-bleed, no sidebar,
+  // but still behind ProtectedRoute below (unlike the public student pages above)
+  const isPresenterPage = currentPath.includes("/present/");
+
+  if (isAuthPage || isSpinnerPage || isStudentPage || isPresenterPage) {
     return <><PageTitle />{children}</>;
   }
 
@@ -197,16 +203,24 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/classroom/:classId" 
+              <Route
+                path="/classroom/:classId"
                 element={
                   <ProtectedRoute>
                     <Classroom />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/exit-tickets" 
+              <Route
+                path="/classroom/:classId/present/:sessionId"
+                element={
+                  <ProtectedRoute>
+                    <ClassroomPresenter />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exit-tickets"
                 element={
                   <ProtectedRoute>
                     <ExitTickets />
