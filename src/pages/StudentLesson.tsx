@@ -8,6 +8,7 @@ import { useStudentSession } from "@/hooks/useStudentSession";
 import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
 import { useClassSessionRealtime } from "@/hooks/useClassSessionRealtime";
 import { SlideViewer } from "@/components/lesson/SlideViewer";
+import { AtlasDeckEmbed } from "@/components/lesson/AtlasDeckEmbed";
 
 const StudentLesson = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -116,7 +117,11 @@ const StudentLesson = () => {
 
       <div className="flex-1 min-h-0 p-4 overflow-y-auto">
         {currentSlide ? (
-          <SlideViewer slide={currentSlide} />
+          content?.atlasLessonId ? (
+            <AtlasDeckEmbed atlasLessonId={content.atlasLessonId} slideIndex={viewIndex ?? 0} />
+          ) : (
+            <SlideViewer slide={currentSlide} />
+          )
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             Waiting for the teacher to start…

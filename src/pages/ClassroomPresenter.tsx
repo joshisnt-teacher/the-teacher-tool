@@ -8,6 +8,7 @@ import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
 import { useUpdateCurrentSlide } from "@/hooks/useClassSessions";
 import { useClassSessionRealtime } from "@/hooks/useClassSessionRealtime";
 import { SlideViewer } from "@/components/lesson/SlideViewer";
+import { AtlasDeckEmbed } from "@/components/lesson/AtlasDeckEmbed";
 
 export default function ClassroomPresenter() {
   const { sessionId } = useParams<{ classId: string; sessionId: string }>();
@@ -110,7 +111,11 @@ export default function ClassroomPresenter() {
       <div className="flex-1 min-h-0 p-8 flex items-center justify-center overflow-y-auto">
         {currentSlide ? (
           <div className="w-full max-w-6xl">
-            <SlideViewer slide={currentSlide} />
+            {content?.atlasLessonId ? (
+              <AtlasDeckEmbed atlasLessonId={content.atlasLessonId} slideIndex={slideIndex} />
+            ) : (
+              <SlideViewer slide={currentSlide} />
+            )}
           </div>
         ) : (
           <p className="text-muted-foreground">No slides in this lesson.</p>

@@ -9,6 +9,7 @@ export interface LessonTemplateContent {
   successCriteria: string[];
   slides: LessonSlide[];
   resources: LessonResource[];
+  atlasLessonId: string | null;
 }
 
 export function useLessonTemplateContent(lessonTemplateId: string | null | undefined) {
@@ -19,7 +20,7 @@ export function useLessonTemplateContent(lessonTemplateId: string | null | undef
         // `resources` isn't in the generated types yet (added via raw migration
         // in Task 1) — cast this one query rather than regenerating types.
         (supabase.from("lesson_templates") as any)
-          .select("title, description, learning_intentions, success_criteria, resources")
+          .select("title, description, learning_intentions, success_criteria, resources, atlas_lesson_id")
           .eq("id", lessonTemplateId)
           .maybeSingle(),
         supabase
@@ -51,6 +52,7 @@ export function useLessonTemplateContent(lessonTemplateId: string | null | undef
         successCriteria: ((templateResult.data?.success_criteria as unknown) as string[]) ?? [],
         slides,
         resources,
+        atlasLessonId: templateResult.data?.atlas_lesson_id ?? null,
       };
     },
     enabled: !!lessonTemplateId,

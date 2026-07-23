@@ -3,6 +3,7 @@ import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Monitor } 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SlideViewer } from "@/components/lesson/SlideViewer";
+import { AtlasDeckEmbed } from "@/components/lesson/AtlasDeckEmbed";
 import { LessonResourcesList } from "@/components/lesson/LessonResourcesList";
 import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
 import { useUpdateCurrentSlide } from "@/hooks/useClassSessions";
@@ -101,7 +102,13 @@ export function LessonPresenter({ session }: Props) {
                 ))}
               </div>
 
-              {currentSlide && <SlideViewer slide={currentSlide} />}
+              {currentSlide && (
+                data?.atlasLessonId ? (
+                  <AtlasDeckEmbed atlasLessonId={data.atlasLessonId} slideIndex={currentIndex} />
+                ) : (
+                  <SlideViewer slide={currentSlide} />
+                )
+              )}
 
               <div className="flex items-center gap-2">
                 <Button
