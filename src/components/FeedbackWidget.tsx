@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquarePlus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -67,10 +67,10 @@ export function FeedbackWidget({ app }: FeedbackWidgetProps) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
         aria-label="Send feedback"
       >
-        <MessageSquare className="h-5 w-5" />
+        <MessageSquarePlus className="h-5 w-5" />
       </button>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
