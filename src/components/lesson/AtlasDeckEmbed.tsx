@@ -9,13 +9,40 @@ interface AtlasDeckEmbedProps {
 }
 
 export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProps) {
+  const [retryCount, setRetryCount] = useState(0);
+  return (
+    <AtlasDeckFrame
+      key={`${atlasLessonId}-${retryCount}`}
+      atlasLessonId={atlasLessonId}
+      initialSlideIndex={slideIndex}
+      slideIndex={slideIndex}
+      onRetry={() => setRetryCount((c) => c + 1)}
+    />
+  );
+}
+
+// Fully remounts (fresh state, fresh iframe) only when its `key` changes --
+// a genuinely different lesson, or an explicit retry. Within one mount's
+// lifetime, slide navigation goes entirely through postMessage; the iframe's
+// `src` is never touched again after the initial load, so Next/Prev never
+// causes a reload.
+function AtlasDeckFrame({
+  atlasLessonId,
+  initialSlideIndex,
+  slideIndex,
+  onRetry,
+}: {
+  atlasLessonId: string;
+  initialSlideIndex: number;
+  slideIndex: number;
+  onRetry: () => void;
+}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [reloadKey, setReloadKey] = useState(0);
-  const lastSentIndexRef = useRef(slideIndex);
+  const bakedSlideIndexRef = useRef(initialSlideIndex);
+  const lastSentIndexRef = useRef(initialSlideIndex);
 
   useEffect(() => {
-    setStatus("loading");
     const timeout = setTimeout(() => {
       setStatus((s) => (s === "loading" ? "error" : s));
     }, READY_TIMEOUT_MS);
@@ -33,7 +60,7 @@ export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProp
       clearTimeout(timeout);
       window.removeEventListener("message", handler);
     };
-  }, [atlasLessonId, reloadKey]);
+  }, []);
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -49,14 +76,7 @@ export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProp
     return (
       <div className="aspect-video w-full flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/30 text-center text-muted-foreground">
         <p className="text-sm">Couldn't load slides — check your connection.</p>
-        <button
-          type="button"
-          className="text-sm underline"
-          onClick={() => {
-            lastSentIndexRef.current = slideIndex;
-            setReloadKey((k) => k + 1);
-          }}
-        >
+        <button type="button" className="text-sm underline" onClick={onRetry}>
           Retry
         </button>
       </div>
@@ -65,9 +85,8 @@ export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProp
 
   return (
     <iframe
-      key={reloadKey}
       ref={iframeRef}
-      src={`${ATLAS_ORIGIN}/embed/lesson/${atlasLessonId}?slide=${slideIndex}`}
+      src={`${ATLAS_ORIGIN}/embed/lesson/${atlasLessonId}?slide=${bakedSlideIndexRef.current}`}
       title="Lesson slide"
       className="aspect-video w-full rounded-xl border-0"
     />
