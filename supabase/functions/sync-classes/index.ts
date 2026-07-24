@@ -285,8 +285,9 @@ async function syncStudents(
         .filter((id): id is string => !!id)
 
       for (const classId of classIdsForStudent) {
-        await local.from('student_classes')
-          .upsert({ student_id: localStudentId, class_id: classId }, { onConflict: 'student_id,class_id' })
+        const { error: enrolErr } = await local.from('enrolments')
+          .upsert({ student_id: localStudentId, class_id: classId }, { onConflict: 'class_id,student_id' })
+        if (enrolErr) console.error('enrolment upsert failed', localStudentId, classId, enrolErr)
       }
     }
   }

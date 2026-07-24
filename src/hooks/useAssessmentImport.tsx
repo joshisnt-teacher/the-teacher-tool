@@ -15,6 +15,16 @@ export interface ImportAssessmentParams {
 const normalizeForMatch = (value: string | undefined | null) =>
   (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+// School-provided student IDs are inconsistently formatted between sources
+// (e.g. "060" from one roster export vs "60" from another CSV) — comparing
+// them raw causes real matches to be missed, which silently creates duplicate
+// student records instead of matching the existing one.
+const normalizeStudentId = (value: string | undefined | null) => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return '';
+  return /^\d+$/.test(trimmed) ? trimmed.replace(/^0+(?=\d)/, '') : trimmed.toLowerCase();
+};
+
 const buildNameCandidates = (displayName: string) => {
   const candidates = new Set<string>();
   const trimmed = displayName.trim();
@@ -82,25 +92,23 @@ export const useAssessmentImport = () => {
         if (!currentUser) throw new Error('Not authenticated');
         const teacherId = currentUser.id;
 
-        const incomingStudentIds = assessmentData.students
-          .filter(s => s.studentId)
-          .map(s => s.studentId);
-
+        // Fetched by teacher only (not filtered by incoming ID) because the match below is
+        // normalized client-side — a DB-side .in() would require exact raw string equality
+        // and miss students whose stored ID differs only in formatting (e.g. leading zeros).
         const { data: existingStudents, error: fetchExistingError } = await supabase
           .from('students')
           .select('*')
-          .eq('teacher_id', teacherId)
-          .in('student_id', incomingStudentIds.length > 0 ? incomingStudentIds : ['__none__']);
+          .eq('teacher_id', teacherId);
         if (fetchExistingError) throw fetchExistingError;
 
         const existingStudentMap = new Map<string, (typeof existingStudents)[0]>(
-          existingStudents?.map(s => [s.student_id, s]) ?? []
+          existingStudents?.map(s => [normalizeStudentId(s.student_id), s]) ?? []
         );
 
         let newStudentsCount = 0;
         if (assessmentData.sourceFormat === 'standard') {
           const studentsToCreate = assessmentData.students
-            .filter(s => s.studentId && !existingStudentMap.has(s.studentId))
+            .filter(s => s.studentId && !existingStudentMap.has(normalizeStudentId(s.studentId)))
             .map(s => ({
               student_id: s.studentId,
               first_name: s.firstName,
@@ -114,7 +122,7 @@ export const useAssessmentImport = () => {
               .insert(studentsToCreate)
               .select('*');
             if (createStudentsError) throw createStudentsError;
-            newStudents?.forEach(s => existingStudentMap.set(s.student_id, s));
+            newStudents?.forEach(s => existingStudentMap.set(normalizeStudentId(s.student_id), s));
             newStudentsCount = newStudents?.length ?? 0;
           }
         }
@@ -143,7 +151,7 @@ export const useAssessmentImport = () => {
 
         allStudents?.forEach(student => {
           if (student.student_id) {
-            studentIdMap.set(student.student_id, student.id);
+            studentIdMap.set(normalizeStudentId(student.student_id), student.id);
           }
 
           const fullName = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim();
@@ -167,7 +175,7 @@ export const useAssessmentImport = () => {
           let studentDbId: string | undefined = studentData.resolvedStudentId;
 
           if (!studentDbId && (assessmentData.sourceFormat === 'standard' || assessmentData.sourceFormat === 'single_mark') && studentData.studentId) {
-            studentDbId = studentIdMap.get(studentData.studentId);
+            studentDbId = studentIdMap.get(normalizeStudentId(studentData.studentId));
           } else if (assessmentData.sourceFormat === 'kahoot') {
             const candidates = buildNameCandidates(studentData.displayName);
             if (studentData.firstName || studentData.lastName) {
