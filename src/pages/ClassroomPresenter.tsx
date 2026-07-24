@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useLessonTemplateContent } from "@/hooks/useLessonTemplateContent";
@@ -33,12 +33,34 @@ export default function ClassroomPresenter() {
   const slides = content?.slides ?? [];
 
   const [slideIndex, setSlideIndex] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (session && slideIndex === null) {
       setSlideIndex(session.current_slide_index ?? 0);
     }
   }, [session, slideIndex]);
+
+  // Best-effort: some browsers allow this to inherit transient activation
+  // from the "Launch Presentation" click that opened this window. If it's
+  // blocked, the header button below is the reliable fallback.
+  useEffect(() => {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  };
 
   const realtime = useClassSessionRealtime(sessionId ?? "");
   useEffect(() => {
@@ -67,7 +89,12 @@ export default function ClassroomPresenter() {
         e.preventDefault();
         goToSlide(slideIndex - 1);
       } else if (e.key === "Escape") {
-        window.close();
+        // If in fullscreen, let the browser's native Escape handling exit
+        // that first (matches typical presenter-mode behavior) -- only
+        // close the window on a second Escape once fullscreen is already off.
+        if (!document.fullscreenElement) {
+          window.close();
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -97,15 +124,26 @@ export default function ClassroomPresenter() {
     <div className="h-screen flex flex-col bg-background">
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <span className="text-sm text-muted-foreground truncate">{content?.title}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => window.close()}
-          title="Close presentation"
-        >
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => window.close()}
+            title="Close presentation"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 p-8 flex items-center justify-center overflow-y-auto">
