@@ -3,7 +3,17 @@ import { ContentBlockRenderer } from "./ContentBlockRenderer";
 
 // 16:9 canvas that scales via container queries — same slide, same markup,
 // looks right whether it's a small dashboard preview or a full popup window.
-export function SlideViewer({ slide }: { slide: LessonSlide }) {
+// `sizingClassName` controls how the frame fills its parent: defaults to
+// "aspect-video w-full" (derive height from full width, for width-constrained
+// contexts like a dashboard card). Pass "w-full h-full" instead when the
+// parent already establishes the 16:9 box itself (e.g. the presenter window).
+export function SlideViewer({
+  slide,
+  sizingClassName = "aspect-video w-full",
+}: {
+  slide: LessonSlide;
+  sizingClassName?: string;
+}) {
   const imageBlock = slide.content_blocks.find((b) => b.type === "image");
   const textBlocks = slide.content_blocks.filter((b) => b.type !== "image");
 
@@ -12,7 +22,7 @@ export function SlideViewer({ slide }: { slide: LessonSlide }) {
   if (slide.layout === "image_full" && slide.background_image_url) {
     return (
       <div
-        className="@container relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-cover bg-center"
+        className={`@container relative ${sizingClassName} overflow-hidden rounded-xl border border-border bg-cover bg-center`}
         style={{ backgroundImage: `url(${slide.background_image_url})` }}
       >
         <div className="absolute inset-0 bg-black/40" />
@@ -33,7 +43,7 @@ export function SlideViewer({ slide }: { slide: LessonSlide }) {
   if (slide.layout === "title_only") {
     return (
       <div
-        className="@container flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-[5cqw] text-center"
+        className={`@container flex ${sizingClassName} flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-[5cqw] text-center`}
         style={frameStyle}
       >
         {slide.title && (
@@ -51,7 +61,7 @@ export function SlideViewer({ slide }: { slide: LessonSlide }) {
   if (slide.layout === "split" && imageBlock) {
     return (
       <div
-        className="@container grid aspect-video w-full grid-cols-2 gap-[3cqw] overflow-hidden rounded-xl border border-border bg-card p-[4cqw]"
+        className={`@container grid ${sizingClassName} grid-cols-2 gap-[3cqw] overflow-hidden rounded-xl border border-border bg-card p-[4cqw]`}
         style={frameStyle}
       >
         <div className="flex flex-col justify-center gap-3 overflow-hidden">
@@ -73,7 +83,7 @@ export function SlideViewer({ slide }: { slide: LessonSlide }) {
 
   return (
     <div
-      className="@container flex aspect-video w-full flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-[4cqw]"
+      className={`@container flex ${sizingClassName} flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-[4cqw]`}
       style={frameStyle}
     >
       {slide.title && (

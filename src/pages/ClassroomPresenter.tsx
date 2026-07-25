@@ -146,13 +146,17 @@ export default function ClassroomPresenter() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 p-8 flex items-center justify-center overflow-y-auto">
+      <div className="flex-1 min-h-0 p-8 flex items-center justify-center overflow-hidden">
         {currentSlide ? (
-          <div className="w-full max-w-6xl">
+          <div className="h-full max-w-full aspect-video">
             {content?.atlasLessonId ? (
-              <AtlasDeckEmbed atlasLessonId={content.atlasLessonId} slideIndex={slideIndex} />
+              <AtlasDeckEmbed
+                atlasLessonId={content.atlasLessonId}
+                slideIndex={slideIndex}
+                sizingClassName="w-full h-full"
+              />
             ) : (
-              <SlideViewer slide={currentSlide} />
+              <SlideViewer slide={currentSlide} sizingClassName="w-full h-full" />
             )}
           </div>
         ) : (

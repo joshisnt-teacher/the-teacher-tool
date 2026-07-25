@@ -6,9 +6,19 @@ const READY_TIMEOUT_MS = 6000;
 interface AtlasDeckEmbedProps {
   atlasLessonId: string;
   slideIndex: number;
+  // Defaults to "aspect-video w-full" (derive height from full width, for
+  // width-constrained contexts like a dashboard card). Pass "w-full h-full"
+  // when the parent already establishes the 16:9 box itself (e.g. the
+  // presenter window), so the frame fills whichever dimension binds without
+  // stretching or cropping.
+  sizingClassName?: string;
 }
 
-export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProps) {
+export function AtlasDeckEmbed({
+  atlasLessonId,
+  slideIndex,
+  sizingClassName = "aspect-video w-full",
+}: AtlasDeckEmbedProps) {
   const [retryCount, setRetryCount] = useState(0);
   return (
     <AtlasDeckFrame
@@ -16,6 +26,7 @@ export function AtlasDeckEmbed({ atlasLessonId, slideIndex }: AtlasDeckEmbedProp
       atlasLessonId={atlasLessonId}
       initialSlideIndex={slideIndex}
       slideIndex={slideIndex}
+      sizingClassName={sizingClassName}
       onRetry={() => setRetryCount((c) => c + 1)}
     />
   );
@@ -30,11 +41,13 @@ function AtlasDeckFrame({
   atlasLessonId,
   initialSlideIndex,
   slideIndex,
+  sizingClassName,
   onRetry,
 }: {
   atlasLessonId: string;
   initialSlideIndex: number;
   slideIndex: number;
+  sizingClassName: string;
   onRetry: () => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -74,7 +87,9 @@ function AtlasDeckFrame({
 
   if (status === "error") {
     return (
-      <div className="aspect-video w-full flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/30 text-center text-muted-foreground">
+      <div
+        className={`${sizingClassName} flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/30 text-center text-muted-foreground`}
+      >
         <p className="text-sm">Couldn't load slides — check your connection.</p>
         <button type="button" className="text-sm underline" onClick={onRetry}>
           Retry
@@ -88,7 +103,7 @@ function AtlasDeckFrame({
       ref={iframeRef}
       src={`${ATLAS_ORIGIN}/embed/lesson/${atlasLessonId}?slide=${bakedSlideIndexRef.current}`}
       title="Lesson slide"
-      className="aspect-video w-full rounded-xl border-0"
+      className={`${sizingClassName} rounded-xl border-0`}
     />
   );
 }
