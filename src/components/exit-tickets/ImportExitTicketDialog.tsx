@@ -146,11 +146,11 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
       });
       toast({
         title: result.deployed
-          ? `Exit ticket imported and deployed to ${resolvedClassName ?? 'your class'}`
-          : 'Exit ticket imported',
+          ? `Check-in imported and deployed to ${resolvedClassName ?? 'your class'}`
+          : 'Check-in imported',
         description: result.deployed
           ? 'It\'s in your class as a draft. Activate it from the Classroom page.'
-          : 'Find it in your Exit Ticket library.',
+          : 'Find it in your Check-in library.',
       });
       onImported();
       handleClose();
@@ -171,7 +171,7 @@ export const ImportExitTicketDialog: React.FC<ImportExitTicketDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Import from Atlas</DialogTitle>
           <DialogDescription>
-            Export an exit ticket from Atlas, then upload the .json file here.
+            Export a check-in from Atlas, then upload the .json file here.
           </DialogDescription>
         </DialogHeader>
 

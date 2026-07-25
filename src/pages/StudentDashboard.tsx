@@ -206,7 +206,7 @@ const StudentDashboard = () => {
             <section>
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <ClipboardList className="w-5 h-5 text-primary" />
-                Exit Tickets
+                Check-ins
               </h2>
               {activeTickets.length > 0 ? (
                 <div className="space-y-3">

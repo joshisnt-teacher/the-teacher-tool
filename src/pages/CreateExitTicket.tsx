@@ -114,7 +114,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
           .eq('id', editTemplateId)
           .maybeSingle();
         if (tErr) throw tErr;
-        if (!template) { toast({ title: 'Exit ticket not found', variant: 'destructive' }); return; }
+        if (!template) { toast({ title: 'Check-in not found', variant: 'destructive' }); return; }
 
         setTitle(template.name || '');
         setDescription(template.description || '');
@@ -151,7 +151,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
         }
         setQuestions(loadedQuestions.length > 0 ? loadedQuestions : [defaultQuestion()]);
       } catch (e: unknown) {
-        toast({ title: 'Failed to load exit ticket', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+        toast({ title: 'Failed to load check-in', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
       } finally {
         setIsLoading(false);
       }
@@ -261,7 +261,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
         }
       }
 
-      toast({ title: 'Exit ticket saved' });
+      toast({ title: 'Check-in saved' });
       if (onClose) onClose(); else navigate('/exit-tickets');
     } catch (e: unknown) {
       console.error('Exit ticket save error:', e);
@@ -280,7 +280,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
     try {
       const { error } = await supabase.from('exit_ticket_templates').delete().eq('id', editTemplateId);
       if (error) throw error;
-      toast({ title: 'Exit ticket deleted' });
+      toast({ title: 'Check-in deleted' });
       if (onClose) onClose(); else navigate('/exit-tickets');
     } catch (e: unknown) {
       console.error('Exit ticket delete error:', e);
@@ -321,7 +321,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
         return base;
       });
       setQuestions(drafts.length > 0 ? drafts : [defaultQuestion()]);
-      toast({ title: 'Exit ticket generated', description: `${drafts.length} question${drafts.length === 1 ? '' : 's'} created.` });
+      toast({ title: 'Check-in generated', description: `${drafts.length} question${drafts.length === 1 ? '' : 's'} created.` });
       setShowAIPanel(false);
     } catch { /* handled by mutation onError */ }
   };
@@ -332,7 +332,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
     <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Exit Ticket</DialogTitle>
+          <DialogTitle>Delete Check-in</DialogTitle>
           <DialogDescription>
             This deletes the template. Any deployed runs will remain but lose their template link.
           </DialogDescription>
@@ -351,8 +351,8 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Exit Ticket Details</CardTitle>
-          <CardDescription>Set the title and description. After saving, import this template into any class from the Exit Tickets library.</CardDescription>
+          <CardTitle>Check-in Details</CardTitle>
+          <CardDescription>Set the title and description. After saving, import this template into any class from the Check-ins library.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -397,7 +397,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  This helps the AI generate relevant questions. It does <strong>not</strong> assign this exit ticket to any class.
+                  This helps the AI generate relevant questions. It does <strong>not</strong> assign this check-in to any class.
                 </p>
               </div>
               <div className="space-y-2">
@@ -613,7 +613,7 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
       <div className="relative">
         <div className="sticky top-0 z-10 bg-card border-b border-border/50 px-4 py-3 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">{editTemplateId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</h2>
+            <h2 className="text-lg font-bold">{editTemplateId ? 'Edit Check-in' : 'Create Check-in'}</h2>
             <p className="text-xs text-muted-foreground">Build questions for your students to answer</p>
           </div>
           <div className="flex items-center gap-2">
@@ -638,10 +638,10 @@ const CreateExitTicket = ({ embedded, onClose, templateId: templateIdProp }: Cre
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={() => navigate('/exit-tickets')} disabled={isBusy}>
-              <ArrowLeft className="w-4 h-4 mr-2" />Back to Exit Tickets
+              <ArrowLeft className="w-4 h-4 mr-2" />Back to Check-ins
             </Button>
             <div>
-              <h1 className="text-xl font-bold">{editTemplateId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</h1>
+              <h1 className="text-xl font-bold">{editTemplateId ? 'Edit Check-in' : 'Create Check-in'}</h1>
               <p className="text-sm text-muted-foreground">Build questions for your students to answer</p>
             </div>
           </div>

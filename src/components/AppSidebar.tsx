@@ -36,7 +36,7 @@ import { AiUsageIndicator } from "@/components/AiUsageIndicator";
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Classroom", url: "/classroom", icon: Monitor },
-  { title: "Exit Tickets", url: "/exit-tickets", icon: Ticket },
+  { title: "Check-ins", url: "/exit-tickets", icon: Ticket },
   { title: "Lessons", url: "/lessons", icon: BookOpen },
   { title: "Resources", url: "/resources", icon: Library },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -92,7 +92,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     className={getNavClassName(item.url)}
-                    data-tutorial={item.title === 'Exit Tickets' ? 'nav-exit-tickets' : undefined}
+                    data-tutorial={item.title === 'Check-ins' ? 'nav-exit-tickets' : undefined}
                   >
                     <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />

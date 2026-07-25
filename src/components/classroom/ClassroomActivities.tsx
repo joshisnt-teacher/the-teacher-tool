@@ -124,17 +124,17 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
 
     const ticket = allExitTickets.find((t) => t.id === activateTicketId);
     if (!ticket) {
-      toast({ title: "Exit ticket not found", variant: "destructive" });
+      toast({ title: "Check-in not found", variant: "destructive" });
       return;
     }
     if (ticket.class_id !== classId) {
-      toast({ title: "Exit ticket does not belong to this class", variant: "destructive" });
+      toast({ title: "Check-in does not belong to this class", variant: "destructive" });
       return;
     }
 
     // If already linked to current session and active, nothing to do
     if (ticket.class_session_id === currentSession?.id && ticket.status === "active") {
-      toast({ title: "Already active", description: "This exit ticket is already active for this lesson." });
+      toast({ title: "Already active", description: "This check-in is already active for this lesson." });
       return;
     }
 
@@ -169,7 +169,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
       queryClient.invalidateQueries({ queryKey: ["exit-tickets"] });
       toast({
-        title: "Exit ticket activated",
+        title: "Check-in activated",
         description: "Students can now access it via the class code.",
       });
     } catch (err: unknown) {
@@ -222,7 +222,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       queryClient.invalidateQueries({ queryKey: ["results"] });
       queryClient.invalidateQueries({ queryKey: ["question-results"] });
       toast({
-        title: "Exit ticket rerun",
+        title: "Check-in rerun",
         description: "Previous submissions have been cleared and the ticket is now active.",
       });
     } catch (err: unknown) {
@@ -275,7 +275,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
         templateId: ticket.exit_ticket_template_id,
       });
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
-      toast({ title: "Results cleared", description: "The exit ticket has been reset to draft." });
+      toast({ title: "Results cleared", description: "The check-in has been reset to draft." });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       toast({ title: "Error", description: msg, variant: "destructive" });
@@ -341,7 +341,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       if (!isLessonActive) {
         toast({
           title: "Class not running",
-          description: "Start a lesson before you can activate an exit ticket.",
+          description: "Start a lesson before you can activate a check-in.",
           variant: "destructive",
         });
         return;
@@ -375,7 +375,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
       queryClient.invalidateQueries({ queryKey: ["exit-tickets-by-class", classId] });
       queryClient.invalidateQueries({ queryKey: ["exit-tickets"] });
       toast({
-        title: "Exit ticket deactivated",
+        title: "Check-in deactivated",
         description: "Students can no longer access it.",
       });
     } catch (err: unknown) {
@@ -405,9 +405,9 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="w-5 h-5" />
-            Exit Tickets
+            Check-ins
           </CardTitle>
-          <CardDescription>Loading exit tickets...</CardDescription>
+          <CardDescription>Loading check-ins...</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -421,12 +421,12 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Ticket className="w-5 h-5" />
-                Exit Tickets
+                Check-ins
               </CardTitle>
               <CardDescription>
                 {exitTickets.length > 0
-                  ? `${exitTickets.length} exit ticket${exitTickets.length === 1 ? "" : "s"} for this class`
-                  : "No exit tickets for this class yet"}
+                  ? `${exitTickets.length} check-in${exitTickets.length === 1 ? "" : "s"} for this class`
+                  : "No check-ins for this class yet"}
               </CardDescription>
             </div>
             <Button
@@ -443,23 +443,23 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           {exitTickets.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-              <p className="font-medium mb-1">No exit tickets in this class yet</p>
+              <p className="font-medium mb-1">No check-ins in this class yet</p>
               <p className="text-muted-foreground mb-4 text-sm">
-                Create an exit ticket in your library, then deploy it here.
+                Create a check-in in your library, then deploy it here.
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button
                   size="sm"
                   onClick={() => navigate("/exit-tickets")}
                 >
-                  Go to Exit Ticket Library
+                  Go to Check-in Library
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => navigate("/exit-tickets/create")}
                 >
-                  Create New Exit Ticket
+                  Create New Check-in
                 </Button>
               </div>
             </div>
@@ -614,7 +614,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Start Lesson?</AlertDialogTitle>
             <AlertDialogDescription>
-              You need a running lesson to activate this exit ticket. Start one now?
+              You need a running lesson to activate this check-in. Start one now?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -641,7 +641,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Reset & Activate?</AlertDialogTitle>
             <AlertDialogDescription>
-              This exit ticket has already been used. All previous student submissions will be deleted so you can run it again.
+              This check-in has already been used. All previous student submissions will be deleted so you can run it again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -669,7 +669,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Reset to Draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes all student responses and resets the exit ticket to draft. The questions stay intact.
+              This deletes all student responses and resets the check-in to draft. The questions stay intact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -690,7 +690,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Delete from Class?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes this exit ticket from the class, including all student responses. The template in your Exit Ticket Library is not affected.
+              This permanently removes this check-in from the class, including all student responses. The template in your Check-in Library is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -702,9 +702,9 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
                 if (!deleteRunTicket) return;
                 try {
                   await deleteRun.mutateAsync({ taskId: deleteRunTicket.id, classId, templateId: deleteRunTicket.templateId });
-                  toast({ title: "Deleted", description: "Exit ticket removed from this class." });
+                  toast({ title: "Deleted", description: "Check-in removed from this class." });
                 } catch {
-                  toast({ title: "Error", description: "Could not delete the exit ticket.", variant: "destructive" });
+                  toast({ title: "Error", description: "Could not delete the check-in.", variant: "destructive" });
                 } finally {
                   setDeleteRunTicket(null);
                 }
@@ -721,7 +721,7 @@ export function ClassroomActivities({ classId, currentSession }: ClassroomActivi
           <AlertDialogHeader>
             <AlertDialogTitle>Set as Homework</AlertDialogTitle>
             <AlertDialogDescription>
-              Students can access this exit ticket via the class code until the due date passes.
+              Students can access this check-in via the class code until the due date passes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-2 space-y-1">

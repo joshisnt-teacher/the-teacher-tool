@@ -371,7 +371,7 @@ const ClassDashboard = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="exit-tickets">
-              Exit Tickets
+              Check-ins
               {exitTicketRuns.length > 0 && (
                 <Badge variant="secondary" className="ml-2 text-xs">
                   {exitTicketRuns.length}
@@ -489,12 +489,12 @@ const ClassDashboard = () => {
               <div className="text-center py-12">
                 <Ticket className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm mb-4">
-                  No exit tickets run for this class yet.
+                  No check-ins run for this class yet.
                 </p>
                 <Link to="/exit-tickets">
                   <Button size="sm">
                     <Ticket className="h-4 w-4 mr-2" />
-                    Go to Exit Tickets
+                    Go to Check-ins
                   </Button>
                 </Link>
               </div>
@@ -502,13 +502,13 @@ const ClassDashboard = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center mb-4">
                   <p className="text-sm text-muted-foreground">
-                    {exitTicketRuns.length} exit ticket
+                    {exitTicketRuns.length} check-in
                     {exitTicketRuns.length !== 1 ? 's' : ''} run
                   </p>
                   <Link to="/exit-tickets">
                     <Button variant="outline" size="sm">
                       <Ticket className="h-4 w-4 mr-2" />
-                      Manage Exit Tickets
+                      Manage Check-ins
                     </Button>
                   </Link>
                 </div>

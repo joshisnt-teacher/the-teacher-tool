@@ -15,7 +15,7 @@ const StudentLanding = () => {
           </div>
           <h1 className="text-3xl font-bold">Student Portal</h1>
           <p className="text-muted-foreground text-sm">
-            Sign in to access your exit tickets and homework.
+            Sign in to access your check-ins and homework.
           </p>
         </div>
 

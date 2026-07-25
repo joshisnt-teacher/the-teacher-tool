@@ -235,9 +235,9 @@ export default function SessionDetails() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Ticket className="w-5 h-5" />
-                  Exit Tickets ({sessionTickets.length})
+                  Check-ins ({sessionTickets.length})
                 </CardTitle>
-                <CardDescription>Exit tickets that were run during this lesson</CardDescription>
+                <CardDescription>Check-ins that were run during this lesson</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">

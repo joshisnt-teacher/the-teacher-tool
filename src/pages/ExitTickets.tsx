@@ -152,7 +152,7 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
           <AlertDialogHeader>
             <AlertDialogTitle>Reset to Draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes all student responses and resets the exit ticket to draft. The questions stay intact.
+              This deletes all student responses and resets the check-in to draft. The questions stay intact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -169,7 +169,7 @@ const TemplateRunsSection: React.FC<TemplateRunsSectionProps> = ({ template }) =
           <AlertDialogHeader>
             <AlertDialogTitle>Delete from Class?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes this exit ticket and all student responses from {selectedRun?.class_name}. The template is not affected.
+              This permanently deletes this check-in and all student responses from {selectedRun?.class_name}. The template is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -228,7 +228,7 @@ const ExitTickets = () => {
     try {
       const { error } = await supabase.from('exit_ticket_templates').delete().eq('id', templateToDelete);
       if (error) throw error;
-      toast({ title: 'Exit ticket deleted' });
+      toast({ title: 'Check-in deleted' });
       refetch();
     } catch (err: unknown) {
       toast({ title: 'Failed to delete', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
@@ -289,7 +289,7 @@ const ExitTickets = () => {
               <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back to Dashboard</Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold">Exit Tickets</h1>
+              <h1 className="text-xl font-bold">Check-ins</h1>
               <p className="text-sm text-muted-foreground">Create templates and deploy them to your classes</p>
             </div>
           </div>
@@ -298,7 +298,7 @@ const ExitTickets = () => {
               <Upload className="w-4 h-4 mr-2" />Import from Atlas
             </Button>
             <Button onClick={openCreateSheet} data-tutorial="exit-tickets-create">
-              <Plus className="w-4 h-4 mr-2" />Create Exit Ticket
+              <Plus className="w-4 h-4 mr-2" />Create Check-in
             </Button>
           </div>
         </div>
@@ -308,7 +308,7 @@ const ExitTickets = () => {
         <Card className="bg-card/50 backdrop-blur-sm border-border/50">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" />Exit Ticket Library</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" />Check-in Library</CardTitle>
               <CardDescription>Templates you've built. Deploy them to any class when you're ready</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>Refresh</Button>
@@ -316,7 +316,7 @@ const ExitTickets = () => {
           <CardContent>
             {isError && (
               <div className="p-4 border border-destructive rounded-md bg-destructive/10">
-                <p className="text-sm text-destructive font-medium">Failed to load exit tickets.</p>
+                <p className="text-sm text-destructive font-medium">Failed to load check-ins.</p>
                 <p className="text-xs text-destructive/80 mt-1">{error instanceof Error ? error.message : 'Unknown error'}</p>
               </div>
             )}
@@ -380,9 +380,9 @@ const ExitTickets = () => {
                 ) : (
                   <div className="text-center py-12">
                     <Ticket className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">No exit tickets yet</h3>
-                    <p className="text-muted-foreground mb-6">Create your first exit ticket template to get started.</p>
-                    <Button onClick={openCreateSheet}><Plus className="w-4 h-4 mr-2" />Create Exit Ticket</Button>
+                    <h3 className="text-lg font-semibold mb-2">No check-ins yet</h3>
+                    <p className="text-muted-foreground mb-6">Create your first check-in template to get started.</p>
+                    <Button onClick={openCreateSheet}><Plus className="w-4 h-4 mr-2" />Create Check-in</Button>
                   </div>
                 )}
               </div>
@@ -394,7 +394,7 @@ const ExitTickets = () => {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-3xl p-0 overflow-y-auto">
           <SheetHeader className="sr-only">
-            <SheetTitle>{sheetTemplateId ? 'Edit Exit Ticket' : 'Create Exit Ticket'}</SheetTitle>
+            <SheetTitle>{sheetTemplateId ? 'Edit Check-in' : 'Create Check-in'}</SheetTitle>
           </SheetHeader>
           <CreateExitTicket embedded templateId={sheetTemplateId} onClose={closeSheet} />
         </SheetContent>
@@ -443,7 +443,7 @@ const ExitTickets = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Exit Ticket?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Check-in?</AlertDialogTitle>
             <AlertDialogDescription>
               This deletes the template and its questions. Any runs already deployed to classes will remain but lose their template link.
             </AlertDialogDescription>

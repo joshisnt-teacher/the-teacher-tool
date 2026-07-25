@@ -118,7 +118,7 @@ export const useSubmitExitTicket = () => {
       queryClient.invalidateQueries({ queryKey: ['question-results'] });
       toast({
         title: 'Submitted',
-        description: 'Your exit ticket has been submitted successfully.',
+        description: 'Your check-in has been submitted successfully.',
       });
       // Trigger AI marking for text answers (fire-and-forget — failure is non-blocking)
       if (data.textAnswerQRIds.length > 0) {

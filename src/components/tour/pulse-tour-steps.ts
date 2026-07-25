@@ -6,7 +6,7 @@ export const PULSE_TOUR_STEPS: TourStep[] = [
     target: "dashboard-create-class",
     title: "Create your first class",
     body:
-      "Every class in Pulse keeps its own students, lessons, exit tickets and results. Start by creating a class.",
+      "Every class in Pulse keeps its own students, lessons, check-ins and results. Start by creating a class.",
     position: "bottom",
     mode: "directed",
     route: "/dashboard",
@@ -15,9 +15,9 @@ export const PULSE_TOUR_STEPS: TourStep[] = [
   {
     id: "run-exit-ticket",
     target: "nav-exit-tickets",
-    title: "Run an exit ticket",
+    title: "Run a check-in",
     body:
-      "Exit tickets take 30 seconds to launch and show you who understood the lesson. Head to Exit Tickets to build one.",
+      "Check-ins take 30 seconds to launch and show you who understood the lesson. Head to Check-ins to build one.",
     position: "right",
     mode: "directed",
     route: "/exit-tickets",

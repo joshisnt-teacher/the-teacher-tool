@@ -82,7 +82,7 @@ export function ExitTicketResponsesTable({
     return (
       <Card>
         <CardContent className="p-8 text-center text-muted-foreground">
-          No questions found for this exit ticket.
+          No questions found for this check-in.
         </CardContent>
       </Card>
     );

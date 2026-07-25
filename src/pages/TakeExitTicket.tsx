@@ -156,7 +156,7 @@ const TakeExitTicket = () => {
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading exit ticket...</p>
+          <p className="text-muted-foreground">Loading check-in...</p>
         </div>
       </div>
     );
@@ -168,8 +168,8 @@ const TakeExitTicket = () => {
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Exit Ticket Not Available</h2>
-            <p className="text-muted-foreground">This exit ticket is not currently active.</p>
+            <h2 className="text-xl font-semibold mb-2">Check-in Not Available</h2>
+            <p className="text-muted-foreground">This check-in is not currently active.</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +184,7 @@ const TakeExitTicket = () => {
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
             <h2 className="text-2xl font-semibold mb-2">Submitted!</h2>
             <p className="text-muted-foreground mb-4">
-              Your exit ticket has been submitted successfully.
+              Your check-in has been submitted successfully.
             </p>
             <Button variant="outline" onClick={() => navigate('/student/dashboard')}>
               Back to Dashboard
@@ -206,7 +206,7 @@ const TakeExitTicket = () => {
         {questions.length === 0 ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>This exit ticket has no questions yet.</AlertDescription>
+            <AlertDescription>This check-in has no questions yet.</AlertDescription>
           </Alert>
         ) : (
           <>
@@ -290,7 +290,7 @@ const TakeExitTicket = () => {
                   Submitting...
                 </>
               ) : (
-                'Submit Exit Ticket'
+                'Submit Check-in'
               )}
             </Button>
           </>

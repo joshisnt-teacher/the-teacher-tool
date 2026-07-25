@@ -173,11 +173,11 @@ const ExitTicketResults = () => {
   if (!task) {
     return (
       <div className="p-8 text-center space-y-4">
-        <p className="text-muted-foreground">Exit ticket not found.</p>
+        <p className="text-muted-foreground">Check-in not found.</p>
         <Link to="/exit-tickets">
           <Button variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Exit Tickets
+            Back to Check-ins
           </Button>
         </Link>
       </div>
@@ -197,7 +197,7 @@ const ExitTicketResults = () => {
             </Link>
             <span>/</span>
             <Link to="/exit-tickets" className="hover:text-foreground transition-colors">
-              Exit Tickets
+              Check-ins
             </Link>
             <span>/</span>
             <span className="text-foreground font-medium truncate max-w-[240px]">
