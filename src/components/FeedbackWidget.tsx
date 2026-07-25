@@ -43,6 +43,10 @@ export function FeedbackWidget({ app }: FeedbackWidgetProps) {
     setSubmitting(true);
 
     try {
+      if (!FEEDBACK_URL) {
+        throw new Error("Feedback endpoint is not configured (VITE_FEEDBACK_FUNCTION_URL missing)");
+      }
+
       const res = await fetch(FEEDBACK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,7 +60,8 @@ export function FeedbackWidget({ app }: FeedbackWidgetProps) {
 
       if (!res.ok) throw new Error("Submit failed");
       setDone(true);
-    } catch {
+    } catch (err) {
+      console.error("Feedback submission failed:", err);
       alert("Could not send feedback. Please try again.");
     } finally {
       setSubmitting(false);
