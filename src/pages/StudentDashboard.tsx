@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ClipboardList, Link2, LogOut, BookOpen, Radio } from 'lucide-react';
+import { Loader2, ClipboardList, Link2, LogOut, BookOpen, Radio, LayoutGrid } from 'lucide-react';
 import { useStudentSession } from '@/hooks/useStudentSession';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -316,8 +316,15 @@ const StudentDashboard = () => {
           </>
         )}
 
-        {/* Sign Out */}
-        <div className="pt-4 text-center">
+        {/* Back to Edufied / Sign Out */}
+        <div className="pt-4 text-center space-x-6">
+          <button
+            onClick={() => { window.location.href = 'https://student.edufied.com.au/choose-app'; }}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Back to Edufied
+          </button>
           <button
             onClick={signOut}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors"
