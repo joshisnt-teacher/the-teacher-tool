@@ -224,6 +224,22 @@ async function syncStudents(
 
   const centralStudentIds = [...new Set(enrolments.map(e => e.student_id))]
 
+  // Needed both for provisioning (below) and for pruning stale per-class
+  // enrolments (further below) — compute unconditionally so the prune step
+  // still runs even when centralStudentIds is empty (e.g. every student on
+  // a class was unenrolled, leaving nothing to fetch from central.students).
+  let localClassIdByCentral = new Map<string, string>()
+  if (teacherActiveClassIds.length > 0) {
+    const { data: localClasses } = await local
+      .from('classes')
+      .select('id, central_class_id')
+      .eq('teacher_id', localUserId)
+      .in('central_class_id', teacherActiveClassIds)
+    localClassIdByCentral = new Map(
+      (localClasses ?? []).map(c => [c.central_class_id as string, c.id as string])
+    )
+  }
+
   if (centralStudentIds.length > 0) {
     const { data: centralStudents, error: centralStudentsErr } = await central
       .from('students')
@@ -233,15 +249,6 @@ async function syncStudents(
       console.error('central students fetch failed, skipping student sync this run', centralStudentsErr)
       return
     }
-
-    const { data: localClasses } = await local
-      .from('classes')
-      .select('id, central_class_id')
-      .eq('teacher_id', localUserId)
-      .in('central_class_id', teacherActiveClassIds)
-    const localClassIdByCentral = new Map(
-      (localClasses ?? []).map(c => [c.central_class_id as string, c.id as string])
-    )
 
     for (const cs of centralStudents ?? []) {
       const { data: existing } = await local
@@ -307,5 +314,38 @@ async function syncStudents(
     if (ls.central_id && stillValidCentralIds.has(ls.central_id as string)) continue
 
     await local.from('students').update({ archived_at: new Date().toISOString() }).eq('id', ls.id)
+  }
+
+  // Prune stale per-class enrolments. The archive step above only catches a
+  // student who has left every Pulse-active class — a student unenrolled from
+  // just ONE class while remaining validly enrolled in another was never
+  // removed from that class's roster, because the upsert loop above only ever
+  // adds/refreshes enrolments, it never removes one that's no longer current.
+  const localClassIds = [...localClassIdByCentral.values()]
+  if (localClassIds.length > 0) {
+    const validCentralPairs = new Set(enrolments.map(e => `${e.class_id}:${e.student_id}`))
+    const centralClassIdByLocal = new Map(
+      [...localClassIdByCentral.entries()].map(([centralId, localId]) => [localId, centralId])
+    )
+
+    const { data: existingEnrolments } = await local
+      .from('enrolments')
+      .select('student_id, class_id, students!inner(central_id)')
+      .in('class_id', localClassIds)
+
+    for (const row of existingEnrolments ?? []) {
+      const centralId = (row.students as { central_id: string | null } | null)?.central_id
+      const centralClassId = centralClassIdByLocal.get(row.class_id as string)
+      if (!centralId || !centralClassId) continue // not hub-linked; leave alone
+
+      if (validCentralPairs.has(`${centralClassId}:${centralId}`)) continue
+
+      const { error: delErr } = await local
+        .from('enrolments')
+        .delete()
+        .eq('student_id', row.student_id as string)
+        .eq('class_id', row.class_id as string)
+      if (delErr) console.error('stale enrolment delete failed', row.student_id, row.class_id, delErr)
+    }
   }
 }
